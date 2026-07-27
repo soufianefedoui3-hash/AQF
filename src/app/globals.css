@@ -1,0 +1,123 @@
+@import "tailwindcss";
+
+@theme {
+  /* Primary — Dark Teal (headings, structure, dark UI) */
+  --color-primary-50: #eef7f8;
+  --color-primary-100: #d4ecef;
+  --color-primary-200: #a9d8df;
+  --color-primary-300: #74bac4;
+  --color-primary-400: #449aab;
+  --color-primary-500: #2a8092;
+  --color-primary-600: #1a6678;
+  --color-primary-700: #145262;
+  --color-primary-800: #0d4554;
+  --color-primary-900: #004d5a;
+
+  /* Accent — Cyan / Sky Blue (highlights, borders, links) */
+  --color-accent-50: #ecfcff;
+  --color-accent-100: #cff4fe;
+  --color-accent-200: #a5e9fc;
+  --color-accent-300: #67d9f7;
+  --color-accent-400: #22c8e8;
+  --color-accent-500: #0eb8dc;
+  --color-accent-600: #0894b8;
+  --color-accent-700: #0b7694;
+  --color-accent-800: #0f5f78;
+  --color-accent-900: #134f64;
+
+  /* Secondary / Mint — CTA buttons, success, badges */
+  --color-secondary-50: #f0faf5;
+  --color-secondary-100: #dcf5ea;
+  --color-secondary-200: #b8ead4;
+  --color-secondary-300: #91e8cc;
+  --color-secondary-400: #7ec8a8;
+  --color-secondary-500: #5bb992;
+  --color-secondary-600: #459a78;
+  --color-secondary-700: #387c61;
+  --color-secondary-800: #2f634f;
+  --color-secondary-900: #285142;
+
+  --color-surface: #f7f9fa;
+  --color-surface-muted: #eef2f3;
+  --color-text: #0a3340;
+  --color-text-muted: #5a7178;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  min-height: 100vh;
+}
+
+/* Fixed header offset — matches Navbar h-16 */
+:root {
+  --header-height: 4rem;
+}
+
+/* Prevent brand logo from blowing out layout if styles fail to load */
+.brand-logo img {
+  height: 100%;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+::selection {
+  background-color: var(--color-accent-200);
+  color: var(--color-primary-900);
+}
+
+section[id] {
+  scroll-margin-top: 5rem;
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.6s ease-out forwards;
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Brand gradient utilities */
+.bg-brand-gradient {
+  background: linear-gradient(135deg, var(--color-primary-900) 0%, var(--color-primary-800) 45%, #063540 100%);
+}
+
+.bg-cta-gradient {
+  background: linear-gradient(135deg, var(--color-secondary-400) 0%, var(--color-secondary-500) 100%);
+}
+
+.bg-accent-gradient {
+  background: linear-gradient(135deg, var(--color-accent-400) 0%, var(--color-accent-500) 100%);
+}
