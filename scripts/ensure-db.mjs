@@ -1,42 +1,118 @@
-import { execSync } from "node:child_process";
+import { existsSync, mkdirSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+import { spawnSync } from "node:child_process";
 import { runEnsureAdmin } from "./ensure-admin.mjs";
 
-const isProduction = process.env.NODE_ENV === "production";
+const DEFAULT_RELATIVE_DB = "file:./dev.db";
 
-async function main() {
-  console.log("[ensure-db] Starting database bootstrap...");
+function log(message) {
+  console.log(`[ensure-db] ${message}`);
+}
 
-  if (!process.env.DATABASE_URL) {
-    console.warn("[ensure-db] DATABASE_URL is not set. Using Prisma default from schema.");
-  }
+function warn(message) {
+  console.warn(`[ensure-db] ${message}`);
+}
 
-  try {
-    console.log("[ensure-db] Running prisma db push (schema sync, no data wipe)...");
-    execSync("npx prisma db push --skip-generate", {
-      stdio: "inherit",
-      env: process.env,
-    });
-  } catch (error) {
-    console.error("[ensure-db] prisma db push failed:", error.message);
-    if (isProduction) {
-      process.exit(1);
+function error(message) {
+  console.error(`[ensure-db] ${message}`);
+}
+
+/**
+ * Resolve a writable SQLite path for production hosts where relative paths
+ * or missing directories cause prisma db push to fail on boot.
+ */
+export function resolveDatabaseUrl() {
+  const configured = process.env.DATABASE_URL?.trim();
+
+  if (configured && configured !== DEFAULT_RELATIVE_DB) {
+    if (configured.startsWith("file:")) {
+      const rawPath = configured.replace(/^file:/, "");
+      const absolutePath = rawPath.startsWith("/") || /^[A-Za-z]:[\\/]/.test(rawPath)
+        ? rawPath
+        : resolve(process.cwd(), rawPath);
+
+      mkdirSync(dirname(absolutePath), { recursive: true });
+      process.env.DATABASE_URL = `file:${absolutePath.replace(/\\/g, "/")}`;
     }
-    throw error;
+
+    return process.env.DATABASE_URL;
   }
 
-  const forceReset = process.env.ADMIN_FORCE_RESET === "true";
-  const result = await runEnsureAdmin({ forceReset });
+  const dbPath = join(process.cwd(), "prisma", "production.db");
+  mkdirSync(dirname(dbPath), { recursive: true });
+  process.env.DATABASE_URL = `file:${dbPath.replace(/\\/g, "/")}`;
+  return process.env.DATABASE_URL;
+}
 
-  console.log(`[ensure-db] ${result.message}: ${result.email}`);
-  if (result.created) {
-    console.log("[ensure-db] Default credentials apply from ADMIN_EMAIL / ADMIN_PASSWORD.");
+function runPrismaDbPush() {
+  const prismaEntry = join(process.cwd(), "node_modules", "prisma", "build", "index.js");
+
+  if (!existsSync(prismaEntry)) {
+    throw new Error("Prisma CLI not found. Run npm install before starting the app.");
   }
-  if (forceReset) {
-    console.log("[ensure-db] Admin password was reset from ADMIN_PASSWORD.");
+
+  const result = spawnSync(process.execPath, [prismaEntry, "db", "push", "--skip-generate"], {
+    stdio: "inherit",
+    env: process.env,
+    cwd: process.cwd(),
+  });
+
+  if (result.error) {
+    throw result.error;
+  }
+
+  if (result.status !== 0) {
+    throw new Error(`prisma db push exited with code ${result.status ?? "unknown"}`);
   }
 }
 
-main().catch((error) => {
-  console.error("[ensure-db] Bootstrap failed:", error.message);
-  process.exit(1);
-});
+/**
+ * Best-effort database bootstrap. Never throws — callers decide whether to abort boot.
+ */
+export async function bootstrapDatabase() {
+  if (process.env.SKIP_DB_BOOTSTRAP === "true") {
+    warn("SKIP_DB_BOOTSTRAP=true — skipping database bootstrap.");
+    return { ok: true, skipped: true };
+  }
+
+  log("Starting database bootstrap...");
+
+  try {
+    const databaseUrl = resolveDatabaseUrl();
+    log(`Using database: ${databaseUrl}`);
+
+    log("Running prisma db push (schema sync, no data wipe)...");
+    runPrismaDbPush();
+
+    const forceReset = process.env.ADMIN_FORCE_RESET === "true";
+    const result = await runEnsureAdmin({ forceReset });
+
+    log(`${result.message}: ${result.email}`);
+    if (result.created) {
+      log("Default credentials apply from ADMIN_EMAIL / ADMIN_PASSWORD.");
+    }
+    if (forceReset) {
+      log("Admin password was reset from ADMIN_PASSWORD.");
+    }
+
+    return { ok: true, ...result };
+  } catch (bootstrapError) {
+    error(`Bootstrap failed: ${bootstrapError.message}`);
+    error("The web server will still start, but admin login may fail until bootstrap succeeds.");
+    return { ok: false, error: bootstrapError.message };
+  }
+}
+
+async function main() {
+  const result = await bootstrapDatabase();
+  process.exit(result.ok ? 0 : 1);
+}
+
+const isDirectRun =
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(resolve(process.argv[1])).href;
+
+if (isDirectRun) {
+  main();
+}
