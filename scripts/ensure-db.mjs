@@ -92,6 +92,12 @@ export async function bootstrapDatabase() {
     if (result.created) {
       log("Default credentials apply from ADMIN_EMAIL / ADMIN_PASSWORD.");
     }
+    if (result.repaired) {
+      log("Admin password hash was repaired to match ADMIN_PASSWORD.");
+    }
+    if (result.verified) {
+      log("Admin credentials verified against ADMIN_PASSWORD.");
+    }
     if (forceReset) {
       log("Admin password was reset from ADMIN_PASSWORD.");
     }

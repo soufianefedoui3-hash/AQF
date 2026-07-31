@@ -9,36 +9,56 @@ function getAdminCredentials() {
 }
 
 /**
- * Ensures the admin account exists in the database.
- * - Creates the admin if missing.
- * - Updates the password only when `forceReset` is true.
+ * Creates, resets, or repairs the admin account in SQLite.
  */
 export async function ensureAdmin(prisma, { forceReset = false } = {}) {
   const { email, password } = getAdminCredentials();
   const existing = await prisma.admin.findUnique({ where: { email } });
 
-  if (existing && !forceReset) {
+  if (!existing) {
+    const passwordHash = await bcrypt.hash(password, 12);
+    await prisma.admin.create({ data: { email, passwordHash } });
     return {
       email,
-      created: false,
+      created: true,
       reset: false,
-      message: "Admin account already exists",
+      repaired: false,
+      verified: false,
+      message: "Admin account created",
     };
   }
 
-  const passwordHash = await bcrypt.hash(password, 12);
+  if (!forceReset) {
+    try {
+      const valid = await bcrypt.compare(password, existing.passwordHash);
+      if (valid) {
+        return {
+          email,
+          created: false,
+          reset: false,
+          repaired: false,
+          verified: true,
+          message: "Admin credentials verified",
+        };
+      }
+    } catch {
+      /* repair below */
+    }
+  }
 
-  await prisma.admin.upsert({
+  const passwordHash = await bcrypt.hash(password, 12);
+  await prisma.admin.update({
     where: { email },
-    update: { passwordHash },
-    create: { email, passwordHash },
+    data: { passwordHash },
   });
 
   return {
     email,
-    created: !existing,
-    reset: !!existing && forceReset,
-    message: existing ? "Admin password reset" : "Admin account created",
+    created: false,
+    reset: forceReset,
+    repaired: !forceReset,
+    verified: false,
+    message: forceReset ? "Admin password reset" : "Admin password repaired",
   };
 }
 
