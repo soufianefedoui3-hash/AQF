@@ -9,7 +9,13 @@ import { verifyPassword } from "@/lib/password";
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password } = await request.json();
+    const body = await request.json();
+    const email = String(body.email || "").trim().toLowerCase();
+    const password = String(body.password || "");
+
+    if (!email || !password) {
+      return NextResponse.json({ error: "Identifiants invalides" }, { status: 401 });
+    }
 
     const admin = await prisma.admin.findUnique({ where: { email } });
     if (!admin) {
@@ -25,7 +31,8 @@ export async function POST(request: NextRequest) {
     await setAdminCookie(token);
 
     return NextResponse.json({ success: true });
-  } catch {
+  } catch (error) {
+    console.error("Admin login error:", error);
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
   }
 }
