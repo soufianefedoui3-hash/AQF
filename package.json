@@ -7,6 +7,7 @@
     "dev:clean": "node scripts/clean-dev.mjs",
     "restart": "npm run clean && npm run dev",
     "build": "prisma generate && next build",
+    "postbuild": "node scripts/ensure-db.mjs",
     "clean": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true}); try{require('fs').rmSync('node_modules/.cache',{recursive:true,force:true})}catch(e){}\"",
     "build:clean": "npm run clean && npm run build",
     "start": "next start -H 0.0.0.0",

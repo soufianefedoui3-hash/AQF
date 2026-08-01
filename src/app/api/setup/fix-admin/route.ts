@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { resolveProductionDatabaseUrl } from "@/lib/database-url";
-import { fixAdminAccount, getAdminStatus } from "@/lib/ensure-admin";
+import { bootstrapProductionDatabase } from "@/lib/bootstrap-db";
+import { getAdminStatus } from "@/lib/ensure-admin";
 import { getSetupSecretConfigured, isSetupAuthorized } from "@/lib/setup-auth";
 
 function unauthorized() {
@@ -21,7 +21,6 @@ export async function GET(request: NextRequest) {
   if (!isSetupAuthorized(request)) return unauthorized();
 
   try {
-    resolveProductionDatabaseUrl();
     const status = await getAdminStatus();
 
     return NextResponse.json({
@@ -40,15 +39,24 @@ export async function POST(request: NextRequest) {
   if (!isSetupAuthorized(request)) return unauthorized();
 
   try {
-    resolveProductionDatabaseUrl();
     const body = await request.json().catch(() => ({}));
     const force = body.force === true || body.forceReset === true;
 
-    const result = await fixAdminAccount({ force });
+    const bootstrap = await bootstrapProductionDatabase({ forceAdmin: force });
+
+    if (!bootstrap.ok || !bootstrap.admin) {
+      return NextResponse.json(
+        { error: bootstrap.error || "Bootstrap failed" },
+        { status: 500 }
+      );
+    }
+
+    const result = bootstrap.admin;
 
     return NextResponse.json({
       success: true,
       ...result,
+      databaseUrl: bootstrap.databaseUrl,
       loginEmail: result.email,
       hint: "Use ADMIN_EMAIL and ADMIN_PASSWORD from server environment variables.",
     });

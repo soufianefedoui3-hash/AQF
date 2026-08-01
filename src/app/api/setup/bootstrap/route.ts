@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { resolveProductionDatabaseUrl } from "@/lib/database-url";
-import { fixAdminAccount } from "@/lib/ensure-admin";
+import { bootstrapProductionDatabase } from "@/lib/bootstrap-db";
 import { getSetupSecretConfigured, isSetupAuthorized } from "@/lib/setup-auth";
 
 export async function POST(request: NextRequest) {
@@ -16,14 +15,21 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    resolveProductionDatabaseUrl();
     const body = await request.json().catch(() => ({}));
     const force = body.forceReset === true || body.force === true;
-    const result = await fixAdminAccount({ force });
+    const bootstrap = await bootstrapProductionDatabase({ forceAdmin: force });
+
+    if (!bootstrap.ok || !bootstrap.admin) {
+      return NextResponse.json(
+        { error: bootstrap.error || "Bootstrap failed" },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       success: true,
-      ...result,
+      databaseUrl: bootstrap.databaseUrl,
+      ...bootstrap.admin,
     });
   } catch (error) {
     console.error("Setup bootstrap error:", error);

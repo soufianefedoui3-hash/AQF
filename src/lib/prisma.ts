@@ -1,4 +1,9 @@
 import { PrismaClient } from "@prisma/client";
+import { resolveProductionDatabaseUrl } from "@/lib/database-url";
+
+if (process.env.NODE_ENV === "production") {
+  resolveProductionDatabaseUrl();
+}
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
