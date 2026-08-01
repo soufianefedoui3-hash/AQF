@@ -7,15 +7,15 @@
     "dev:clean": "node scripts/clean-dev.mjs",
     "restart": "npm run clean && npm run dev",
     "build": "prisma generate && next build",
-    "postbuild": "node scripts/push-schema.mjs",
-    "prestart": "node scripts/push-schema.mjs",
+    "postbuild": "node scripts/push-schema.mjs && node scripts/seed-db.mjs",
+    "prestart": "node scripts/push-schema.mjs && node scripts/seed-db.mjs",
     "clean": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true}); try{require('fs').rmSync('node_modules/.cache',{recursive:true,force:true})}catch(e){}\"",
     "build:clean": "npm run clean && npm run build",
     "start": "next start -H 0.0.0.0",
     "lint": "next lint",
     "db:generate": "prisma generate",
     "db:push": "node scripts/push-schema.mjs",
-    "db:seed": "tsx prisma/seed.ts",
+    "db:seed": "node scripts/seed-db.mjs",
     "db:bootstrap": "node scripts/ensure-db.mjs",
     "admin:reset": "node scripts/reset-admin.mjs",
     "postinstall": "prisma generate"
@@ -33,6 +33,7 @@
     "react-dom": "^19.0.0",
     "react-hot-toast": "^2.5.2",
     "tailwind-merge": "^3.0.2",
+    "tsx": "^4.19.3",
     "zod": "^3.24.2"
   },
   "prisma": {
@@ -48,7 +49,6 @@
     "eslint": "^9.23.0",
     "eslint-config-next": "^15.2.4",
     "tailwindcss": "^4.0.17",
-    "tsx": "^4.19.3",
     "typescript": "^5.8.2"
   }
 }

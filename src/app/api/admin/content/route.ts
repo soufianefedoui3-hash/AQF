@@ -1,17 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withPrismaQuery } from "@/lib/prisma-safe";
+import { DEFAULT_ADMIN_CONTENT } from "@/lib/seed-data";
 import { getAdminSession } from "@/lib/auth";
-
-const EMPTY_CONTENT = {
-  about: [],
-  team: [],
-  sectors: [],
-  careers: null,
-  settings: null,
-  pages: [],
-  ged: null,
-};
 
 export async function GET() {
   const session = await getAdminSession();
@@ -31,7 +22,7 @@ export async function GET() {
     ]);
 
     return { about, team, sectors, careers, settings, pages, ged };
-  }, EMPTY_CONTENT);
+  }, DEFAULT_ADMIN_CONTENT);
 
   return NextResponse.json(data);
 }

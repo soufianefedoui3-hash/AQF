@@ -2,6 +2,7 @@ import {
   ensureDatabaseSchema,
   resetDatabaseSchemaCache,
 } from "@/lib/bootstrap-db";
+import { ensureDatabaseSeed, resetDatabaseSeedCache } from "@/lib/seed-runtime";
 
 export function isPrismaSchemaError(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
@@ -26,13 +27,16 @@ export async function withPrismaQuery<T>(
   fallback: T
 ): Promise<T> {
   await ensureDatabaseSchema();
+  await ensureDatabaseSeed();
 
   try {
     return await query();
   } catch (error) {
     if (isPrismaSchemaError(error)) {
       resetDatabaseSchemaCache();
+      resetDatabaseSeedCache();
       await ensureDatabaseSchema();
+      await ensureDatabaseSeed();
 
       try {
         return await query();
@@ -51,13 +55,16 @@ export async function runPrismaMutation<T>(
   mutation: () => Promise<T>
 ): Promise<{ ok: true; data: T } | { ok: false; status: number; error: string }> {
   await ensureDatabaseSchema();
+  await ensureDatabaseSeed();
 
   try {
     return { ok: true, data: await mutation() };
   } catch (error) {
     if (isPrismaSchemaError(error)) {
       resetDatabaseSchemaCache();
+      resetDatabaseSeedCache();
       await ensureDatabaseSchema();
+      await ensureDatabaseSeed();
 
       try {
         return { ok: true, data: await mutation() };
