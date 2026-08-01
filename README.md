@@ -85,7 +85,7 @@ ADMIN_FORCE_RESET="true"
 |--------|-------|--------|
 | `postinstall` | après `npm install` | `prisma generate` |
 | `build` | déploiement | `prisma generate` + `next build` |
-| `start` | démarrage Hostinger | bootstrap DB (best-effort) + `next start` |
+| `start` | démarrage Hostinger | `next start -H 0.0.0.0` (PORT via env) |
 | `db:bootstrap` | manuel | `prisma db push` + création admin si absent |
 
 Le seed complet (`npm run db:seed`) **n'est pas** exécuté automatiquement pour éviter d'écraser le contenu CMS. Lancez-le **une fois** manuellement après le premier déploiement :
@@ -123,7 +123,6 @@ npm run db:bootstrap
 ### Notes SQLite sur Hostinger
 
 - `prisma db push` synchronise le schéma **sans supprimer** les données existantes.
-- Si la base est effacée à chaque redeploy, l'admin est recréé automatiquement au démarrage via `scripts/start.mjs`.
-- Le bootstrap **ne bloque plus** le démarrage du serveur : en cas d'échec SQLite, Next.js démarre quand même (évite la boucle 503).
-- Hostinger : commande de démarrage = **`npm start`** (pas `next start` seul).
+- Si la base est effacée à chaque redeploy, lancez `npm run db:bootstrap` ou l'API `/api/setup/fix-admin` après le déploiement.
+- Hostinger : Build = **`npm run build`**, Start = **`npm start`** (équivaut à `next start`).
 - Pour un site en production durable, migrez vers MySQL/PostgreSQL Hostinger quand possible.
