@@ -19,7 +19,7 @@ function runPrismaDbPush(): void {
     throw new Error("Prisma CLI not found. Run npm install before bootstrapping.");
   }
 
-  const result = spawnSync(process.execPath, [prismaEntry, "db", "push", "--skip-generate"], {
+  const result = spawnSync(process.execPath, [prismaEntry, "db", "push", "--skip-generate", "--accept-data-loss"], {
     stdio: "inherit",
     env: process.env,
     cwd: process.cwd(),

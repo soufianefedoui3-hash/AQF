@@ -27,8 +27,9 @@ export function resolveProductionDatabaseUrl(): string {
 
   const dbPath = join(process.cwd(), "prisma", "production.db");
   mkdirSync(dirname(dbPath), { recursive: true });
-  process.env.DATABASE_URL = `file:${dbPath.replace(/\\/g, "/")}`;
-  return process.env.DATABASE_URL;
+  const absoluteUrl = `file:${dbPath.replace(/\\/g, "/")}`;
+  process.env.DATABASE_URL = absoluteUrl;
+  return absoluteUrl;
 }
 
 export function getDatabasePath(): string | null {

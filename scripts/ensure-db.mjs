@@ -41,18 +41,24 @@ export function resolveDatabaseUrl() {
 
   const dbPath = join(process.cwd(), "prisma", "production.db");
   mkdirSync(dirname(dbPath), { recursive: true });
-  process.env.DATABASE_URL = `file:${dbPath.replace(/\\/g, "/")}`;
-  return process.env.DATABASE_URL;
+  const absoluteUrl = `file:${dbPath.replace(/\\/g, "/")}`;
+  process.env.DATABASE_URL = absoluteUrl;
+  return absoluteUrl;
 }
 
-function runPrismaDbPush() {
+export function runSchemaPush({ acceptDataLoss = false } = {}) {
   const prismaEntry = join(process.cwd(), "node_modules", "prisma", "build", "index.js");
 
   if (!existsSync(prismaEntry)) {
-    throw new Error("Prisma CLI not found. Run npm install before starting the app.");
+    throw new Error("Prisma CLI not found. Run npm install before pushing the schema.");
   }
 
-  const result = spawnSync(process.execPath, [prismaEntry, "db", "push", "--skip-generate"], {
+  const args = ["db", "push", "--skip-generate"];
+  if (acceptDataLoss) {
+    args.push("--accept-data-loss");
+  }
+
+  const result = spawnSync(process.execPath, [prismaEntry, ...args], {
     stdio: "inherit",
     env: process.env,
     cwd: process.cwd(),
@@ -65,6 +71,10 @@ function runPrismaDbPush() {
   if (result.status !== 0) {
     throw new Error(`prisma db push exited with code ${result.status ?? "unknown"}`);
   }
+}
+
+function runPrismaDbPush() {
+  runSchemaPush({ acceptDataLoss: true });
 }
 
 /**
@@ -82,7 +92,7 @@ export async function bootstrapDatabase() {
     const databaseUrl = resolveDatabaseUrl();
     log(`Using database: ${databaseUrl}`);
 
-    log("Running prisma db push (schema sync, no data wipe)...");
+    log("Running prisma db push --accept-data-loss (schema sync)...");
     runPrismaDbPush();
 
     const forceReset = process.env.ADMIN_FORCE_RESET === "true";
