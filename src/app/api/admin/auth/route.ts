@@ -4,7 +4,7 @@ import {
   getAdminSession,
   setAdminCookie,
 } from "@/lib/auth";
-import { authenticateAdmin } from "@/lib/admin-login";
+import { credentialsMatchEnv, getAdminCredentials } from "@/lib/env-credentials";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,25 +12,25 @@ export const dynamic = "force-dynamic";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const email = String(body.email || "");
-    const password = String(body.password || "");
+    const email = String(body.email || "").trim().toLowerCase();
+    const password = String(body.password || "").trim();
 
-    const auth = await authenticateAdmin(email, password);
-
-    if (!auth.success) {
+    if (!email || !password) {
       return NextResponse.json({ error: "Identifiants invalides" }, { status: 401 });
     }
 
+    if (!credentialsMatchEnv(email, password)) {
+      return NextResponse.json({ error: "Identifiants invalides" }, { status: 401 });
+    }
+
+    const { email: adminEmail } = getAdminCredentials();
     const token = await createAdminToken({
-      adminId: auth.adminId,
-      email: auth.email,
+      adminId: adminEmail,
+      email: adminEmail,
     });
     await setAdminCookie(token);
 
-    return NextResponse.json({
-      success: true,
-      source: auth.source,
-    });
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Admin login error:", error);
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
