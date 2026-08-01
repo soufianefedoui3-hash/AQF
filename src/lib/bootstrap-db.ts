@@ -12,6 +12,8 @@ export interface BootstrapResult {
   error?: string;
 }
 
+let schemaInitPromise: Promise<boolean> | null = null;
+
 function runPrismaDbPush(): void {
   const prismaEntry = join(process.cwd(), "node_modules", "prisma", "build", "index.js");
 
@@ -19,11 +21,15 @@ function runPrismaDbPush(): void {
     throw new Error("Prisma CLI not found. Run npm install before bootstrapping.");
   }
 
-  const result = spawnSync(process.execPath, [prismaEntry, "db", "push", "--skip-generate", "--accept-data-loss"], {
-    stdio: "inherit",
-    env: process.env,
-    cwd: process.cwd(),
-  });
+  const result = spawnSync(
+    process.execPath,
+    [prismaEntry, "db", "push", "--skip-generate", "--accept-data-loss"],
+    {
+      stdio: "inherit",
+      env: process.env,
+      cwd: process.cwd(),
+    }
+  );
 
   if (result.error) {
     throw result.error;
@@ -32,6 +38,39 @@ function runPrismaDbPush(): void {
   if (result.status !== 0) {
     throw new Error(`prisma db push exited with code ${result.status ?? "unknown"}`);
   }
+}
+
+export function resetDatabaseSchemaCache(): void {
+  schemaInitPromise = null;
+}
+
+/**
+ * Lazily creates missing SQLite tables once per process.
+ */
+export async function ensureDatabaseSchema(): Promise<boolean> {
+  if (process.env.SKIP_DB_BOOTSTRAP === "true") {
+    return true;
+  }
+
+  if (!schemaInitPromise) {
+    schemaInitPromise = (async () => {
+      try {
+        const databaseUrl = resolveProductionDatabaseUrl();
+        console.log(`[db] Ensuring schema at ${databaseUrl}`);
+        runPrismaDbPush();
+        return true;
+      } catch (error) {
+        console.error(
+          "[db] Schema ensure failed:",
+          error instanceof Error ? error.message : error
+        );
+        schemaInitPromise = null;
+        return false;
+      }
+    })();
+  }
+
+  return schemaInitPromise;
 }
 
 /**
@@ -51,7 +90,7 @@ export async function bootstrapProductionDatabase(options: {
 
   try {
     const databaseUrl = resolveProductionDatabaseUrl();
-    runPrismaDbPush();
+    await ensureDatabaseSchema();
     const admin = await fixAdminAccount({ force: options.forceAdmin });
 
     return { ok: true, databaseUrl, admin };

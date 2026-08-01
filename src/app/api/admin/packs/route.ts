@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { withPrismaQuery } from "@/lib/prisma-safe";
 import { getAdminSession } from "@/lib/auth";
 import { z } from "zod";
 
@@ -17,12 +18,16 @@ export async function GET() {
   }
 
   try {
-    const packs = await prisma.productPack.findMany({
-      orderBy: { order: "asc" },
-    });
+    const packs = await withPrismaQuery(
+      () =>
+        prisma.productPack.findMany({
+          orderBy: { order: "asc" },
+        }),
+      []
+    );
     return NextResponse.json(packs);
   } catch {
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+    return NextResponse.json([]);
   }
 }
 

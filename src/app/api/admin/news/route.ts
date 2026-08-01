@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { withPrismaQuery } from "@/lib/prisma-safe";
 import { getAdminSession } from "@/lib/auth";
 import { slugify } from "@/lib/utils";
 import { saveUploadedFile, validateFile } from "@/lib/upload";
@@ -33,13 +34,17 @@ export async function GET() {
   }
 
   try {
-    const articles = await prisma.newsArticle.findMany({
-      orderBy: { createdAt: "desc" },
-    });
+    const articles = await withPrismaQuery(
+      () =>
+        prisma.newsArticle.findMany({
+          orderBy: { createdAt: "desc" },
+        }),
+      []
+    );
 
     return NextResponse.json(articles.map(serializeNewsArticle));
   } catch {
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+    return NextResponse.json([]);
   }
 }
 

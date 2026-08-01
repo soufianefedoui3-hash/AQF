@@ -1,6 +1,20 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { withPrismaQuery } from "@/lib/prisma-safe";
 import { getAdminSession } from "@/lib/auth";
+
+const EMPTY_STATS = {
+  stats: {
+    totalLeads: 0,
+    consultations: 0,
+    accompagnements: 0,
+    formations: 0,
+    audits: 0,
+    webServices: 0,
+    applications: 0,
+  },
+  recent: [],
+};
 
 export async function GET() {
   const session = await getAdminSession();
@@ -8,7 +22,7 @@ export async function GET() {
     return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
 
-  try {
+  const payload = await withPrismaQuery(async () => {
     const [
       consultations,
       accompagnements,
@@ -33,7 +47,7 @@ export async function GET() {
       take: 5,
     });
 
-    return NextResponse.json({
+    return {
       stats: {
         totalLeads,
         consultations,
@@ -44,8 +58,8 @@ export async function GET() {
         applications,
       },
       recent: recentConsultations,
-    });
-  } catch {
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
-  }
+    };
+  }, EMPTY_STATS);
+
+  return NextResponse.json(payload);
 }

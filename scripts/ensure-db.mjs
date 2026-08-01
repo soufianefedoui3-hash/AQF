@@ -24,18 +24,27 @@ function error(message) {
  */
 export function resolveDatabaseUrl() {
   const configured = process.env.DATABASE_URL?.trim();
+  const useProductionDefault =
+    !configured ||
+    configured === DEFAULT_RELATIVE_DB ||
+    configured === "file:./prisma/dev.db";
 
-  if (configured && configured !== DEFAULT_RELATIVE_DB) {
-    if (configured.startsWith("file:")) {
-      const rawPath = configured.replace(/^file:/, "");
-      const absolutePath = rawPath.startsWith("/") || /^[A-Za-z]:[\\/]/.test(rawPath)
-        ? rawPath
-        : resolve(process.cwd(), rawPath);
+  if (useProductionDefault) {
+    const dbPath = join(process.cwd(), "prisma", "production.db");
+    mkdirSync(dirname(dbPath), { recursive: true });
+    const absoluteUrl = `file:${dbPath.replace(/\\/g, "/")}`;
+    process.env.DATABASE_URL = absoluteUrl;
+    return absoluteUrl;
+  }
 
-      mkdirSync(dirname(absolutePath), { recursive: true });
-      process.env.DATABASE_URL = `file:${absolutePath.replace(/\\/g, "/")}`;
-    }
+  if (configured.startsWith("file:")) {
+    const rawPath = configured.replace(/^file:/, "");
+    const absolutePath = rawPath.startsWith("/") || /^[A-Za-z]:[\\/]/.test(rawPath)
+      ? rawPath
+      : resolve(process.cwd(), rawPath);
 
+    mkdirSync(dirname(absolutePath), { recursive: true });
+    process.env.DATABASE_URL = `file:${absolutePath.replace(/\\/g, "/")}`;
     return process.env.DATABASE_URL;
   }
 
