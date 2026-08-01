@@ -1,36 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import {
   createAdminToken,
   getAdminSession,
   setAdminCookie,
 } from "@/lib/auth";
-import { verifyPassword } from "@/lib/password";
+import { authenticateAdmin } from "@/lib/admin-login";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const email = String(body.email || "").trim().toLowerCase();
+    const email = String(body.email || "");
     const password = String(body.password || "");
 
-    if (!email || !password) {
+    const auth = await authenticateAdmin(email, password);
+
+    if (!auth.success) {
       return NextResponse.json({ error: "Identifiants invalides" }, { status: 401 });
     }
 
-    const admin = await prisma.admin.findUnique({ where: { email } });
-    if (!admin) {
-      return NextResponse.json({ error: "Identifiants invalides" }, { status: 401 });
-    }
-
-    const valid = await verifyPassword(password, admin.passwordHash);
-    if (!valid) {
-      return NextResponse.json({ error: "Identifiants invalides" }, { status: 401 });
-    }
-
-    const token = await createAdminToken({ adminId: admin.id, email: admin.email });
+    const token = await createAdminToken({
+      adminId: auth.adminId,
+      email: auth.email,
+    });
     await setAdminCookie(token);
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      source: auth.source,
+    });
   } catch (error) {
     console.error("Admin login error:", error);
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });

@@ -1,8 +1,12 @@
 import { PrismaClient } from "@prisma/client";
 import { resolveProductionDatabaseUrl } from "@/lib/database-url";
 
-if (process.env.NODE_ENV === "production") {
-  resolveProductionDatabaseUrl();
+function getDatabaseUrl(): string {
+  if (process.env.NODE_ENV === "production") {
+    return resolveProductionDatabaseUrl();
+  }
+
+  return process.env.DATABASE_URL || "file:./dev.db";
 }
 
 const globalForPrisma = globalThis as unknown as {
@@ -12,6 +16,11 @@ const globalForPrisma = globalThis as unknown as {
 export const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
+    datasources: {
+      db: {
+        url: getDatabaseUrl(),
+      },
+    },
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
   });
 

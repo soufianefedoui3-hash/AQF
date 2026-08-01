@@ -28,8 +28,16 @@ export default function AdminLoginPage() {
         }),
       });
 
+      const data = await res.json().catch(() => ({}));
+
       if (!res.ok) {
-        toast.error("Identifiants invalides");
+        if (res.status >= 500) {
+          toast.error("Service temporairement indisponible");
+        } else {
+          toast.error(
+            typeof data.error === "string" ? data.error : "Identifiants invalides"
+          );
+        }
         return;
       }
 

@@ -1,10 +1,21 @@
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
 
+function stripQuotes(value) {
+  const trimmed = value.trim();
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.slice(1, -1).trim();
+  }
+  return trimmed;
+}
+
 function getAdminCredentials() {
   return {
-    email: (process.env.ADMIN_EMAIL || "admin@aqf.ma").trim().toLowerCase(),
-    password: process.env.ADMIN_PASSWORD || "Admin@AQF2026",
+    email: stripQuotes(process.env.ADMIN_EMAIL || "admin@aqf.ma").toLowerCase(),
+    password: stripQuotes(process.env.ADMIN_PASSWORD || "Admin@AQF2026"),
   };
 }
 

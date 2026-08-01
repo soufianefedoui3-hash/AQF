@@ -1,6 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { databaseFileExists, getDatabasePath } from "@/lib/database-url";
+import { getAdminCredentials } from "@/lib/env-credentials";
+
+export { getAdminCredentials };
 
 export interface AdminFixResult {
   email: string;
@@ -19,13 +22,6 @@ export interface AdminStatusResult {
   passwordValid: boolean;
   databasePath: string | null;
   databaseExists: boolean;
-}
-
-export function getAdminCredentials() {
-  return {
-    email: (process.env.ADMIN_EMAIL || "admin@aqf.ma").trim().toLowerCase(),
-    password: process.env.ADMIN_PASSWORD || "Admin@AQF2026",
-  };
 }
 
 export async function getAdminStatus(): Promise<AdminStatusResult> {
