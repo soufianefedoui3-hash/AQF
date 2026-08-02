@@ -12,17 +12,47 @@ import { Input, Textarea, Select } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { SuccessModal } from "@/components/ui/Modal";
 import { APPOINTMENT_TIMES } from "@/lib/constants";
+import { DEFAULT_SECTORS } from "@/lib/seed-data";
+
+const DEFAULT_SECTOR_OPTIONS = DEFAULT_SECTORS.map((sector) => ({
+  slug: sector.slug,
+  name: sector.name,
+}));
 
 export default function AccompagnementPage() {
   const [loading, setLoading] = useState(false);
   const [successOpen, setSuccessOpen] = useState(false);
-  const [sectors, setSectors] = useState<{ slug: string; name: string }[]>([]);
+  const [sectors, setSectors] = useState<{ slug: string; name: string }[]>(
+    DEFAULT_SECTOR_OPTIONS
+  );
 
   useEffect(() => {
     fetch("/api/content/sectors")
-      .then((r) => r.json())
-      .then(setSectors)
-      .catch(() => {});
+      .then(async (res) => {
+        const data = await res.json();
+        if (!Array.isArray(data) || data.length === 0) {
+          setSectors(DEFAULT_SECTOR_OPTIONS);
+          return;
+        }
+
+        const options = data
+          .filter(
+            (item: { slug?: string; name?: string }) =>
+              typeof item?.slug === "string" &&
+              item.slug.trim() &&
+              typeof item?.name === "string" &&
+              item.name.trim()
+          )
+          .map((item: { slug: string; name: string }) => ({
+            slug: item.slug.trim(),
+            name: item.name.trim(),
+          }));
+
+        setSectors(options.length > 0 ? options : DEFAULT_SECTOR_OPTIONS);
+      })
+      .catch(() => {
+        setSectors(DEFAULT_SECTOR_OPTIONS);
+      });
   }, []);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
