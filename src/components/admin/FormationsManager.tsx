@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { Plus, Trash2, Edit, GripVertical } from "lucide-react";
+import { Plus, Trash2, Edit } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 
@@ -25,8 +25,16 @@ export function FormationsManager() {
     try {
       const res = await fetch("/api/admin/formations");
       const data = await res.json();
-      if (Array.isArray(data)) setFormations(data);
+      if (!res.ok) {
+        setFormations([]);
+        toast.error(
+          typeof data?.error === "string" ? data.error : "Erreur de chargement"
+        );
+        return;
+      }
+      setFormations(Array.isArray(data) ? data : []);
     } catch {
+      setFormations([]);
       toast.error("Erreur de chargement");
     } finally {
       setLoading(false);
@@ -71,7 +79,8 @@ export function FormationsManager() {
       setEditingId(null);
       loadFormations();
     } else {
-      toast.error("Erreur");
+      const data = await res.json().catch(() => ({}));
+      toast.error(typeof data?.error === "string" ? data.error : "Erreur");
     }
   }
 
@@ -84,7 +93,14 @@ export function FormationsManager() {
 
     if (res.ok) {
       toast.success(active ? "Formation désactivée" : "Formation activée");
-      loadFormations();
+      setFormations((prev) =>
+        prev.map((item) =>
+          item.id === id ? { ...item, active: !active } : item
+        )
+      );
+    } else {
+      const data = await res.json().catch(() => ({}));
+      toast.error(typeof data?.error === "string" ? data.error : "Erreur");
     }
   }
 
@@ -147,7 +163,6 @@ export function FormationsManager() {
                 className="flex flex-col gap-3 rounded-xl border border-primary-100 bg-accent-50/40 p-4 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="flex min-w-0 flex-1 items-center gap-3">
-                  <GripVertical className="h-4 w-4 shrink-0 text-text-muted" />
                   {editingId === formation.id ? (
                     <Input
                       value={editName}

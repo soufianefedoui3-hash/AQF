@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { Input, Textarea } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
@@ -56,51 +56,126 @@ interface GedService {
   imageUrl: string | null;
 }
 
+const DEFAULT_CAREERS: CareersSettings = {
+  title: "Rejoignez une équipe passionnée par la qualité",
+  content: "",
+  email: "recrutement@aqf.ma",
+  phone: "+212 600 000 000",
+};
+
+const DEFAULT_SETTINGS: SiteSettings = {
+  whatsappNumber: "+212600000000",
+  contactEmail: "contact@aqf.ma",
+  contactPhone: "+212 600 000 000",
+  address: "Maroc",
+};
+
+const DEFAULT_GED: GedService = {
+  title: "GED — Gestion Électronique des Documents",
+  description: "",
+  imageUrl: null,
+};
+
+async function readErrorMessage(res: Response): Promise<string> {
+  try {
+    const data = await res.json();
+    if (typeof data?.error === "string") return data.error;
+  } catch {
+    /* ignore */
+  }
+  return "Erreur lors de l'enregistrement";
+}
+
 export default function ContentPage() {
   const [about, setAbout] = useState<AboutSection[]>([]);
   const [team, setTeam] = useState<TeamMember[]>([]);
   const [sectors, setSectors] = useState<Sector[]>([]);
-  const [careers, setCareers] = useState<CareersSettings | null>(null);
-  const [settings, setSettings] = useState<SiteSettings | null>(null);
+  const [careers, setCareers] = useState<CareersSettings>(DEFAULT_CAREERS);
+  const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
   const [pages, setPages] = useState<PageContentItem[]>([]);
-  const [ged, setGed] = useState<GedService | null>(null);
+  const [ged, setGed] = useState<GedService>(DEFAULT_GED);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("about");
+  const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    fetch("/api/admin/content")
-      .then((r) => r.json())
-      .then((data) => {
-        setAbout(data.about || []);
-        setTeam(data.team || []);
-        setSectors(data.sectors || []);
-        setCareers(data.careers);
-        setSettings(data.settings);
-        setPages(data.pages || []);
-        setGed(data.ged);
-      })
-      .finally(() => setLoading(false));
+  const loadContent = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/content");
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast.error(
+          typeof data?.error === "string" ? data.error : "Impossible de charger le contenu"
+        );
+        return;
+      }
+
+      setAbout(Array.isArray(data.about) ? data.about : []);
+      setTeam(Array.isArray(data.team) ? data.team : []);
+      setSectors(Array.isArray(data.sectors) ? data.sectors : []);
+      setCareers(data.careers || DEFAULT_CAREERS);
+      setSettings(data.settings || DEFAULT_SETTINGS);
+      setPages(Array.isArray(data.pages) ? data.pages : []);
+      setGed(data.ged || DEFAULT_GED);
+    } catch {
+      toast.error("Erreur de connexion");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  async function save(section: string, data: object) {
-    const res = await fetch("/api/admin/content", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ section, data }),
-    });
+  useEffect(() => {
+    loadContent();
+  }, [loadContent]);
 
-    if (res.ok) toast.success("Enregistré");
-    else toast.error("Erreur");
+  async function save(section: string, data: object): Promise<boolean> {
+    setSaving(true);
+    try {
+      const res = await fetch("/api/admin/content", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ section, data }),
+      });
+
+      if (!res.ok) {
+        toast.error(await readErrorMessage(res));
+        return false;
+      }
+
+      toast.success("Enregistré");
+      return true;
+    } catch {
+      toast.error("Erreur de connexion");
+      return false;
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function uploadImage(file: File, prefix: string): Promise<string | null> {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("prefix", prefix);
-    const res = await fetch("/api/admin/upload", { method: "POST", body: formData });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data.url;
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("prefix", prefix);
+      const res = await fetch("/api/admin/upload", { method: "POST", body: formData });
+
+      if (!res.ok) {
+        toast.error(await readErrorMessage(res));
+        return null;
+      }
+
+      const data = await res.json();
+      if (typeof data?.url !== "string") {
+        toast.error("Réponse upload invalide");
+        return null;
+      }
+
+      return data.url;
+    } catch {
+      toast.error("Échec de l'upload");
+      return null;
+    }
   }
 
   if (loading) {
@@ -132,6 +207,7 @@ export default function ContentPage() {
         {tabs.map((tab) => (
           <button
             key={tab.id}
+            type="button"
             onClick={() => setActiveTab(tab.id)}
             className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
               activeTab === tab.id
@@ -156,7 +232,11 @@ export default function ContentPage() {
               <AboutEditor
                 key={key}
                 section={section}
-                onSave={(data) => save("about", data)}
+                saving={saving}
+                onSave={async (data) => {
+                  const ok = await save("about", data);
+                  if (ok) await loadContent();
+                }}
               />
             );
           })}
@@ -168,7 +248,11 @@ export default function ContentPage() {
           pageKey="homepage_presentation"
           label="Présentation de l'accueil"
           pages={pages}
-          onSave={(data) => save("page", data)}
+          saving={saving}
+          onSave={async (data) => {
+            const ok = await save("page", data);
+            if (ok) await loadContent();
+          }}
         />
       )}
 
@@ -177,7 +261,11 @@ export default function ContentPage() {
           pageKey="formation_intro"
           label="Introduction Formation Qualité"
           pages={pages}
-          onSave={(data) => save("page", data)}
+          saving={saving}
+          onSave={async (data) => {
+            const ok = await save("page", data);
+            if (ok) await loadContent();
+          }}
         />
       )}
 
@@ -185,10 +273,17 @@ export default function ContentPage() {
 
       {activeTab === "packs" && <PacksManager />}
 
-      {activeTab === "ged" && ged && (
+      {activeTab === "ged" && (
         <GedEditor
           ged={ged}
-          onSave={(data) => save("ged", data)}
+          saving={saving}
+          onSave={async (data) => {
+            const ok = await save("ged", data);
+            if (ok) {
+              setGed(data);
+              await loadContent();
+            }
+          }}
           onUpload={uploadImage}
         />
       )}
@@ -199,19 +294,29 @@ export default function ContentPage() {
             <TeamEditor
               key={member.id}
               member={member}
-              onSave={(data) => save("team", data)}
-              onDelete={() => save("team-delete", { id: member.id }).then(() => window.location.reload())}
+              saving={saving}
+              onSave={async (data) => {
+                const ok = await save("team", data);
+                if (ok) await loadContent();
+              }}
+              onDelete={async () => {
+                if (!confirm("Supprimer ce membre ?")) return;
+                const ok = await save("team-delete", { id: member.id });
+                if (ok) await loadContent();
+              }}
             />
           ))}
           <Button
-            onClick={() =>
-              save("team", {
+            loading={saving}
+            onClick={async () => {
+              const ok = await save("team", {
                 name: "Nouveau membre",
                 role: "Rôle",
                 skills: "Compétences",
                 order: team.length,
-              }).then(() => window.location.reload())
-            }
+              });
+              if (ok) await loadContent();
+            }}
           >
             Ajouter un membre
           </Button>
@@ -220,30 +325,52 @@ export default function ContentPage() {
 
       {activeTab === "sectors" && (
         <div className="space-y-4">
-          {sectors.map((sector) => (
-            <SectorEditor
-              key={sector.id}
-              sector={sector}
-              onSave={async (data) => {
-                await save("sector", data);
-              }}
-              onUpload={uploadImage}
-            />
-          ))}
+          {sectors.length === 0 ? (
+            <p className="rounded-2xl bg-white p-8 text-center text-text-muted">
+              Aucun secteur disponible.
+            </p>
+          ) : (
+            sectors.map((sector) => (
+              <SectorEditor
+                key={sector.id}
+                sector={sector}
+                saving={saving}
+                onSave={async (data) => {
+                  const ok = await save("sector", data);
+                  if (ok) await loadContent();
+                }}
+                onUpload={uploadImage}
+              />
+            ))
+          )}
         </div>
       )}
 
-      {activeTab === "careers" && careers && (
+      {activeTab === "careers" && (
         <CareersEditor
           settings={careers}
-          onSave={(data) => save("careers", data)}
+          saving={saving}
+          onSave={async (data) => {
+            const ok = await save("careers", data);
+            if (ok) {
+              setCareers(data);
+              await loadContent();
+            }
+          }}
         />
       )}
 
-      {activeTab === "settings" && settings && (
+      {activeTab === "settings" && (
         <SettingsEditor
           settings={settings}
-          onSave={(data) => save("settings", data)}
+          saving={saving}
+          onSave={async (data) => {
+            const ok = await save("settings", data);
+            if (ok) {
+              setSettings(data);
+              await loadContent();
+            }
+          }}
         />
       )}
     </div>
@@ -254,16 +381,23 @@ function PageEditor({
   pageKey,
   label,
   pages,
+  saving,
   onSave,
 }: {
   pageKey: string;
   label: string;
   pages: PageContentItem[];
-  onSave: (data: PageContentItem) => void;
+  saving: boolean;
+  onSave: (data: PageContentItem) => Promise<void>;
 }) {
   const existing = pages.find((p) => p.key === pageKey);
   const [title, setTitle] = useState(existing?.title || label);
   const [content, setContent] = useState(existing?.content || "");
+
+  useEffect(() => {
+    setTitle(existing?.title || label);
+    setContent(existing?.content || "");
+  }, [existing?.title, existing?.content, label]);
 
   return (
     <div className="rounded-2xl border border-primary-100 bg-white p-6">
@@ -271,7 +405,11 @@ function PageEditor({
       <div className="mt-4">
         <Textarea label="Contenu" value={content} onChange={(e) => setContent(e.target.value)} />
       </div>
-      <Button className="mt-4" onClick={() => onSave({ key: pageKey, title, content })}>
+      <Button
+        className="mt-4"
+        loading={saving}
+        onClick={() => onSave({ key: pageKey, title, content })}
+      >
         Enregistrer
       </Button>
     </div>
@@ -280,50 +418,76 @@ function PageEditor({
 
 function GedEditor({
   ged,
+  saving,
   onSave,
   onUpload,
 }: {
   ged: GedService;
-  onSave: (data: GedService) => void;
+  saving: boolean;
+  onSave: (data: GedService) => Promise<void>;
   onUpload: (file: File, prefix: string) => Promise<string | null>;
 }) {
   const [form, setForm] = useState(ged);
+  const [uploading, setUploading] = useState(false);
+
+  useEffect(() => {
+    setForm(ged);
+  }, [ged]);
 
   async function handleImage(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    setUploading(true);
     const url = await onUpload(file, "ged");
+    setUploading(false);
     if (url) {
-      setForm({ ...form, imageUrl: url });
+      setForm((prev) => ({ ...prev, imageUrl: url }));
       toast.success("Image uploadée");
     }
   }
 
   return (
     <div className="rounded-2xl border border-primary-100 bg-white p-6">
-      <Input label="Titre" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+      <Input
+        label="Titre"
+        value={form.title}
+        onChange={(e) => setForm({ ...form, title: e.target.value })}
+      />
       <div className="mt-4">
-        <Textarea label="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+        <Textarea
+          label="Description"
+          value={form.description}
+          onChange={(e) => setForm({ ...form, description: e.target.value })}
+        />
       </div>
       <div className="mt-4">
         <label className="mb-2 block text-sm font-medium">Image de prévisualisation</label>
-        <input type="file" accept="image/*" onChange={handleImage} className="text-sm" />
+        <input type="file" accept="image/*" onChange={handleImage} className="text-sm" disabled={uploading} />
         {form.imageUrl && <p className="mt-1 text-xs text-text-muted">{form.imageUrl}</p>}
       </div>
-      <Button className="mt-4" onClick={() => onSave(form)}>Enregistrer</Button>
+      <Button className="mt-4" loading={saving || uploading} onClick={() => onSave(form)}>
+        Enregistrer
+      </Button>
     </div>
   );
 }
 
 function AboutEditor({
   section,
+  saving,
   onSave,
 }: {
   section: AboutSection;
-  onSave: (data: AboutSection) => void;
+  saving: boolean;
+  onSave: (data: AboutSection) => Promise<void>;
 }) {
   const [title, setTitle] = useState(section.title);
   const [content, setContent] = useState(section.content);
+
+  useEffect(() => {
+    setTitle(section.title);
+    setContent(section.content);
+  }, [section.title, section.content]);
 
   return (
     <div className="rounded-2xl border border-primary-100 bg-white p-6">
@@ -331,7 +495,11 @@ function AboutEditor({
       <div className="mt-4">
         <Textarea label="Contenu" value={content} onChange={(e) => setContent(e.target.value)} />
       </div>
-      <Button className="mt-4" onClick={() => onSave({ key: section.key, title, content })}>
+      <Button
+        className="mt-4"
+        loading={saving}
+        onClick={() => onSave({ key: section.key, title, content })}
+      >
         Enregistrer
       </Button>
     </div>
@@ -340,27 +508,49 @@ function AboutEditor({
 
 function TeamEditor({
   member,
+  saving,
   onSave,
   onDelete,
 }: {
   member: TeamMember;
-  onSave: (data: TeamMember) => void;
-  onDelete: () => void;
+  saving: boolean;
+  onSave: (data: TeamMember) => Promise<void>;
+  onDelete: () => Promise<void>;
 }) {
   const [form, setForm] = useState(member);
+
+  useEffect(() => {
+    setForm(member);
+  }, [member]);
 
   return (
     <div className="rounded-2xl border border-primary-100 bg-white p-6">
       <div className="grid gap-4 sm:grid-cols-2">
-        <Input label="Nom" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-        <Input label="Rôle" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} />
+        <Input
+          label="Nom"
+          value={form.name}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
+        />
+        <Input
+          label="Rôle"
+          value={form.role}
+          onChange={(e) => setForm({ ...form, role: e.target.value })}
+        />
       </div>
       <div className="mt-4">
-        <Input label="Compétences" value={form.skills} onChange={(e) => setForm({ ...form, skills: e.target.value })} />
+        <Input
+          label="Compétences"
+          value={form.skills}
+          onChange={(e) => setForm({ ...form, skills: e.target.value })}
+        />
       </div>
       <div className="mt-4 flex gap-2">
-        <Button onClick={() => onSave(form)}>Enregistrer</Button>
-        <Button variant="danger" onClick={onDelete}>Supprimer</Button>
+        <Button loading={saving} onClick={() => onSave(form)}>
+          Enregistrer
+        </Button>
+        <Button variant="danger" loading={saving} onClick={onDelete}>
+          Supprimer
+        </Button>
       </div>
     </div>
   );
@@ -368,21 +558,30 @@ function TeamEditor({
 
 function SectorEditor({
   sector,
+  saving,
   onSave,
   onUpload,
 }: {
   sector: Sector;
+  saving: boolean;
   onSave: (data: Sector) => Promise<void>;
   onUpload: (file: File, prefix: string) => Promise<string | null>;
 }) {
   const [form, setForm] = useState(sector);
+  const [uploading, setUploading] = useState(false);
+
+  useEffect(() => {
+    setForm(sector);
+  }, [sector]);
 
   async function handleImage(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    setUploading(true);
     const url = await onUpload(file, "sector");
+    setUploading(false);
     if (url) {
-      setForm({ ...form, imageUrl: url });
+      setForm((prev) => ({ ...prev, imageUrl: url }));
       toast.success("Image uploadée");
     }
   }
@@ -390,62 +589,124 @@ function SectorEditor({
   return (
     <div className="rounded-2xl border border-primary-100 bg-white p-6">
       <h3 className="mb-4 font-semibold">{sector.name}</h3>
-      <Input label="Nom" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+      <Input
+        label="Nom"
+        value={form.name}
+        onChange={(e) => setForm({ ...form, name: e.target.value })}
+      />
       <div className="mt-4">
-        <Textarea label="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+        <Textarea
+          label="Description"
+          value={form.description}
+          onChange={(e) => setForm({ ...form, description: e.target.value })}
+        />
       </div>
       <div className="mt-4">
         <label className="mb-2 block text-sm font-medium">Image</label>
-        <input type="file" accept="image/*" onChange={handleImage} className="text-sm" />
+        <input type="file" accept="image/*" onChange={handleImage} className="text-sm" disabled={uploading} />
         {form.imageUrl && <p className="mt-1 text-xs text-text-muted">{form.imageUrl}</p>}
       </div>
-      <Button className="mt-4" onClick={() => onSave(form)}>Enregistrer</Button>
+      <Button
+        className="mt-4"
+        loading={saving || uploading}
+        onClick={() => onSave(form)}
+      >
+        Enregistrer
+      </Button>
     </div>
   );
 }
 
 function CareersEditor({
   settings,
+  saving,
   onSave,
 }: {
   settings: CareersSettings;
-  onSave: (data: CareersSettings) => void;
+  saving: boolean;
+  onSave: (data: CareersSettings) => Promise<void>;
 }) {
   const [form, setForm] = useState(settings);
 
+  useEffect(() => {
+    setForm(settings);
+  }, [settings]);
+
   return (
     <div className="rounded-2xl border border-primary-100 bg-white p-6">
-      <Input label="Titre" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+      <Input
+        label="Titre"
+        value={form.title}
+        onChange={(e) => setForm({ ...form, title: e.target.value })}
+      />
       <div className="mt-4">
-        <Textarea label="Contenu" value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} />
+        <Textarea
+          label="Contenu"
+          value={form.content}
+          onChange={(e) => setForm({ ...form, content: e.target.value })}
+        />
       </div>
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <Input label="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-        <Input label="Téléphone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+        <Input
+          label="Email"
+          value={form.email}
+          onChange={(e) => setForm({ ...form, email: e.target.value })}
+        />
+        <Input
+          label="Téléphone"
+          value={form.phone}
+          onChange={(e) => setForm({ ...form, phone: e.target.value })}
+        />
       </div>
-      <Button className="mt-4" onClick={() => onSave(form)}>Enregistrer</Button>
+      <Button className="mt-4" loading={saving} onClick={() => onSave(form)}>
+        Enregistrer
+      </Button>
     </div>
   );
 }
 
 function SettingsEditor({
   settings,
+  saving,
   onSave,
 }: {
   settings: SiteSettings;
-  onSave: (data: SiteSettings) => void;
+  saving: boolean;
+  onSave: (data: SiteSettings) => Promise<void>;
 }) {
   const [form, setForm] = useState(settings);
+
+  useEffect(() => {
+    setForm(settings);
+  }, [settings]);
 
   return (
     <div className="rounded-2xl border border-primary-100 bg-white p-6">
       <div className="grid gap-4 sm:grid-cols-2">
-        <Input label="WhatsApp" value={form.whatsappNumber} onChange={(e) => setForm({ ...form, whatsappNumber: e.target.value })} />
-        <Input label="Email contact" value={form.contactEmail} onChange={(e) => setForm({ ...form, contactEmail: e.target.value })} />
-        <Input label="Téléphone contact" value={form.contactPhone} onChange={(e) => setForm({ ...form, contactPhone: e.target.value })} />
-        <Input label="Adresse" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+        <Input
+          label="WhatsApp"
+          value={form.whatsappNumber}
+          onChange={(e) => setForm({ ...form, whatsappNumber: e.target.value })}
+        />
+        <Input
+          label="Email contact"
+          value={form.contactEmail}
+          onChange={(e) => setForm({ ...form, contactEmail: e.target.value })}
+        />
+        <Input
+          label="Téléphone contact"
+          value={form.contactPhone}
+          onChange={(e) => setForm({ ...form, contactPhone: e.target.value })}
+        />
+        <Input
+          label="Adresse"
+          value={form.address}
+          onChange={(e) => setForm({ ...form, address: e.target.value })}
+        />
       </div>
-      <Button className="mt-4" onClick={() => onSave(form)}>Enregistrer</Button>
+      <Button className="mt-4" loading={saving} onClick={() => onSave(form)}>
+        Enregistrer
+      </Button>
     </div>
   );
 }

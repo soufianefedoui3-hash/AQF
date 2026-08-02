@@ -20,20 +20,41 @@ const TYPE_LABELS: Record<string, string> = {
   "web-service": "Service Web",
 };
 
-const STATUS_OPTIONS = ["new", "in_progress", "completed", "cancelled"];
+const STATUS_OPTIONS = [
+  { value: "new", label: "Nouveau" },
+  { value: "in_progress", label: "En cours" },
+  { value: "completed", label: "Terminé" },
+  { value: "cancelled", label: "Annulé" },
+];
 
 export default function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [filter, setFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
-  function loadLeads(type: string) {
+  async function loadLeads(type: string) {
     setLoading(true);
-    fetch(`/api/admin/leads?type=${type}`)
-      .then((r) => r.json())
-      .then(setLeads)
-      .finally(() => setLoading(false));
+    try {
+      const res = await fetch(`/api/admin/leads?type=${type}`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        setLeads([]);
+        toast.error(
+          typeof data?.error === "string" ? data.error : "Impossible de charger les demandes"
+        );
+        return;
+      }
+
+      setLeads(Array.isArray(data) ? data : []);
+    } catch {
+      setLeads([]);
+      toast.error("Erreur de connexion");
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -41,17 +62,31 @@ export default function LeadsPage() {
   }, [filter]);
 
   async function updateStatus(id: string, type: string, status: string) {
-    const res = await fetch("/api/admin/leads", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, type, status }),
-    });
+    setUpdatingId(id);
+    try {
+      const res = await fetch("/api/admin/leads", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, type, status }),
+      });
 
-    if (res.ok) {
-      toast.success("Statut mis à jour");
-      loadLeads(filter);
-    } else {
-      toast.error("Erreur");
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok) {
+        toast.success("Statut mis à jour");
+        setLeads((prev) =>
+          prev.map((lead) =>
+            lead.id === id && lead.type === type ? { ...lead, status } : lead
+          )
+        );
+      } else {
+        toast.error(typeof data?.error === "string" ? data.error : "Erreur");
+        await loadLeads(filter);
+      }
+    } catch {
+      toast.error("Erreur de connexion");
+    } finally {
+      setUpdatingId(null);
     }
   }
 
@@ -70,6 +105,7 @@ export default function LeadsPage() {
         ].map((f) => (
           <button
             key={f.value}
+            type="button"
             onClick={() => setFilter(f.value)}
             className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
               filter === f.value
@@ -93,11 +129,14 @@ export default function LeadsPage() {
       ) : (
         <div className="space-y-4">
           {leads.map((lead) => (
-            <div key={`${lead.type}-${lead.id}`} className="rounded-2xl border border-primary-100 bg-white shadow-sm">
+            <div
+              key={`${lead.type}-${lead.id}`}
+              className="rounded-2xl border border-primary-100 bg-white shadow-sm"
+            >
               <div
                 className="flex cursor-pointer items-center justify-between px-6 py-4"
                 onClick={() =>
-                  setExpanded(expanded === lead.id ? null : lead.id)
+                  setExpanded(expanded === `${lead.type}-${lead.id}` ? null : `${lead.type}-${lead.id}`)
                 }
               >
                 <div>
@@ -114,6 +153,7 @@ export default function LeadsPage() {
                 <div className="flex items-center gap-4">
                   <select
                     value={lead.status}
+                    disabled={updatingId === lead.id}
                     onChange={(e) => {
                       e.stopPropagation();
                       updateStatus(lead.id, lead.type, e.target.value);
@@ -122,8 +162,8 @@ export default function LeadsPage() {
                     className="rounded-lg border border-primary-100 px-3 py-1 text-sm"
                   >
                     {STATUS_OPTIONS.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
+                      <option key={s.value} value={s.value}>
+                        {s.label}
                       </option>
                     ))}
                   </select>
@@ -133,7 +173,7 @@ export default function LeadsPage() {
                 </div>
               </div>
 
-              {expanded === lead.id && (
+              {expanded === `${lead.type}-${lead.id}` && (
                 <div className="border-t border-primary-100 px-6 py-4">
                   <pre className="overflow-x-auto rounded-lg bg-accent-50/50 p-4 text-xs text-primary-800">
                     {JSON.stringify(lead, null, 2)}

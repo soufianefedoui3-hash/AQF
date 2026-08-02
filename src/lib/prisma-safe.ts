@@ -22,6 +22,31 @@ export function isPrismaSchemaError(error: unknown): boolean {
   );
 }
 
+function getPrismaCode(error: unknown): string | null {
+  if (!error || typeof error !== "object" || !("code" in error)) return null;
+  return String(error.code);
+}
+
+function mapMutationError(
+  error: unknown
+): { status: number; error: string } {
+  const code = getPrismaCode(error);
+
+  if (code === "P2002") {
+    return { status: 409, error: "Cette valeur existe déjà" };
+  }
+
+  if (code === "P2025") {
+    return { status: 404, error: "Enregistrement introuvable" };
+  }
+
+  if (error instanceof Error && error.message && !code) {
+    return { status: 400, error: error.message };
+  }
+
+  return { status: 500, error: "Erreur serveur" };
+}
+
 export async function withPrismaQuery<T>(
   query: () => Promise<T>,
   fallback: T
@@ -72,8 +97,7 @@ export async function runPrismaMutation<T>(
         console.error("[db] Mutation retry failed:", retryError);
         return {
           ok: false,
-          status: 503,
-          error: "Base de données indisponible",
+          ...mapMutationError(retryError),
         };
       }
     }
@@ -81,8 +105,7 @@ export async function runPrismaMutation<T>(
     console.error("[db] Mutation failed:", error);
     return {
       ok: false,
-      status: 500,
-      error: "Erreur serveur",
+      ...mapMutationError(error),
     };
   }
 }

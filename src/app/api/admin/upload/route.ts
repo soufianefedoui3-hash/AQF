@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/auth";
-import { saveUploadedFile } from "@/lib/upload";
+import { saveUploadedFile, validateFile } from "@/lib/upload";
 
 export async function POST(request: NextRequest) {
   const session = await getAdminSession();
@@ -8,14 +8,31 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
 
-  const formData = await request.formData();
-  const file = formData.get("file") as File;
-  const prefix = (formData.get("prefix") as string) || "upload";
+  try {
+    const formData = await request.formData();
+    const file = formData.get("file");
+    const prefix = String(formData.get("prefix") || "upload").trim() || "upload";
 
-  if (!file) {
-    return NextResponse.json({ error: "Fichier requis" }, { status: 400 });
+    if (!(file instanceof File) || file.size === 0) {
+      return NextResponse.json({ error: "Fichier requis" }, { status: 400 });
+    }
+
+    const validationError = validateFile(file, {
+      maxSizeMB: 5,
+      allowedTypes: ["image/"],
+    });
+
+    if (validationError) {
+      return NextResponse.json({ error: validationError }, { status: 400 });
+    }
+
+    const url = await saveUploadedFile(file, prefix);
+    return NextResponse.json({ url }, { status: 201 });
+  } catch (error) {
+    console.error("Upload error:", error);
+    return NextResponse.json(
+      { error: "Échec de l'upload du fichier" },
+      { status: 500 }
+    );
   }
-
-  const url = await saveUploadedFile(file, prefix);
-  return NextResponse.json({ url });
 }

@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { withPrismaQuery } from "@/lib/prisma-safe";
+import { withPrismaQuery, runPrismaMutation } from "@/lib/prisma-safe";
 import { getAdminSession } from "@/lib/auth";
+
+function parseNorms(raw: string): string[] | string {
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : raw;
+  } catch {
+    return raw;
+  }
+}
 
 export async function GET(request: NextRequest) {
   const session = await getAdminSession();
@@ -45,7 +54,7 @@ export async function GET(request: NextRequest) {
         ...audits.map((i) => ({
           ...i,
           type: "audit",
-          norms: JSON.parse(i.norms),
+          norms: parseNorms(i.norms),
         }))
       );
     }
@@ -75,26 +84,41 @@ export async function PATCH(request: NextRequest) {
   }
 
   try {
-    const { id, type, status } = await request.json();
+    const body = await request.json();
+    const id = String(body.id || "").trim();
+    const type = String(body.type || "").trim();
+    const status = String(body.status || "").trim();
 
-    switch (type) {
-      case "consultation":
-        await prisma.consultationRequest.update({ where: { id }, data: { status } });
-        break;
-      case "accompagnement":
-        await prisma.accompagnementRequest.update({ where: { id }, data: { status } });
-        break;
-      case "formation":
-        await prisma.formationRequest.update({ where: { id }, data: { status } });
-        break;
-      case "audit":
-        await prisma.auditRequest.update({ where: { id }, data: { status } });
-        break;
-      case "web-service":
-        await prisma.webServiceRequest.update({ where: { id }, data: { status } });
-        break;
-      default:
-        return NextResponse.json({ error: "Type invalide" }, { status: 400 });
+    if (!id || !type || !status) {
+      return NextResponse.json(
+        { error: "id, type et status sont requis" },
+        { status: 400 }
+      );
+    }
+
+    const result = await runPrismaMutation(async () => {
+      switch (type) {
+        case "consultation":
+          return prisma.consultationRequest.update({ where: { id }, data: { status } });
+        case "accompagnement":
+          return prisma.accompagnementRequest.update({ where: { id }, data: { status } });
+        case "formation":
+          return prisma.formationRequest.update({ where: { id }, data: { status } });
+        case "audit":
+          return prisma.auditRequest.update({ where: { id }, data: { status } });
+        case "web-service":
+          return prisma.webServiceRequest.update({ where: { id }, data: { status } });
+        default:
+          return null;
+      }
+    });
+
+    if (!result.ok) {
+      return NextResponse.json({ error: result.error }, { status: result.status });
+    }
+
+    if (result.data === null) {
+      return NextResponse.json({ error: "Type invalide" }, { status: 400 });
     }
 
     return NextResponse.json({ success: true });

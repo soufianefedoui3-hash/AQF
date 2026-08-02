@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { Plus, Trash2, Edit, GripVertical } from "lucide-react";
+import { Plus, Trash2, Edit } from "lucide-react";
 import { Input, Textarea } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 
@@ -28,8 +28,16 @@ export function PacksManager() {
     try {
       const res = await fetch("/api/admin/packs");
       const data = await res.json();
-      if (Array.isArray(data)) setPacks(data);
+      if (!res.ok) {
+        setPacks([]);
+        toast.error(
+          typeof data?.error === "string" ? data.error : "Erreur de chargement"
+        );
+        return;
+      }
+      setPacks(Array.isArray(data) ? data : []);
     } catch {
+      setPacks([]);
       toast.error("Erreur de chargement");
     } finally {
       setLoading(false);
@@ -82,7 +90,8 @@ export function PacksManager() {
       setEditingId(null);
       loadPacks();
     } else {
-      toast.error("Erreur");
+      const data = await res.json().catch(() => ({}));
+      toast.error(typeof data?.error === "string" ? data.error : "Erreur");
     }
   }
 
@@ -95,7 +104,14 @@ export function PacksManager() {
 
     if (res.ok) {
       toast.success(active ? "Pack désactivé" : "Pack activé");
-      loadPacks();
+      setPacks((prev) =>
+        prev.map((item) =>
+          item.id === id ? { ...item, active: !active } : item
+        )
+      );
+    } else {
+      const data = await res.json().catch(() => ({}));
+      toast.error(typeof data?.error === "string" ? data.error : "Erreur");
     }
   }
 
@@ -163,7 +179,6 @@ export function PacksManager() {
                 className="flex flex-col gap-3 rounded-xl border border-primary-100 bg-accent-50/40 p-4 lg:flex-row lg:items-start lg:justify-between"
               >
                 <div className="flex min-w-0 flex-1 items-start gap-3">
-                  <GripVertical className="mt-1 h-4 w-4 shrink-0 text-text-muted" />
                   {editingId === pack.id ? (
                     <div className="flex-1 space-y-3">
                       <Input

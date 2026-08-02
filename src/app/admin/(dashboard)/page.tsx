@@ -35,10 +35,19 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     fetch("/api/admin/stats")
-      .then((r) => r.json())
-      .then((data) => {
-        setStats(data.stats);
-        setRecent(data.recent || []);
+      .then(async (r) => {
+        const data = await r.json();
+        if (!r.ok) {
+          setStats(null);
+          setRecent([]);
+          return;
+        }
+        setStats(data.stats || null);
+        setRecent(Array.isArray(data.recent) ? data.recent : []);
+      })
+      .catch(() => {
+        setStats(null);
+        setRecent([]);
       })
       .finally(() => setLoading(false));
   }, []);

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { withPrismaQuery } from "@/lib/prisma-safe";
+import { withPrismaQuery, runPrismaMutation } from "@/lib/prisma-safe";
 import { getAdminSession } from "@/lib/auth";
 import { z } from "zod";
 
@@ -41,18 +41,23 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const data = schema.parse(body);
 
-    const maxOrder = await prisma.productPack.aggregate({ _max: { order: true } });
-
-    const pack = await prisma.productPack.create({
-      data: {
-        name: data.name,
-        description: data.description,
-        order: data.order ?? (maxOrder._max.order ?? -1) + 1,
-        active: data.active ?? true,
-      },
+    const result = await runPrismaMutation(async () => {
+      const maxOrder = await prisma.productPack.aggregate({ _max: { order: true } });
+      return prisma.productPack.create({
+        data: {
+          name: data.name,
+          description: data.description,
+          order: data.order ?? (maxOrder._max.order ?? -1) + 1,
+          active: data.active ?? true,
+        },
+      });
     });
 
-    return NextResponse.json(pack);
+    if (!result.ok) {
+      return NextResponse.json({ error: result.error }, { status: result.status });
+    }
+
+    return NextResponse.json(result.data, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -79,12 +84,18 @@ export async function PUT(request: NextRequest) {
 
     const data = schema.partial().parse(rest);
 
-    const pack = await prisma.productPack.update({
-      where: { id },
-      data,
-    });
+    const result = await runPrismaMutation(() =>
+      prisma.productPack.update({
+        where: { id },
+        data,
+      })
+    );
 
-    return NextResponse.json(pack);
+    if (!result.ok) {
+      return NextResponse.json({ error: result.error }, { status: result.status });
+    }
+
+    return NextResponse.json(result.data);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -108,7 +119,14 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "ID requis" }, { status: 400 });
     }
 
-    await prisma.productPack.delete({ where: { id } });
+    const result = await runPrismaMutation(() =>
+      prisma.productPack.delete({ where: { id } })
+    );
+
+    if (!result.ok) {
+      return NextResponse.json({ error: result.error }, { status: result.status });
+    }
+
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });

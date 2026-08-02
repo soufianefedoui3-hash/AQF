@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { withPrismaQuery } from "@/lib/prisma-safe";
+import { withPrismaQuery, runPrismaMutation } from "@/lib/prisma-safe";
 import { getAdminSession } from "@/lib/auth";
 import { z } from "zod";
 
@@ -30,6 +30,16 @@ export async function GET() {
   }
 }
 
+function uniqueConflictResponse(result: { status: number; error: string }) {
+  if (result.status === 409) {
+    return NextResponse.json(
+      { error: "Une formation avec ce nom existe déjà" },
+      { status: 409 }
+    );
+  }
+  return NextResponse.json({ error: result.error }, { status: result.status });
+}
+
 export async function POST(request: NextRequest) {
   const session = await getAdminSession();
   if (!session) {
@@ -40,17 +50,22 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const data = schema.parse(body);
 
-    const maxOrder = await prisma.formationType.aggregate({ _max: { order: true } });
-
-    const formation = await prisma.formationType.create({
-      data: {
-        name: data.name,
-        order: data.order ?? (maxOrder._max.order ?? -1) + 1,
-        active: data.active ?? true,
-      },
+    const result = await runPrismaMutation(async () => {
+      const maxOrder = await prisma.formationType.aggregate({ _max: { order: true } });
+      return prisma.formationType.create({
+        data: {
+          name: data.name,
+          order: data.order ?? (maxOrder._max.order ?? -1) + 1,
+          active: data.active ?? true,
+        },
+      });
     });
 
-    return NextResponse.json(formation);
+    if (!result.ok) {
+      return uniqueConflictResponse(result);
+    }
+
+    return NextResponse.json(result.data, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -77,12 +92,18 @@ export async function PUT(request: NextRequest) {
 
     const data = schema.partial().parse(rest);
 
-    const formation = await prisma.formationType.update({
-      where: { id },
-      data,
-    });
+    const result = await runPrismaMutation(() =>
+      prisma.formationType.update({
+        where: { id },
+        data,
+      })
+    );
 
-    return NextResponse.json(formation);
+    if (!result.ok) {
+      return uniqueConflictResponse(result);
+    }
+
+    return NextResponse.json(result.data);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -106,7 +127,14 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "ID requis" }, { status: 400 });
     }
 
-    await prisma.formationType.delete({ where: { id } });
+    const result = await runPrismaMutation(() =>
+      prisma.formationType.delete({ where: { id } })
+    );
+
+    if (!result.ok) {
+      return NextResponse.json({ error: result.error }, { status: result.status });
+    }
+
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });

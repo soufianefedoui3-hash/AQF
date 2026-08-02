@@ -22,12 +22,31 @@ interface Application {
 export default function ApplicationsPage() {
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
-  function loadApplications() {
-    fetch("/api/admin/applications")
-      .then((r) => r.json())
-      .then(setApplications)
-      .finally(() => setLoading(false));
+  async function loadApplications() {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/applications");
+      const data = await res.json();
+
+      if (!res.ok) {
+        setApplications([]);
+        toast.error(
+          typeof data?.error === "string"
+            ? data.error
+            : "Impossible de charger les candidatures"
+        );
+        return;
+      }
+
+      setApplications(Array.isArray(data) ? data : []);
+    } catch {
+      setApplications([]);
+      toast.error("Erreur de connexion");
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -35,27 +54,53 @@ export default function ApplicationsPage() {
   }, []);
 
   async function updateStatus(id: string, status: string) {
-    const res = await fetch("/api/admin/applications", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, status }),
-    });
-    if (res.ok) {
-      toast.success("Statut mis à jour");
-      loadApplications();
+    setBusyId(id);
+    try {
+      const res = await fetch("/api/admin/applications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status }),
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok) {
+        toast.success("Statut mis à jour");
+        setApplications((prev) =>
+          prev.map((app) => (app.id === id ? { ...app, status } : app))
+        );
+      } else {
+        toast.error(typeof data?.error === "string" ? data.error : "Erreur");
+        await loadApplications();
+      }
+    } catch {
+      toast.error("Erreur de connexion");
+    } finally {
+      setBusyId(null);
     }
   }
 
   async function handleDelete(id: string) {
     if (!confirm("Supprimer cette candidature ?")) return;
-    const res = await fetch("/api/admin/applications", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
-    });
-    if (res.ok) {
-      toast.success("Candidature supprimée");
-      loadApplications();
+
+    setBusyId(id);
+    try {
+      const res = await fetch("/api/admin/applications", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok) {
+        toast.success("Candidature supprimée");
+        setApplications((prev) => prev.filter((app) => app.id !== id));
+      } else {
+        toast.error(typeof data?.error === "string" ? data.error : "Erreur");
+      }
+    } catch {
+      toast.error("Erreur de connexion");
+    } finally {
+      setBusyId(null);
     }
   }
 
@@ -85,6 +130,7 @@ export default function ApplicationsPage() {
                 <div className="flex flex-wrap items-center gap-2">
                   <select
                     value={app.status}
+                    disabled={busyId === app.id}
                     onChange={(e) => updateStatus(app.id, e.target.value)}
                     className="rounded-lg border border-primary-100 px-3 py-2 text-sm"
                   >
@@ -107,7 +153,12 @@ export default function ApplicationsPage() {
                       Lettre
                     </Button>
                   </a>
-                  <Button variant="danger" size="sm" onClick={() => handleDelete(app.id)}>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    loading={busyId === app.id}
+                    onClick={() => handleDelete(app.id)}
+                  >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
