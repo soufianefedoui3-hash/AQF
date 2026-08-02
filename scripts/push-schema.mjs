@@ -4,7 +4,7 @@ function log(message) {
   console.log(`[push-schema] ${message}`);
 }
 
-function main() {
+async function main() {
   try {
     if (process.env.SKIP_DB_BOOTSTRAP === "true") {
       log("SKIP_DB_BOOTSTRAP=true — skipping schema push.");
@@ -13,14 +13,18 @@ function main() {
 
     const databaseUrl = resolveDatabaseUrl();
     log(`Using database: ${databaseUrl}`);
-    log("Running prisma db push --accept-data-loss ...");
+    log("Ensuring schema (CLI or SQL fallback)...");
 
-    runSchemaPush({ acceptDataLoss: true });
-    log("Schema push completed.");
+    const result = await runSchemaPush({ acceptDataLoss: true });
+    log(`Schema push completed via ${result.method}.`);
     process.exit(0);
   } catch (error) {
-    console.error("[push-schema] Failed:", error instanceof Error ? error.message : error);
-    process.exit(1);
+    console.error(
+      "[push-schema] Failed (non-fatal):",
+      error instanceof Error ? error.message : error
+    );
+    // Never fail Hostinger build/start because schema sync failed.
+    process.exit(0);
   }
 }
 

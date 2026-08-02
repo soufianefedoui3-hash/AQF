@@ -1,8 +1,11 @@
-import { existsSync, mkdirSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { spawnSync } from "node:child_process";
 import { runEnsureAdmin } from "./ensure-admin.mjs";
+import {
+  applySqlSchemaFallback,
+  runPrismaCli,
+} from "./prisma-cli.mjs";
 
 const DEFAULT_RELATIVE_DB = "file:./dev.db";
 
@@ -55,35 +58,22 @@ export function resolveDatabaseUrl() {
   return absoluteUrl;
 }
 
-export function runSchemaPush({ acceptDataLoss = false } = {}) {
-  const prismaEntry = join(process.cwd(), "node_modules", "prisma", "build", "index.js");
-
-  if (!existsSync(prismaEntry)) {
-    throw new Error("Prisma CLI not found. Run npm install before pushing the schema.");
-  }
-
+export async function runSchemaPush({ acceptDataLoss = false } = {}) {
   const args = ["db", "push", "--skip-generate"];
   if (acceptDataLoss) {
     args.push("--accept-data-loss");
   }
 
-  const result = spawnSync(process.execPath, [prismaEntry, ...args], {
-    stdio: "inherit",
-    env: process.env,
-    cwd: process.cwd(),
-  });
-
-  if (result.error) {
-    throw result.error;
+  const cliResult = runPrismaCli(args);
+  if (cliResult.ok) {
+    return { ok: true, method: "cli", path: cliResult.path };
   }
 
-  if (result.status !== 0) {
-    throw new Error(`prisma db push exited with code ${result.status ?? "unknown"}`);
-  }
-}
+  warn(`Prisma CLI push failed (${cliResult.error}). Trying SQL fallback...`);
 
-function runPrismaDbPush() {
-  runSchemaPush({ acceptDataLoss: true });
+  const databaseUrl = resolveDatabaseUrl();
+  await applySqlSchemaFallback(databaseUrl);
+  return { ok: true, method: "sql-fallback" };
 }
 
 /**
@@ -101,8 +91,9 @@ export async function bootstrapDatabase() {
     const databaseUrl = resolveDatabaseUrl();
     log(`Using database: ${databaseUrl}`);
 
-    log("Running prisma db push --accept-data-loss (schema sync)...");
-    runPrismaDbPush();
+    log("Ensuring SQLite schema...");
+    const pushResult = await runSchemaPush({ acceptDataLoss: true });
+    log(`Schema ready via ${pushResult.method}.`);
 
     const forceReset = process.env.ADMIN_FORCE_RESET === "true";
     const result = await runEnsureAdmin({ forceReset });
