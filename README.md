@@ -84,8 +84,8 @@ ADMIN_FORCE_RESET="true"
 | Script | Quand | Action |
 |--------|-------|--------|
 | `postinstall` | après `npm install` | `prisma generate` (non-fatal) |
-| `build` | déploiement | `prisma generate --strict` + `next build` |
-| `postbuild` | après build (auto) | `deploy-db.mjs` → schema push + seed (jamais bloquant) |
+| `build` | déploiement Hostinger | `npx prisma generate && next build` |
+| `postbuild` | après build (auto) | DB push + seed via `safe-lifecycle` (jamais bloquant) |
 | `prestart` | avant `npm start` | même bootstrap DB (jamais bloquant) |
 | `start` | démarrage Hostinger | `next start -H 0.0.0.0` (PORT via env) |
 | `db:deploy` | manuel | schema push + seed idempotent |
