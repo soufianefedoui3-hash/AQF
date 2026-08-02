@@ -1,0 +1,16 @@
+---
+description: Always commit and push completed work directly to origin/main
+alwaysApply: true
+---
+
+# Git workflow — origin/main
+
+When the user asks to fix, add, update, or implement anything in this repository:
+
+1. Implement the code changes fully.
+2. Commit with a clear, concise message (why over what).
+3. Push directly to `origin/main` without waiting for a separate "please commit/push" request.
+4. Request smart-mode approval when needed for protected `origin/main` pushes.
+5. On Windows PowerShell, quote paths with parentheses and avoid bash HEREDOC; use PowerShell-safe commit message syntax.
+
+Do not leave completed implementation uncommitted/unpushed unless the user explicitly says not to commit or not to push.

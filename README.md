@@ -83,17 +83,14 @@ ADMIN_FORCE_RESET="true"
 
 | Script | Quand | Action |
 |--------|-------|--------|
-| `postinstall` | après `npm install` | `prisma generate` |
-| `build` | déploiement | `prisma generate` + `next build` |
-| `postbuild` | après build (auto) | `prisma db push` + création admin (`ensure-db.mjs`) |
+| `postinstall` | après `npm install` | `prisma generate` (non-fatal) |
+| `build` | déploiement | `prisma generate --strict` + `next build` |
+| `postbuild` | après build (auto) | `deploy-db.mjs` → schema push + seed (jamais bloquant) |
+| `prestart` | avant `npm start` | même bootstrap DB (jamais bloquant) |
 | `start` | démarrage Hostinger | `next start -H 0.0.0.0` (PORT via env) |
-| `db:bootstrap` | manuel | `prisma db push` + création admin si absent |
+| `db:deploy` | manuel | schema push + seed idempotent |
 
-Le seed complet (`npm run db:seed`) **n'est pas** exécuté automatiquement pour éviter d'écraser le contenu CMS. Lancez-le **une fois** manuellement après le premier déploiement :
-
-```bash
-npm run db:seed
-```
+Le seed est **automatique** au déploiement via `postbuild` / `prestart`, mais **idempotent** : il ne réécrit pas le contenu CMS si `SiteSettings` existe déjà.
 
 ### Réinitialiser l'admin en production
 
@@ -123,8 +120,8 @@ npm run db:bootstrap
 
 ### Notes SQLite sur Hostinger
 
-- `prisma db push` synchronise le schéma **sans supprimer** les données existantes.
-- Le schéma SQLite et l'admin sont initialisés automatiquement via `postbuild` à chaque déploiement (`npm run build`).
-- Si besoin manuel : `npm run db:bootstrap` ou `POST /api/setup/fix-admin` (avec `SETUP_SECRET`).
-- Hostinger : Build = **`npm run build`**, Start = **`npm start`** (équivaut à `next start`).
+- Schema push utilise le CLI Prisma local, avec **fallback SQL** si le CLI est introuvable.
+- `postbuild` / `prestart` ne font **jamais échouer** le déploiement Hostinger (exit code 0).
+- Si besoin manuel : `npm run db:deploy` ou `POST /api/setup/fix-admin` (avec `SETUP_SECRET`).
+- Hostinger : Build = **`npm run build`**, Start = **`npm start`**.
 - Pour un site en production durable, migrez vers MySQL/PostgreSQL Hostinger quand possible.
