@@ -57,19 +57,30 @@ export async function Footer() {
               </li>
               <li>{address}</li>
             </ul>
-            <div className="mt-4 flex gap-3">
-              {SOCIAL_LINKS.map((social) => (
-                <Link
-                  key={social.name}
-                  href={social.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-800/60 text-xs font-medium transition hover:bg-accent-500 hover:text-white"
-                >
-                  {social.name[0]}
-                </Link>
-              ))}
-            </div>
+            {SOCIAL_LINKS.filter((social) =>
+              !/^https?:\/\/(www\.)?(linkedin|facebook|instagram)\.com\/?$/i.test(
+                social.href
+              )
+            ).length > 0 && (
+              <div className="mt-4 flex gap-3">
+                {SOCIAL_LINKS.filter(
+                  (social) =>
+                    !/^https?:\/\/(www\.)?(linkedin|facebook|instagram)\.com\/?$/i.test(
+                      social.href
+                    )
+                ).map((social) => (
+                  <Link
+                    key={social.name}
+                    href={social.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-800/60 text-xs font-medium transition hover:bg-accent-500 hover:text-white"
+                  >
+                    {social.name[0]}
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 

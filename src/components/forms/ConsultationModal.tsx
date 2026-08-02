@@ -17,9 +17,10 @@ export function ConsultationModal({ isOpen, onClose }: ConsultationModalProps) {
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    const form = e.currentTarget;
     setLoading(true);
 
-    const formData = new FormData(e.currentTarget);
+    const formData = new FormData(form);
 
     try {
       const res = await fetch("/api/forms/consultation", {
@@ -30,9 +31,9 @@ export function ConsultationModal({ isOpen, onClose }: ConsultationModalProps) {
 
       if (!res.ok) throw new Error("Erreur");
 
+      form.reset();
       onClose();
       setSuccessOpen(true);
-      (e.target as HTMLFormElement).reset();
     } catch {
       toast.error("Une erreur est survenue. Veuillez réessayer.");
     } finally {

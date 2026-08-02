@@ -57,9 +57,10 @@ export default function AccompagnementPage() {
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    const form = e.currentTarget;
     setLoading(true);
 
-    const formData = new FormData(e.currentTarget);
+    const formData = new FormData(form);
     const data = Object.fromEntries(formData);
 
     try {
@@ -70,7 +71,7 @@ export default function AccompagnementPage() {
       });
       if (!res.ok) throw new Error("Erreur");
       setSuccessOpen(true);
-      (e.target as HTMLFormElement).reset();
+      form.reset();
     } catch {
       toast.error("Une erreur est survenue. Veuillez réessayer.");
     } finally {

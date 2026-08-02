@@ -24,13 +24,14 @@ export function ArticleCard({
 }: ArticleCardProps) {
   const safeTitle = title?.trim() || "Sans titre";
   const description = getArticleExcerpt({ excerpt, content });
+  const href = `/actualites/${slug}`;
 
   return (
     <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-primary-100 bg-white shadow-sm transition hover:-translate-y-1 hover:border-accent-200 hover:shadow-lg hover:shadow-accent-400/10">
-      <div className="relative h-48 shrink-0 overflow-hidden">
+      <Link href={href} className="relative block h-48 shrink-0 overflow-hidden">
         <ArticleImage src={imageUrl} alt={safeTitle} />
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-primary-900/40 to-transparent" />
-      </div>
+      </Link>
 
       <div className="flex flex-1 flex-col p-6">
         <div className="mb-2 flex items-center gap-2 text-xs text-text-muted">
@@ -38,14 +39,18 @@ export function ArticleCard({
           <time dateTime={new Date(createdAt).toISOString()}>{formatDate(createdAt)}</time>
         </div>
 
-        <h2 className="mb-2 line-clamp-2 text-lg font-semibold text-primary-900">{safeTitle}</h2>
+        <Link href={href}>
+          <h2 className="mb-2 line-clamp-2 text-lg font-semibold text-primary-900 transition group-hover:text-accent-700">
+            {safeTitle}
+          </h2>
+        </Link>
 
         <p className="mb-4 line-clamp-3 flex-1 text-sm leading-relaxed text-text-muted">
           {description}
         </p>
 
         <Link
-          href={`/actualites/${slug}`}
+          href={href}
           className="inline-flex items-center gap-1 text-sm font-medium text-accent-600 hover:text-accent-700"
         >
           Lire la suite

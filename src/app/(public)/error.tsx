@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 
 export default function PublicError({
@@ -24,9 +23,9 @@ export default function PublicError({
       </p>
       <div className="mt-8 flex flex-wrap justify-center gap-3">
         <Button onClick={reset}>Réessayer</Button>
-        <Link href="/">
-          <Button variant="outline">Retour à l&apos;accueil</Button>
-        </Link>
+        <Button href="/" variant="outline">
+          Retour à l&apos;accueil
+        </Button>
       </div>
     </div>
   );

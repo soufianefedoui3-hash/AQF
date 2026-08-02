@@ -14,18 +14,21 @@ export function CareersApplicationForm() {
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    const form = e.currentTarget;
     setLoading(true);
 
-    const formData = new FormData(e.currentTarget);
+    const formData = new FormData(form);
 
     try {
       const res = await fetch("/api/forms/careers", { method: "POST", body: formData });
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Erreur");
+        const data = await res.json().catch(() => ({}));
+        throw new Error(
+          typeof data?.error === "string" ? data.error : "Erreur"
+        );
       }
       setSuccessOpen(true);
-      e.currentTarget.reset();
+      form.reset();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Une erreur est survenue.");
     } finally {

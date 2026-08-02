@@ -180,16 +180,33 @@ export async function getSectors() {
 }
 
 export async function getSectorBySlug(slug: string) {
+  const normalized = slug?.trim();
+  if (!normalized) return null;
+
   try {
-    const sector = await prisma.sector.findUnique({ where: { slug } });
-    if (!sector) return null;
-    return {
-      ...sector,
-      imageUrl: resolveSectorImage(sector.slug, sector.imageUrl),
-    };
+    const sector = await prisma.sector.findUnique({ where: { slug: normalized } });
+    if (sector) {
+      return {
+        ...sector,
+        imageUrl: resolveSectorImage(sector.slug, sector.imageUrl),
+      };
+    }
   } catch {
-    return null;
+    /* fall through to hardcoded defaults */
   }
+
+  const fallback = FALLBACK_SECTORS.find((sector) => sector.slug === normalized);
+  if (!fallback) return null;
+
+  return {
+    id: `fallback-${fallback.slug}`,
+    slug: fallback.slug,
+    name: fallback.name,
+    description: fallback.description,
+    imageUrl: resolveSectorImage(fallback.slug, fallback.imageUrl),
+    order: fallback.order,
+    updatedAt: new Date(0),
+  };
 }
 
 export async function getCareersSettings() {

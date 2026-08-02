@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { NAV_LINKS, HOMEPAGE_STATS } from "@/lib/constants";
 import { getHomepagePresentation } from "@/lib/content";
@@ -77,12 +76,10 @@ export default async function HomePage() {
           </div>
 
           <div className="mt-10 text-center md:mt-12">
-            <Link href="/services">
-              <Button variant="secondary" size="lg">
-                Découvrir nos services
-                <ArrowRight className="h-5 w-5" />
-              </Button>
-            </Link>
+            <Button href="/services" variant="secondary" size="lg">
+              Découvrir nos services
+              <ArrowRight className="h-5 w-5" />
+            </Button>
           </div>
         </div>
       </section>

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 
 export default function AdminError({
@@ -25,11 +24,9 @@ export default function AdminError({
         <Button size="sm" onClick={reset}>
           Réessayer
         </Button>
-        <Link href="/admin">
-          <Button size="sm" variant="outline">
-            Tableau de bord
-          </Button>
-        </Link>
+        <Button href="/admin" size="sm" variant="outline">
+          Tableau de bord
+        </Button>
       </div>
     </div>
   );
