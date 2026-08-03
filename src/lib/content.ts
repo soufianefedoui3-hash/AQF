@@ -102,20 +102,14 @@ export async function getGedService() {
 }
 
 export async function getProductPacks() {
-  const fallback = PRODUCT_PACKS.map((pack, index) => ({
-    id: `fallback-${index}`,
-    name: pack.name,
-    description: pack.description,
-  }));
-
   try {
     const packs = await prisma.productPack.findMany({
       where: { active: true },
       orderBy: { order: "asc" },
     });
 
-    if (packs.length === 0) return fallback;
-
+    // Successful query: honor empty result (admin may have deactivated all packs).
+    // Fallback constants only when the database query itself fails.
     return packs
       .filter((pack) => pack.name?.trim())
       .map((pack) => ({
@@ -124,7 +118,11 @@ export async function getProductPacks() {
         description: pack.description?.trim() || "",
       }));
   } catch {
-    return fallback;
+    return PRODUCT_PACKS.map((pack, index) => ({
+      id: `fallback-${index}`,
+      name: pack.name,
+      description: pack.description,
+    }));
   }
 }
 

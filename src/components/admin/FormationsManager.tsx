@@ -47,7 +47,10 @@ export function FormationsManager() {
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
-    if (!newName.trim()) return;
+    if (!newName.trim()) {
+      toast.error("Nom de formation requis");
+      return;
+    }
 
     const res = await fetch("/api/admin/formations", {
       method: "POST",

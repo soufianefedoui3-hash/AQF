@@ -55,16 +55,29 @@ async function main() {
       },
     });
 
+    let alreadySeeded = false;
+
     try {
-      const settingsCount = await prisma.siteSettings.count();
-      if (settingsCount > 0) {
-        log("Database already seeded — skipping.");
-        process.exit(0);
+      const [settingsCount, sectorCount, aboutCount] = await Promise.all([
+        prisma.siteSettings.count(),
+        prisma.sector.count(),
+        prisma.aboutSection.count(),
+      ]);
+
+      if (settingsCount > 0 && sectorCount > 0 && aboutCount > 0) {
+        alreadySeeded = true;
+      } else if (settingsCount > 0) {
+        warn("Partial seed detected — repairing missing CMS defaults...");
       }
     } catch (countError) {
       warn(`Could not inspect database yet: ${countError.message}`);
     } finally {
       await prisma.$disconnect();
+    }
+
+    if (alreadySeeded) {
+      log("Database already seeded — skipping.");
+      process.exit(0);
     }
 
     const tsxEntry = resolveTsxEntry();

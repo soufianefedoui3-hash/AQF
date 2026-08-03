@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import { Modal, SuccessModal } from "@/components/ui/Modal";
 import { Input, Textarea } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { getFetchErrorMessage } from "@/lib/form-feedback";
 
 interface ConsultationModalProps {
   isOpen: boolean;
@@ -29,13 +30,15 @@ export function ConsultationModal({ isOpen, onClose }: ConsultationModalProps) {
         body: JSON.stringify(Object.fromEntries(formData)),
       });
 
-      if (!res.ok) throw new Error("Erreur");
+      if (!res.ok) {
+        throw new Error(await getFetchErrorMessage(res));
+      }
 
       form.reset();
       onClose();
       setSuccessOpen(true);
-    } catch {
-      toast.error("Une erreur est survenue. Veuillez réessayer.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Une erreur est survenue. Veuillez réessayer.");
     } finally {
       setLoading(false);
     }

@@ -12,16 +12,48 @@ function ensureDirectoryForFile(absolutePath: string): void {
   mkdirSync(dirname(absolutePath), { recursive: true });
 }
 
+function absolutizeFileUrl(fileUrl: string): string {
+  const rawPath = fileUrl.replace(/^file:/, "");
+  const absolutePath =
+    rawPath.startsWith("/") || /^[A-Za-z]:[\\/]/.test(rawPath)
+      ? rawPath
+      : resolve(process.cwd(), rawPath);
+
+  ensureDirectoryForFile(absolutePath);
+  return toFileUrl(absolutePath);
+}
+
 /**
- * Resolves SQLite to a stable absolute file URL in production.
- * Falls back to `<cwd>/prisma/production.db` for default/dev paths.
+ * Resolves SQLite to a stable absolute file URL.
+ * In production, remaps default/dev relative paths to prisma/production.db.
+ * In development, keeps the configured DATABASE_URL (typically file:./dev.db).
  */
 export function resolveProductionDatabaseUrl(): string {
   const configured = process.env.DATABASE_URL?.trim();
+  const isProduction = process.env.NODE_ENV === "production";
+
+  if (!isProduction) {
+    if (configured?.startsWith("file:")) {
+      const url = absolutizeFileUrl(configured);
+      process.env.DATABASE_URL = url;
+      return url;
+    }
+
+    const fallback = configured || DEFAULT_RELATIVE_DB;
+    if (fallback.startsWith("file:")) {
+      const url = absolutizeFileUrl(fallback);
+      process.env.DATABASE_URL = url;
+      return url;
+    }
+
+    return fallback;
+  }
+
   const useProductionDefault =
     !configured ||
     configured === DEFAULT_RELATIVE_DB ||
-    configured === "file:./prisma/dev.db";
+    configured === "file:./prisma/dev.db" ||
+    configured === "file:./dev.db";
 
   if (useProductionDefault) {
     const dbPath = join(process.cwd(), PRODUCTION_DB_RELATIVE);
@@ -32,14 +64,7 @@ export function resolveProductionDatabaseUrl(): string {
   }
 
   if (configured.startsWith("file:")) {
-    const rawPath = configured.replace(/^file:/, "");
-    const absolutePath =
-      rawPath.startsWith("/") || /^[A-Za-z]:[\\/]/.test(rawPath)
-        ? rawPath
-        : resolve(process.cwd(), rawPath);
-
-    ensureDirectoryForFile(absolutePath);
-    const url = toFileUrl(absolutePath);
+    const url = absolutizeFileUrl(configured);
     process.env.DATABASE_URL = url;
     return url;
   }

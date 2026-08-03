@@ -20,8 +20,8 @@ export async function getFormationTypes() {
       where: { active: true },
       orderBy: { order: "asc" },
     });
-    if (types.length > 0) return types.map((t) => t.name);
-    return [...FALLBACK_FORMATIONS];
+    // Successful query: honor empty result when all formations are deactivated.
+    return types.map((t) => t.name);
   } catch {
     return [...FALLBACK_FORMATIONS];
   }

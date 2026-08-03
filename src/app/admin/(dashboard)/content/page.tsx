@@ -442,7 +442,7 @@ function GedEditor({
     setUploading(false);
     if (url) {
       setForm((prev) => ({ ...prev, imageUrl: url }));
-      toast.success("Image uploadée");
+      toast.success("Image prête — cliquez Enregistrer pour la sauvegarder");
     }
   }
 
@@ -582,7 +582,7 @@ function SectorEditor({
     setUploading(false);
     if (url) {
       setForm((prev) => ({ ...prev, imageUrl: url }));
-      toast.success("Image uploadée");
+      toast.success("Image prête — cliquez Enregistrer pour la sauvegarder");
     }
   }
 

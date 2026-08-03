@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { withPrismaQuery } from "@/lib/prisma-safe";
+import { withPrismaQuery, runPrismaMutation } from "@/lib/prisma-safe";
 import { getAdminSession } from "@/lib/auth";
 import { slugify } from "@/lib/utils";
 import { saveUploadedFile, validateFile } from "@/lib/upload";
@@ -73,18 +73,24 @@ export async function POST(request: NextRequest) {
 
     const slug = `${slugify(data.title)}-${Date.now().toString(36)}`;
 
-    const article = await prisma.newsArticle.create({
-      data: {
-        title: data.title,
-        slug,
-        content: data.content,
-        excerpt: data.excerpt,
-        imageUrl,
-        published: data.published,
-      },
-    });
+    const result = await runPrismaMutation(() =>
+      prisma.newsArticle.create({
+        data: {
+          title: data.title,
+          slug,
+          content: data.content,
+          excerpt: data.excerpt,
+          imageUrl,
+          published: data.published,
+        },
+      })
+    );
 
-    return NextResponse.json(serializeNewsArticle(article));
+    if (!result.ok) {
+      return NextResponse.json({ error: result.error }, { status: result.status });
+    }
+
+    return NextResponse.json(serializeNewsArticle(result.data), { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -136,12 +142,18 @@ export async function PUT(request: NextRequest) {
       updateData.imageUrl = await saveUploadedFile(image, "news");
     }
 
-    const article = await prisma.newsArticle.update({
-      where: { id },
-      data: updateData,
-    });
+    const result = await runPrismaMutation(() =>
+      prisma.newsArticle.update({
+        where: { id },
+        data: updateData,
+      })
+    );
 
-    return NextResponse.json(serializeNewsArticle(article));
+    if (!result.ok) {
+      return NextResponse.json({ error: result.error }, { status: result.status });
+    }
+
+    return NextResponse.json(serializeNewsArticle(result.data));
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -160,12 +172,20 @@ export async function DELETE(request: NextRequest) {
   }
 
   try {
-    const { id } = await request.json();
+    const body = await request.json().catch(() => null);
+    const id = body && typeof body === "object" && "id" in body ? String(body.id || "") : "";
     if (!id) {
       return NextResponse.json({ error: "ID requis" }, { status: 400 });
     }
 
-    await prisma.newsArticle.delete({ where: { id } });
+    const result = await runPrismaMutation(() =>
+      prisma.newsArticle.delete({ where: { id } })
+    );
+
+    if (!result.ok) {
+      return NextResponse.json({ error: result.error }, { status: result.status });
+    }
+
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });

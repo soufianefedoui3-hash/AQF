@@ -1,9 +1,20 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "dev-secret-change-in-production"
-);
+function getJwtSecret() {
+  const secret = process.env.JWT_SECRET?.trim();
+  if (secret) return secret;
+
+  if (process.env.NODE_ENV === "production") {
+    console.warn(
+      "[auth] JWT_SECRET is not set in production — using an insecure fallback."
+    );
+  }
+
+  return "dev-secret-change-in-production";
+}
+
+const JWT_SECRET = new TextEncoder().encode(getJwtSecret());
 
 const COOKIE_NAME = "aqf_admin_token";
 const TOKEN_EXPIRY = "7d";

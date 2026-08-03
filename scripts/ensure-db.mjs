@@ -27,10 +27,33 @@ function error(message) {
  */
 export function resolveDatabaseUrl() {
   const configured = process.env.DATABASE_URL?.trim();
+  const isProduction = process.env.NODE_ENV === "production";
+
+  // Development: keep configured path (typically file:./dev.db), just absolutize.
+  if (!isProduction) {
+    if (configured?.startsWith("file:")) {
+      const rawPath = configured.replace(/^file:/, "");
+      const absolutePath = rawPath.startsWith("/") || /^[A-Za-z]:[\\/]/.test(rawPath)
+        ? rawPath
+        : resolve(process.cwd(), rawPath);
+      mkdirSync(dirname(absolutePath), { recursive: true });
+      const absoluteUrl = `file:${absolutePath.replace(/\\/g, "/")}`;
+      process.env.DATABASE_URL = absoluteUrl;
+      return absoluteUrl;
+    }
+
+    const dbPath = join(process.cwd(), "prisma", "dev.db");
+    mkdirSync(dirname(dbPath), { recursive: true });
+    const absoluteUrl = `file:${dbPath.replace(/\\/g, "/")}`;
+    process.env.DATABASE_URL = absoluteUrl;
+    return absoluteUrl;
+  }
+
   const useProductionDefault =
     !configured ||
     configured === DEFAULT_RELATIVE_DB ||
-    configured === "file:./prisma/dev.db";
+    configured === "file:./prisma/dev.db" ||
+    configured === "file:./dev.db";
 
   if (useProductionDefault) {
     const dbPath = join(process.cwd(), "prisma", "production.db");

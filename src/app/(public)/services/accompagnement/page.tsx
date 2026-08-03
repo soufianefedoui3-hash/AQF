@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { SuccessModal } from "@/components/ui/Modal";
 import { APPOINTMENT_TIMES } from "@/lib/constants";
 import { DEFAULT_SECTORS } from "@/lib/seed-data";
+import { getFetchErrorMessage } from "@/lib/form-feedback";
 
 const DEFAULT_SECTOR_OPTIONS = DEFAULT_SECTORS.map((sector) => ({
   slug: sector.slug,
@@ -69,11 +70,13 @@ export default function AccompagnementPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error("Erreur");
+      if (!res.ok) {
+        throw new Error(await getFetchErrorMessage(res));
+      }
       setSuccessOpen(true);
       form.reset();
-    } catch {
-      toast.error("Une erreur est survenue. Veuillez réessayer.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Une erreur est survenue. Veuillez réessayer.");
     } finally {
       setLoading(false);
     }

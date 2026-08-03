@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 import {
   Users,
   ClipboardList,
@@ -10,6 +11,7 @@ import {
   Inbox,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import { Button } from "@/components/ui/Button";
 
 interface Stats {
   totalLeads: number;
@@ -32,24 +34,38 @@ export default function AdminDashboardPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [recent, setRecent] = useState<RecentLead[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetch("/api/admin/stats")
-      .then(async (r) => {
-        const data = await r.json();
-        if (!r.ok) {
-          setStats(null);
-          setRecent([]);
-          return;
-        }
-        setStats(data.stats || null);
-        setRecent(Array.isArray(data.recent) ? data.recent : []);
-      })
-      .catch(() => {
+  async function loadStats() {
+    setLoading(true);
+    setError(null);
+    try {
+      const r = await fetch("/api/admin/stats");
+      const data = await r.json();
+      if (!r.ok) {
         setStats(null);
         setRecent([]);
-      })
-      .finally(() => setLoading(false));
+        setError(
+          typeof data?.error === "string"
+            ? data.error
+            : "Impossible de charger les statistiques"
+        );
+        return;
+      }
+      setStats(data.stats || null);
+      setRecent(Array.isArray(data.recent) ? data.recent : []);
+    } catch {
+      setStats(null);
+      setRecent([]);
+      setError("Erreur de connexion");
+      toast.error("Erreur de connexion");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadStats();
   }, []);
 
   const cards = stats
@@ -72,51 +88,55 @@ export default function AdminDashboardPage() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="rounded-2xl border border-red-100 bg-red-50 p-8 text-center">
+        <p className="text-red-700">{error}</p>
+        <Button className="mt-4" variant="outline" onClick={loadStats}>
+          Réessayer
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div>
       <h2 className="mb-6 text-2xl font-bold text-primary-900">Tableau de bord</h2>
 
-      <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {cards.map((card) => {
-          const Icon = card.icon;
-          return (
-            <div
-              key={card.label}
-              className="rounded-2xl border border-primary-100 bg-white p-6 shadow-sm"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-text-muted">{card.label}</p>
-                  <p className="mt-1 text-3xl font-bold text-primary-900">{card.value}</p>
-                </div>
-                <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${card.color}`}>
-                  <Icon className="h-6 w-6" />
-                </div>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {cards.map((card) => (
+          <div
+            key={card.label}
+            className="rounded-2xl border border-primary-100 bg-white p-5 shadow-sm"
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-sm text-text-muted">{card.label}</p>
+              <div className={`rounded-lg p-2 ${card.color}`}>
+                <card.icon className="h-4 w-4" />
               </div>
             </div>
-          );
-        })}
+            <p className="text-3xl font-bold text-primary-900">{card.value}</p>
+          </div>
+        ))}
       </div>
 
-      <div className="rounded-2xl border border-primary-100 bg-white shadow-sm">
-        <div className="border-b border-primary-100 px-6 py-4">
-          <h3 className="font-semibold text-primary-900">Dernières consultations</h3>
-        </div>
-        <div className="divide-y divide-primary-100">
-          {recent.length === 0 ? (
-            <p className="p-6 text-sm text-text-muted">Aucune demande récente.</p>
-          ) : (
-            recent.map((lead) => (
-              <div key={lead.id} className="flex items-center justify-between px-6 py-4">
+      <div className="mt-8 rounded-2xl border border-primary-100 bg-white p-6 shadow-sm">
+        <h3 className="mb-4 font-semibold text-primary-900">Consultations récentes</h3>
+        {recent.length === 0 ? (
+          <p className="text-sm text-text-muted">Aucune consultation pour le moment.</p>
+        ) : (
+          <ul className="divide-y divide-primary-50">
+            {recent.map((lead) => (
+              <li key={lead.id} className="flex items-center justify-between py-3">
                 <div>
                   <p className="font-medium text-primary-900">{lead.name}</p>
                   <p className="text-sm text-text-muted">{lead.email}</p>
                 </div>
-                <p className="text-sm text-text-muted">{formatDate(lead.createdAt)}</p>
-              </div>
-            ))
-          )}
-        </div>
+                <span className="text-xs text-text-muted">{formatDate(lead.createdAt)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );

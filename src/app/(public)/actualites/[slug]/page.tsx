@@ -14,9 +14,15 @@ interface PageProps {
 export default async function ArticlePage({ params }: PageProps) {
   const { slug } = await params;
 
-  const article = await prisma.newsArticle.findFirst({
-    where: { slug, published: true },
-  });
+  let article;
+  try {
+    article = await prisma.newsArticle.findFirst({
+      where: { slug, published: true },
+    });
+  } catch (error) {
+    console.error("Article page error:", error);
+    notFound();
+  }
 
   if (!article) notFound();
 

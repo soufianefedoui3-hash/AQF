@@ -50,7 +50,10 @@ export function PacksManager() {
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
-    if (!newName.trim() || !newDescription.trim()) return;
+    if (!newName.trim() || !newDescription.trim()) {
+      toast.error("Nom et description requis");
+      return;
+    }
 
     const res = await fetch("/api/admin/packs", {
       method: "POST",

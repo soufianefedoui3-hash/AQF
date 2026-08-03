@@ -6,6 +6,7 @@ import { Input, Textarea, Select } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { SuccessModal } from "@/components/ui/Modal";
 import { FormCard } from "@/components/ui/PageSection";
+import { getFetchErrorMessage } from "@/lib/form-feedback";
 
 interface FormationRegistrationFormProps {
   formations: string[];
@@ -28,11 +29,13 @@ export function FormationRegistrationForm({ formations }: FormationRegistrationF
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(Object.fromEntries(formData)),
       });
-      if (!res.ok) throw new Error("Erreur");
+      if (!res.ok) {
+        throw new Error(await getFetchErrorMessage(res));
+      }
       setSuccessOpen(true);
       form.reset();
-    } catch {
-      toast.error("Une erreur est survenue. Veuillez réessayer.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Une erreur est survenue. Veuillez réessayer.");
     } finally {
       setLoading(false);
     }

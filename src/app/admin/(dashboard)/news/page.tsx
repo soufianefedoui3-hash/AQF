@@ -213,25 +213,29 @@ function ArticleModal({
     const publishedInput = form.querySelector<HTMLInputElement>('input[name="published"]');
     formData.set("published", publishedInput?.checked ? "true" : "false");
 
-    const res = await fetch("/api/admin/news", {
-      method: article ? "PUT" : "POST",
-      body: formData,
-    });
+    try {
+      const res = await fetch("/api/admin/news", {
+        method: article ? "PUT" : "POST",
+        body: formData,
+      });
 
-    const data: unknown = await res.json();
+      const data: unknown = await res.json().catch(() => ({}));
 
-    if (res.ok) {
-      toast.success(article ? "Article mis à jour" : "Article créé");
-      onSaved();
-    } else {
-      const message =
-        typeof data === "object" && data !== null && "error" in data
-          ? String((data as { error: string }).error)
-          : "Erreur lors de l'enregistrement";
-      toast.error(message);
+      if (res.ok) {
+        toast.success(article ? "Article mis à jour" : "Article créé");
+        onSaved();
+      } else {
+        const message =
+          typeof data === "object" && data !== null && "error" in data
+            ? String((data as { error: string }).error)
+            : "Erreur lors de l'enregistrement";
+        toast.error(message);
+      }
+    } catch {
+      toast.error("Erreur de connexion");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   }
 
   return (

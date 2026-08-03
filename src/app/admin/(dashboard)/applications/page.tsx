@@ -141,26 +141,26 @@ export default function ApplicationsPage() {
                     <option value="rejected">Refusé</option>
                   </select>
 
-                  <Button
+                  <a
                     href={app.cvPath}
+                    download
                     target="_blank"
                     rel="noopener noreferrer"
-                    variant="outline"
-                    size="sm"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-accent-400 px-4 py-2 text-sm font-medium text-primary-800 transition hover:bg-accent-50"
                   >
                     <Download className="h-4 w-4" />
                     CV
-                  </Button>
-                  <Button
+                  </a>
+                  <a
                     href={app.letterPath}
+                    download
                     target="_blank"
                     rel="noopener noreferrer"
-                    variant="outline"
-                    size="sm"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-accent-400 px-4 py-2 text-sm font-medium text-primary-800 transition hover:bg-accent-50"
                   >
                     <Download className="h-4 w-4" />
                     Lettre
-                  </Button>
+                  </a>
                   <Button
                     variant="danger"
                     size="sm"

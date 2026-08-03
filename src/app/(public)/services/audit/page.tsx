@@ -9,6 +9,7 @@ import { Input, Select } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { SuccessModal } from "@/components/ui/Modal";
 import { STANDARD_NORMS, AUDIT_NATURES } from "@/lib/constants";
+import { getFetchErrorMessage } from "@/lib/form-feedback";
 
 export default function AuditPage() {
   const [loading, setLoading] = useState(false);
@@ -54,15 +55,17 @@ export default function AuditPage() {
           customAuditNature: auditNature === "Autre" ? customAuditNature : null,
         }),
       });
-      if (!res.ok) throw new Error("Erreur");
+      if (!res.ok) {
+        throw new Error(await getFetchErrorMessage(res));
+      }
       setSuccessOpen(true);
       setSelectedNorms([]);
       setCustomNorm("");
       setAuditNature("");
       setCustomAuditNature("");
       form.reset();
-    } catch {
-      toast.error("Une erreur est survenue. Veuillez réessayer.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Une erreur est survenue. Veuillez réessayer.");
     } finally {
       setLoading(false);
     }
