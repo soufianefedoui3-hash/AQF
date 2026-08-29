@@ -1,8 +1,11 @@
 "use client";
 
 import { useEffect } from "react";
-import { Button } from "@/components/ui/Button";
 
+/**
+ * Login-segment error UI — pure inline styles, no shared UI imports,
+ * so a broken design-system module cannot blank the recovery screen.
+ */
 export default function AdminLoginError({
   error,
   reset,
@@ -11,21 +14,76 @@ export default function AdminLoginError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error(error);
+    console.error("[admin/login]", error);
   }, [error]);
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-brand-gradient px-4 text-center">
-      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-xl">
-        <h1 className="text-xl font-bold text-primary-900">Connexion indisponible</h1>
-        <p className="mt-3 text-sm text-text-muted">
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 16,
+        background: "linear-gradient(135deg, #004d5a 0%, #0a6b7c 50%, #22c8e8 100%)",
+        fontFamily: "system-ui, sans-serif",
+        textAlign: "center",
+      }}
+    >
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 420,
+          borderRadius: 16,
+          background: "#fff",
+          padding: 32,
+          boxShadow: "0 20px 50px rgba(0,0,0,0.2)",
+        }}
+      >
+        <h1 style={{ fontSize: 20, fontWeight: 700, color: "#0a3340", margin: 0 }}>
+          Connexion indisponible
+        </h1>
+        <p style={{ marginTop: 12, fontSize: 14, color: "#5a7178" }}>
           La page de connexion a rencontré un problème. Réessayez.
         </p>
-        <div className="mt-6 flex flex-wrap justify-center gap-3">
-          <Button onClick={reset}>Réessayer</Button>
-          <Button href="/" variant="outline">
-            Accueil
-          </Button>
+        <div
+          style={{
+            marginTop: 24,
+            display: "flex",
+            flexWrap: "wrap",
+            justifyContent: "center",
+            gap: 12,
+          }}
+        >
+          <button
+            type="button"
+            onClick={reset}
+            style={{
+              border: "none",
+              borderRadius: 10,
+              padding: "10px 18px",
+              background: "#004d5a",
+              color: "#fff",
+              cursor: "pointer",
+              fontWeight: 600,
+            }}
+          >
+            Réessayer
+          </button>
+          <a
+            href="/admin/login"
+            style={{
+              borderRadius: 10,
+              padding: "10px 18px",
+              border: "2px solid #22c8e8",
+              color: "#004d5a",
+              textDecoration: "none",
+              fontWeight: 600,
+            }}
+          >
+            Recharger
+          </a>
         </div>
       </div>
     </div>

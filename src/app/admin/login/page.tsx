@@ -2,84 +2,203 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import toast from "react-hot-toast";
-import { Lock } from "lucide-react";
-import { Input } from "@/components/ui/Input";
-import { Button } from "@/components/ui/Button";
-import { Logo } from "@/components/brand/Logo";
 
+/**
+ * Standalone login UI — minimal imports so Hostinger SSR/client never
+ * crashes this route due to optional UI/toast dependencies.
+ */
 export default function AdminLoginPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
-
-    const formData = new FormData(e.currentTarget);
+    setError(null);
 
     try {
-      const res = await fetch("/api/admin/auth", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: formData.get("email"),
-          password: formData.get("password"),
-        }),
-      });
+      const form = e.currentTarget;
+      const formData = new FormData(form);
+      const email = String(formData.get("email") || "").trim();
+      const password = String(formData.get("password") || "");
 
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        if (res.status >= 500) {
-          toast.error("Service temporairement indisponible");
-        } else {
-          toast.error(
-            typeof data.error === "string" ? data.error : "Identifiants invalides"
-          );
-        }
+      if (!email || !password) {
+        setError("Email et mot de passe requis");
         return;
       }
 
-      toast.success("Connexion réussie");
+      let res: Response;
+      try {
+        res = await fetch("/api/admin/auth", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
+      } catch {
+        setError("Impossible de joindre le serveur. Réessayez.");
+        return;
+      }
+
+      let data: { error?: string; success?: boolean } = {};
+      try {
+        data = await res.json();
+      } catch {
+        data = {};
+      }
+
+      if (!res.ok) {
+        setError(
+          typeof data.error === "string" && data.error.trim()
+            ? data.error
+            : "Identifiants invalides"
+        );
+        return;
+      }
+
       router.push("/admin");
       router.refresh();
-    } catch {
-      toast.error("Erreur de connexion");
+    } catch (err) {
+      console.error("[login] unexpected error:", err);
+      setError("Identifiants invalides ou service temporairement indisponible");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-brand-gradient p-4">
-      <div className="w-full max-w-md rounded-2xl border border-primary-700/20 bg-white p-8 shadow-2xl">
-        <div className="mb-8 flex flex-col items-center text-center">
-          <Logo variant="login" href={null} priority />
-          <h1 className="mt-6 text-2xl font-bold text-primary-900">لوحة التحكم الخاصة</h1>
-          <p className="mt-2 text-sm text-text-muted">Administration AQF</p>
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 16,
+        background: "linear-gradient(135deg, #004d5a 0%, #0a6b7c 50%, #22c8e8 100%)",
+        fontFamily: "system-ui, -apple-system, Segoe UI, sans-serif",
+      }}
+    >
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 420,
+          borderRadius: 16,
+          background: "#fff",
+          padding: 32,
+          boxShadow: "0 20px 50px rgba(0,0,0,0.2)",
+        }}
+      >
+        <div style={{ textAlign: "center", marginBottom: 28 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/brand/aqf-logo.png"
+            alt="AQF"
+            width={140}
+            height={56}
+            style={{
+              display: "block",
+              margin: "0 auto",
+              maxWidth: "9.5rem",
+              height: "auto",
+              objectFit: "contain",
+            }}
+          />
+          <h1
+            style={{
+              marginTop: 20,
+              fontSize: 22,
+              fontWeight: 700,
+              color: "#0a3340",
+            }}
+          >
+            Administration AQF
+          </h1>
+          <p style={{ marginTop: 8, fontSize: 14, color: "#5a7178" }}>
+            Connexion administrateur
+          </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Input
-            name="email"
-            label="Email administrateur"
-            type="email"
-            required
-            autoComplete="username"
-            defaultValue="admin@aqf.ma"
-          />
-          <Input
-            name="password"
-            label="Mot de passe"
-            type="password"
-            required
-            autoComplete="current-password"
-          />
-          <Button type="submit" loading={loading} className="w-full">
-            <Lock className="h-4 w-4" />
-            Se connecter
-          </Button>
+        <form onSubmit={handleSubmit} style={{ display: "grid", gap: 14 }}>
+          {error && (
+            <div
+              role="alert"
+              style={{
+                borderRadius: 10,
+                border: "1px solid #fca5a5",
+                background: "#fef2f2",
+                color: "#b91c1c",
+                padding: "10px 12px",
+                fontSize: 14,
+              }}
+            >
+              {error}
+            </div>
+          )}
+
+          <label style={{ display: "grid", gap: 6, fontSize: 14, color: "#0a3340" }}>
+            <span style={{ fontWeight: 600 }}>
+              Email administrateur <span style={{ color: "#ef4444" }}>*</span>
+            </span>
+            <input
+              name="email"
+              type="email"
+              required
+              autoComplete="username"
+              defaultValue="admin@aqf.ma"
+              disabled={loading}
+              style={{
+                width: "100%",
+                borderRadius: 12,
+                border: "1px solid #cfe3e8",
+                padding: "12px 14px",
+                fontSize: 15,
+                color: "#0a3340",
+                boxSizing: "border-box",
+              }}
+            />
+          </label>
+
+          <label style={{ display: "grid", gap: 6, fontSize: 14, color: "#0a3340" }}>
+            <span style={{ fontWeight: 600 }}>
+              Mot de passe <span style={{ color: "#ef4444" }}>*</span>
+            </span>
+            <input
+              name="password"
+              type="password"
+              required
+              autoComplete="current-password"
+              disabled={loading}
+              style={{
+                width: "100%",
+                borderRadius: 12,
+                border: "1px solid #cfe3e8",
+                padding: "12px 14px",
+                fontSize: 15,
+                color: "#0a3340",
+                boxSizing: "border-box",
+              }}
+            />
+          </label>
+
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              marginTop: 6,
+              width: "100%",
+              border: "none",
+              borderRadius: 12,
+              padding: "12px 16px",
+              fontSize: 15,
+              fontWeight: 600,
+              cursor: loading ? "wait" : "pointer",
+              background: "linear-gradient(90deg, #22c8e8, #7ec8a8)",
+              color: "#004d5a",
+              opacity: loading ? 0.7 : 1,
+            }}
+          >
+            {loading ? "Connexion…" : "Se connecter"}
+          </button>
         </form>
       </div>
     </div>

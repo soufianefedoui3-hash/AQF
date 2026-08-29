@@ -6,16 +6,21 @@ import { SignJWT, jwtVerify } from "jose";
  */
 
 function getJwtSecretBytes(): Uint8Array {
-  const secret =
-    process.env.JWT_SECRET?.trim() || "dev-secret-change-in-production";
+  try {
+    const secret =
+      process.env.JWT_SECRET?.trim() || "dev-secret-change-in-production";
 
-  if (!process.env.JWT_SECRET?.trim() && process.env.NODE_ENV === "production") {
-    console.warn(
-      "[auth] JWT_SECRET is not set in production — using an insecure fallback."
-    );
+    if (!process.env.JWT_SECRET?.trim() && process.env.NODE_ENV === "production") {
+      console.warn(
+        "[auth] JWT_SECRET is not set in production — using an insecure fallback."
+      );
+    }
+
+    return new TextEncoder().encode(secret);
+  } catch (error) {
+    console.error("[auth] getJwtSecretBytes failed:", error);
+    return new TextEncoder().encode("dev-secret-change-in-production");
   }
-
-  return new TextEncoder().encode(secret);
 }
 
 export const COOKIE_NAME = "aqf_admin_token";
@@ -27,11 +32,16 @@ export interface AdminSession {
 }
 
 export async function createAdminToken(payload: AdminSession): Promise<string> {
-  return new SignJWT({ ...payload })
-    .setProtectedHeader({ alg: "HS256" })
-    .setIssuedAt()
-    .setExpirationTime(TOKEN_EXPIRY)
-    .sign(getJwtSecretBytes());
+  try {
+    return await new SignJWT({ ...payload })
+      .setProtectedHeader({ alg: "HS256" })
+      .setIssuedAt()
+      .setExpirationTime(TOKEN_EXPIRY)
+      .sign(getJwtSecretBytes());
+  } catch (error) {
+    console.error("[auth] createAdminToken failed:", error);
+    throw error;
+  }
 }
 
 export async function verifyAdminToken(

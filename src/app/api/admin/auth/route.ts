@@ -1,4 +1,4 @@
-import { timingSafeEqual } from "crypto";
+import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import {
   COOKIE_NAME,
@@ -6,16 +6,20 @@ import {
   createAdminToken,
   getAdminSession,
 } from "@/lib/auth";
-import { getAdminCredentials } from "@/lib/env-credentials";
+import {
+  getAdminCredentials,
+  getAuthConfigStatus,
+} from "@/lib/env-credentials";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 function safeEqual(a: string, b: string): boolean {
   try {
-    const left = Buffer.from(a);
-    const right = Buffer.from(b);
+    const left = Buffer.from(String(a ?? ""), "utf8");
+    const right = Buffer.from(String(b ?? ""), "utf8");
     if (left.length !== right.length) return false;
+    if (left.length === 0) return true;
     return timingSafeEqual(left, right);
   } catch {
     return false;
@@ -23,9 +27,16 @@ function safeEqual(a: string, b: string): boolean {
 }
 
 function isValidLogin(email: string, password: string): boolean {
-  const { email: expectedEmail, password: expectedPassword } =
-    getAdminCredentials();
-  return safeEqual(email, expectedEmail) && safeEqual(password, expectedPassword);
+  try {
+    const { email: expectedEmail, password: expectedPassword } =
+      getAdminCredentials();
+    return (
+      safeEqual(email, expectedEmail) && safeEqual(password, expectedPassword)
+    );
+  } catch (error) {
+    console.error("[auth] isValidLogin failed:", error);
+    return false;
+  }
 }
 
 /**
@@ -33,15 +44,19 @@ function isValidLogin(email: string, password: string): boolean {
  * Secure cookies are dropped on plain HTTP and login appears to "fail".
  */
 function shouldUseSecureCookie(request: NextRequest): boolean {
-  if (process.env.COOKIE_SECURE === "true") return true;
-  if (process.env.COOKIE_SECURE === "false") return false;
+  try {
+    if (process.env.COOKIE_SECURE === "true") return true;
+    if (process.env.COOKIE_SECURE === "false") return false;
 
-  const forwarded = request.headers.get("x-forwarded-proto");
-  if (forwarded) {
-    return forwarded.split(",")[0]?.trim().toLowerCase() === "https";
+    const forwarded = request.headers.get("x-forwarded-proto");
+    if (forwarded) {
+      return forwarded.split(",")[0]?.trim().toLowerCase() === "https";
+    }
+
+    return request.nextUrl.protocol === "https:";
+  } catch {
+    return false;
   }
-
-  return request.nextUrl.protocol === "https:";
 }
 
 function applyAdminCookie(
@@ -49,13 +64,17 @@ function applyAdminCookie(
   token: string,
   request: NextRequest
 ) {
-  response.cookies.set(COOKIE_NAME, token, {
-    httpOnly: true,
-    secure: shouldUseSecureCookie(request),
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 7,
-  });
+  try {
+    response.cookies.set(COOKIE_NAME, token, {
+      httpOnly: true,
+      secure: shouldUseSecureCookie(request),
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7,
+    });
+  } catch (error) {
+    console.error("[auth] applyAdminCookie failed:", error);
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -69,7 +88,9 @@ export async function POST(request: NextRequest) {
 
     const record =
       body && typeof body === "object" ? (body as Record<string, unknown>) : {};
-    const email = String(record.email || "").trim().toLowerCase();
+    const email = String(record.email || "")
+      .trim()
+      .toLowerCase();
     const password = String(record.password || "").trim();
 
     if (!email || !password) {
@@ -80,7 +101,10 @@ export async function POST(request: NextRequest) {
     }
 
     if (!isValidLogin(email, password)) {
-      return NextResponse.json({ error: "Identifiants invalides" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Identifiants invalides" },
+        { status: 401 }
+      );
     }
 
     const { email: adminEmail } = getAdminCredentials();
@@ -93,9 +117,13 @@ export async function POST(request: NextRequest) {
       });
     } catch (tokenError) {
       console.error("Admin JWT creation failed:", tokenError);
+      // Do not crash the login UX with a bare 500 — surface a form message.
       return NextResponse.json(
-        { error: "Impossible de créer la session" },
-        { status: 500 }
+        {
+          error:
+            "Impossible de créer la session. Vérifiez JWT_SECRET sur le serveur.",
+        },
+        { status: 503 }
       );
     }
 
@@ -104,9 +132,10 @@ export async function POST(request: NextRequest) {
     return response;
   } catch (error) {
     console.error("Admin login error:", error);
+    // Prefer a client-friendly auth message over a fatal "Erreur serveur".
     return NextResponse.json(
-      { error: "Erreur serveur — réessayez dans un instant" },
-      { status: 500 }
+      { error: "Identifiants invalides ou service temporairement indisponible" },
+      { status: 401 }
     );
   }
 }
@@ -119,25 +148,35 @@ export async function DELETE(request: NextRequest) {
   }
 
   const response = NextResponse.json({ success: true });
-  response.cookies.set(COOKIE_NAME, "", {
-    httpOnly: true,
-    secure: shouldUseSecureCookie(request),
-    sameSite: "lax",
-    path: "/",
-    maxAge: 0,
-  });
+  try {
+    response.cookies.set(COOKIE_NAME, "", {
+      httpOnly: true,
+      secure: shouldUseSecureCookie(request),
+      sameSite: "lax",
+      path: "/",
+      maxAge: 0,
+    });
+  } catch (error) {
+    console.error("Admin logout cookie clear failed:", error);
+  }
   return response;
 }
 
 export async function GET() {
   try {
     const session = await getAdminSession();
+    const config = getAuthConfigStatus();
     return NextResponse.json({
       authenticated: !!session,
       email: session?.email ?? null,
+      warning: config.warning,
     });
   } catch (error) {
     console.error("Admin session check error:", error);
-    return NextResponse.json({ authenticated: false, email: null });
+    return NextResponse.json({
+      authenticated: false,
+      email: null,
+      warning: null,
+    });
   }
 }
