@@ -1,7 +1,7 @@
 /**
- * Admin root layout — intentionally inert.
- * Do NOT set force-dynamic / nodejs here: that forced SSR of /admin/login
- * and contributed to Hostinger 500s. Dashboard layout opts in separately.
+ * Admin root layout — intentionally inert (no auth).
+ * Dynamic rendering is set on the root and login layouts so CSS
+ * hashes in <head> cannot be frozen by Hostinger CDN.
  */
 export default function AdminRootLayout({
   children,

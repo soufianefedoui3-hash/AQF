@@ -2,6 +2,10 @@ import "@/app/globals.css";
 import type { Metadata } from "next";
 import ClientToasterWrapper from "@/components/ClientToasterWrapper";
 
+/** Never prerender the document shell with a year-long CDN cache. */
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export const metadata: Metadata = {
   title: "AQF | Académie de Qualité et de Formation",
   description:

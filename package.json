@@ -6,7 +6,7 @@
     "dev": "next dev",
     "dev:clean": "node scripts/clean-dev.mjs",
     "restart": "npm run clean && npm run dev",
-    "build": "next build",
+    "build": "node scripts/sync-static-assets.mjs pre && next build && node scripts/sync-static-assets.mjs post",
     "clean": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true}); try{require('fs').rmSync('node_modules/.cache',{recursive:true,force:true})}catch(e){}\"",
     "build:clean": "npm run clean && npm run build",
     "start": "node --import ./scripts/register-guards.mjs ./node_modules/next/dist/bin/next start -H 0.0.0.0",
@@ -15,6 +15,7 @@
     "admin:reset": "npx tsx scripts/reset-admin.ts"
   },
   "dependencies": {
+    "@tailwindcss/postcss": "^4.0.17",
     "bcryptjs": "^3.0.2",
     "clsx": "^2.1.1",
     "lucide-react": "^0.487.0",
@@ -23,7 +24,9 @@
     "react-dom": "^19.0.0",
     "react-hot-toast": "^2.5.2",
     "tailwind-merge": "^3.0.2",
+    "tailwindcss": "^4.0.17",
     "tsx": "^4.19.3",
+    "typescript": "^5.8.2",
     "zod": "^3.24.2"
   },
   "optionalDependencies": {
@@ -31,14 +34,11 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
-    "@tailwindcss/postcss": "^4.0.17",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^22.13.14",
     "@types/react": "^19.0.12",
     "@types/react-dom": "^19.0.4",
     "eslint": "^9.23.0",
-    "eslint-config-next": "^15.2.4",
-    "tailwindcss": "^4.0.17",
-    "typescript": "^5.8.2"
+    "eslint-config-next": "^15.2.4"
   }
 }
