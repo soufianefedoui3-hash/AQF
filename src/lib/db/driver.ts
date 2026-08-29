@@ -1,18 +1,15 @@
-import { createRequire } from "module";
+import { createRequire } from "node:module";
 import type { SqlDatabase, SqlStatement, SqlValue } from "./types";
 
-function loadRequire(): NodeRequire {
-  try {
-    if (typeof __filename !== "undefined") {
-      return createRequire(__filename);
-    }
-  } catch {
-    /* bundled ESM may not define __filename */
-  }
-  return createRequire(import.meta.url);
-}
+/**
+ * Load optional native drivers without letting Next rewrite the require.
+ * createRequire(__filename) must stay a literal so the bundler can externalize it.
+ */
+const nodeRequire = createRequire(__filename);
 
-const requireFromHere = loadRequire();
+function loadNative(moduleName: string): unknown {
+  return nodeRequire(moduleName);
+}
 
 function wrapStatement(
   all: (...params: SqlValue[]) => Record<string, unknown>[],
@@ -63,7 +60,7 @@ function applyPragmas(exec: (sql: string) => void): void {
 
 function openNodeSqlite(filePath: string): SqlDatabase | null {
   try {
-    const nodeSqlite = requireFromHere("node:sqlite") as {
+    const nodeSqlite = loadNative(["node", "sqlite"].join(":")) as {
       DatabaseSync?: new (path: string) => {
         exec(sql: string): void;
         prepare(sql: string): {
@@ -92,14 +89,18 @@ function openNodeSqlite(filePath: string): SqlDatabase | null {
         );
       },
     };
-  } catch {
+  } catch (error) {
+    console.warn(
+      "[db] node:sqlite unavailable:",
+      error instanceof Error ? error.message : error
+    );
     return null;
   }
 }
 
 function openBetterSqlite(filePath: string): SqlDatabase | null {
   try {
-    const BetterSqlite = requireFromHere("better-sqlite3") as new (
+    const BetterSqlite = loadNative(["better-sqlite", "3"].join("")) as new (
       path: string
     ) => {
       pragma(src: string): unknown;
@@ -133,7 +134,11 @@ function openBetterSqlite(filePath: string): SqlDatabase | null {
         );
       },
     };
-  } catch {
+  } catch (error) {
+    console.warn(
+      "[db] better-sqlite3 unavailable:",
+      error instanceof Error ? error.message : error
+    );
     return null;
   }
 }

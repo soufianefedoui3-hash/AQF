@@ -3,6 +3,15 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // Native / built-in SQLite drivers must stay outside the Next bundle.
   serverExternalPackages: ["better-sqlite3"],
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      const extras = ["better-sqlite3", "node:sqlite"];
+      config.externals = Array.isArray(config.externals)
+        ? [...config.externals, ...extras]
+        : extras;
+    }
+    return config;
+  },
   // Prevent accidental static optimization of CMS pages.
   experimental: {
     staleTimes: {
@@ -26,13 +35,7 @@ const nextConfig: NextConfig = {
     ],
   },
   async rewrites() {
-    return [
-      // Serve static HTML for login — bypasses Next SSR entirely on Hostinger.
-      {
-        source: "/admin/login",
-        destination: "/admin-login.html",
-      },
-    ];
+    return [];
   },
   async headers() {
     return [

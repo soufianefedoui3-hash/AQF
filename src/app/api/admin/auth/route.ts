@@ -1,65 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ADMIN_COOKIE_NAME } from "@/lib/auth-constants";
-import { createAdminToken } from "@/lib/auth-edge";
-import { authenticateAdmin } from "@/lib/admin-authenticate";
+import { authenticateAdmin } from "@/lib/auth/authenticate";
+import {
+  applyAdminCookie,
+  clearAdminCookieOnResponse,
+  createAdminToken,
+  verifyAdminToken,
+  COOKIE_NAME,
+} from "@/lib/auth/session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/**
- * Behind Hostinger / reverse proxies, Secure cookies are dropped on plain HTTP.
- */
-function shouldUseSecureCookie(request: NextRequest): boolean {
-  try {
-    if (process.env.COOKIE_SECURE === "true") return true;
-    if (process.env.COOKIE_SECURE === "false") return false;
-
-    const forwarded = request.headers.get("x-forwarded-proto");
-    if (forwarded) {
-      return forwarded.split(",")[0]?.trim().toLowerCase() === "https";
-    }
-
-    return request.nextUrl.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
-function applyAdminCookie(
-  response: NextResponse,
-  token: string,
-  request: NextRequest
-) {
-  try {
-    response.cookies.set(ADMIN_COOKIE_NAME, token, {
-      httpOnly: true,
-      secure: shouldUseSecureCookie(request),
-      sameSite: "lax",
-      path: "/",
-      maxAge: 60 * 60 * 24 * 7,
-    });
-  } catch (error) {
-    console.error("[auth] cookie set failed:", error);
-  }
-}
-
-function clearCookieOnResponse(response: NextResponse, request: NextRequest) {
-  try {
-    response.cookies.set(ADMIN_COOKIE_NAME, "", {
-      httpOnly: true,
-      secure: shouldUseSecureCookie(request),
-      sameSite: "lax",
-      path: "/",
-      maxAge: 0,
-    });
-  } catch {
-    /* ignore */
-  }
+function jsonError(error: string, status: number) {
+  return NextResponse.json({ error }, { status });
 }
 
 /**
- * Admin login — NEVER returns HTTP 500.
- * Failures are always structured JSON for the login form.
+ * Admin login — Node HMAC cookie, never HTTP 500.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -67,7 +24,7 @@ export async function POST(request: NextRequest) {
     try {
       body = await request.json();
     } catch {
-      return NextResponse.json({ error: "JSON invalide" }, { status: 400 });
+      return jsonError("JSON invalide", 400);
     }
 
     const record =
@@ -80,31 +37,22 @@ export async function POST(request: NextRequest) {
       result = await authenticateAdmin(email, password);
     } catch (authError) {
       console.error("[auth] authenticateAdmin threw:", authError);
-      return NextResponse.json(
-        { error: "Configuration error — authentification indisponible" },
-        { status: 503 }
-      );
+      return jsonError("Authentification temporairement indisponible", 503);
     }
 
     if (!result.ok) {
-      return NextResponse.json({ error: result.error }, { status: 401 });
+      return jsonError(result.error, 401);
     }
 
     let token: string;
     try {
-      token = await createAdminToken({
+      token = createAdminToken({
         adminId: result.adminId,
         email: result.email,
       });
     } catch (tokenError) {
-      console.error("[auth] JWT create failed:", tokenError);
-      return NextResponse.json(
-        {
-          error:
-            "Configuration error — vérifiez JWT_SECRET sur le serveur (Hostinger).",
-        },
-        { status: 503 }
-      );
+      console.error("[auth] token create failed:", tokenError);
+      return jsonError("Impossible de créer la session. Vérifiez JWT_SECRET.", 503);
     }
 
     const response = NextResponse.json({
@@ -115,28 +63,27 @@ export async function POST(request: NextRequest) {
     return response;
   } catch (error) {
     console.error("[auth] unexpected login error:", error);
-    return NextResponse.json(
-      { error: "Configuration error — réessayez dans un instant" },
-      { status: 503 }
-    );
+    return jsonError("Service temporairement indisponible", 503);
   }
 }
 
 export async function DELETE(request: NextRequest) {
-  const response = NextResponse.json({ success: true });
-  clearCookieOnResponse(response, request);
-  return response;
+  try {
+    const response = NextResponse.json({ success: true });
+    clearAdminCookieOnResponse(response, request);
+    return response;
+  } catch {
+    return NextResponse.json({ success: true });
+  }
 }
 
 export async function GET(request: NextRequest) {
   try {
-    const token = request.cookies.get(ADMIN_COOKIE_NAME)?.value;
+    const token = request.cookies.get(COOKIE_NAME)?.value;
     if (!token) {
       return NextResponse.json({ authenticated: false, email: null });
     }
-
-    const { verifyAdminToken } = await import("@/lib/auth-edge");
-    const session = await verifyAdminToken(token);
+    const session = verifyAdminToken(token);
     return NextResponse.json({
       authenticated: !!session,
       email: session?.email ?? null,

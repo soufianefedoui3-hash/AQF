@@ -1,5 +1,2 @@
-/**
- * Admin auth cookie name — duplicated here so Edge middleware never needs
- * to import jose / auth-edge just to read the constant.
- */
+/** Admin session cookie — Node HMAC, never imported from Edge middleware. */
 export const ADMIN_COOKIE_NAME = "aqf_admin_token";
