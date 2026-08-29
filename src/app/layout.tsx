@@ -1,6 +1,6 @@
 import "@/app/globals.css";
 import type { Metadata } from "next";
-import { ClientToaster } from "@/components/ui/ClientToaster";
+import dynamic from "next/dynamic";
 
 export const metadata: Metadata = {
   title: "AQF | Académie de Qualité et de Formation",
@@ -12,9 +12,16 @@ export const metadata: Metadata = {
   },
 };
 
+const ClientToaster = dynamic(
+  () =>
+    import("@/components/ui/ClientToaster").then((mod) => mod.ClientToaster),
+  { ssr: false }
+);
+
 /**
  * Root layout intentionally avoids next/font/google — remote font fetches
  * can crash every page with 500s on restricted Hostinger networks.
+ * Toaster is client-only so it cannot take down SSR of any route.
  */
 export default function RootLayout({
   children,

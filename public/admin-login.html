@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Administration AQF — Connexion</title>
+    <link rel="icon" href="/brand/aqf-logo.png" />
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        font-family: system-ui, -apple-system, Segoe UI, sans-serif;
+        background: linear-gradient(135deg, #004d5a 0%, #0a6b7c 50%, #22c8e8 100%);
+      }
+      .card {
+        width: 100%;
+        max-width: 420px;
+        border-radius: 16px;
+        background: #fff;
+        padding: 32px;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+      }
+      .brand { text-align: center; margin-bottom: 28px; }
+      .brand img { display: block; margin: 0 auto; max-width: 9.5rem; height: auto; }
+      h1 { margin: 20px 0 0; font-size: 22px; font-weight: 700; color: #0a3340; }
+      .sub { margin: 8px 0 0; font-size: 14px; color: #5a7178; }
+      form { display: grid; gap: 14px; }
+      label { display: grid; gap: 6px; font-size: 14px; color: #0a3340; font-weight: 600; }
+      .req { color: #ef4444; }
+      input {
+        width: 100%;
+        border-radius: 12px;
+        border: 1px solid #cfe3e8;
+        padding: 12px 14px;
+        font-size: 15px;
+        color: #0a3340;
+      }
+      button {
+        margin-top: 6px;
+        width: 100%;
+        border: none;
+        border-radius: 12px;
+        padding: 12px 16px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        background: linear-gradient(90deg, #22c8e8, #7ec8a8);
+        color: #004d5a;
+      }
+      button:disabled { opacity: 0.7; cursor: wait; }
+      .error {
+        border-radius: 10px;
+        border: 1px solid #fca5a5;
+        background: #fef2f2;
+        color: #b91c1c;
+        padding: 10px 12px;
+        font-size: 14px;
+        display: none;
+      }
+      .error.show { display: block; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="brand">
+        <img src="/brand/aqf-logo.png" alt="AQF" width="140" height="56" />
+        <h1>Administration AQF</h1>
+        <p class="sub">Connexion administrateur</p>
+      </div>
+      <form id="login-form" novalidate>
+        <div id="error" class="error" role="alert"></div>
+        <label>
+          <span>Email administrateur <span class="req">*</span></span>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            required
+            autocomplete="username"
+            value="admin@aqf.ma"
+          />
+        </label>
+        <label>
+          <span>Mot de passe <span class="req">*</span></span>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            required
+            autocomplete="current-password"
+          />
+        </label>
+        <button id="submit" type="submit">Se connecter</button>
+      </form>
+    </div>
+    <script>
+      (function () {
+        var form = document.getElementById("login-form");
+        var errorEl = document.getElementById("error");
+        var submitBtn = document.getElementById("submit");
+
+        function showError(message) {
+          errorEl.textContent = message || "Identifiants invalides";
+          errorEl.className = "error show";
+        }
+
+        function clearError() {
+          errorEl.textContent = "";
+          errorEl.className = "error";
+        }
+
+        form.addEventListener("submit", function (event) {
+          event.preventDefault();
+          clearError();
+
+          var email = String(document.getElementById("email").value || "").trim();
+          var password = String(document.getElementById("password").value || "");
+
+          if (!email || !password) {
+            showError("Email et mot de passe requis");
+            return;
+          }
+
+          submitBtn.disabled = true;
+          submitBtn.textContent = "Connexion…";
+
+          function finish() {
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Se connecter";
+          }
+
+          function tryLogin(url) {
+            return fetch(url, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email: email, password: password }),
+            });
+          }
+
+          tryLogin("/api/admin/auth")
+            .catch(function () {
+              return tryLogin("/api/auth/login");
+            })
+            .then(function (res) {
+              return res
+                .json()
+                .catch(function () {
+                  return {};
+                })
+                .then(function (data) {
+                  if (!res.ok) {
+                    showError(
+                      data && typeof data.error === "string" && data.error
+                        ? data.error
+                        : "Identifiants invalides"
+                    );
+                    finish();
+                    return;
+                  }
+                  window.location.href = "/admin";
+                });
+            })
+            .catch(function () {
+              showError("Impossible de joindre le serveur. Réessayez.");
+              finish();
+            });
+        });
+      })();
+    </script>
+  </body>
+</html>

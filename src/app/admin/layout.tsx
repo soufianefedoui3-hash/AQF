@@ -1,10 +1,8 @@
 /**
- * Admin root layout — must stay crash-proof so /admin/login always renders.
- * Do not force nodejs runtime here (Hostinger Edge/Node quirks); dashboard
- * layout opts into nodejs where Prisma is needed.
+ * Admin root layout — intentionally inert.
+ * Do NOT set force-dynamic / nodejs here: that forced SSR of /admin/login
+ * and contributed to Hostinger 500s. Dashboard layout opts in separately.
  */
-export const dynamic = "force-dynamic";
-
 export default function AdminRootLayout({
   children,
 }: {

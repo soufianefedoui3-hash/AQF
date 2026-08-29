@@ -23,6 +23,15 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async rewrites() {
+    return [
+      // Serve static HTML for login — bypasses Next SSR entirely on Hostinger.
+      {
+        source: "/admin/login",
+        destination: "/admin-login.html",
+      },
+    ];
+  },
   async headers() {
     return [
       {
