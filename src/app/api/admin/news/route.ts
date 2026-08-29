@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!result.ok) return jsonError(result.error, 503);
-    revalidateCms("news");
+    revalidateCms();
     return NextResponse.json(serializeNewsArticle(result.data), { status: 201 });
   } catch (error) {
     return jsonError(
@@ -120,7 +120,7 @@ export async function PUT(request: NextRequest) {
     });
 
     if (!result.ok) return jsonError(result.error, 503);
-    revalidateCms("news");
+    revalidateCms();
     return NextResponse.json(serializeNewsArticle(result.data));
   } catch (error) {
     return jsonError(
@@ -144,7 +144,7 @@ export async function DELETE(request: NextRequest) {
 
     const result = await deleteNews(id);
     if (!result.ok) return jsonError(result.error, 503);
-    revalidateCms("news");
+    revalidateCms();
     return NextResponse.json({ success: true });
   } catch {
     return jsonError("Suppression impossible", 503);

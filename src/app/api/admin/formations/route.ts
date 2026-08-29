@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       const status = result.error.includes("existe déjà") ? 409 : 503;
       return jsonError(result.error, status);
     }
-    revalidateCms("formations");
+    revalidateCms();
     return NextResponse.json(result.data, { status: 201 });
   } catch (error) {
     return jsonError(
@@ -72,7 +72,7 @@ export async function PUT(request: NextRequest) {
       const status = result.error.includes("existe déjà") ? 409 : 503;
       return jsonError(result.error, status);
     }
-    revalidateCms("formations");
+    revalidateCms();
     return NextResponse.json(result.data);
   } catch (error) {
     return jsonError(
@@ -91,7 +91,7 @@ export async function DELETE(request: NextRequest) {
     if (!id) return jsonError("ID requis", 400);
     const result = await deleteFormation(id);
     if (!result.ok) return jsonError(result.error, 503);
-    revalidateCms("formations");
+    revalidateCms();
     return NextResponse.json({ success: true });
   } catch {
     return jsonError("Suppression impossible", 503);

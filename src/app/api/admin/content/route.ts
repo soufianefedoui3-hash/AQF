@@ -145,7 +145,7 @@ export async function PUT(request: NextRequest) {
       return jsonError(result.error, 503);
     }
 
-    revalidateCms("all");
+    revalidateCms();
     return NextResponse.json({ success: true, data: result.data });
   } catch (error) {
     console.error("[cms] admin PUT failed:", error);

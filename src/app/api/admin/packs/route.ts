@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
 
     const result = await createPack(data);
     if (!result.ok) return jsonError(result.error, 503);
-    revalidateCms("packs");
+    revalidateCms();
     return NextResponse.json(result.data, { status: 201 });
   } catch (error) {
     return jsonError(
@@ -70,7 +70,7 @@ export async function PUT(request: NextRequest) {
       active: data.active,
     });
     if (!result.ok) return jsonError(result.error, 503);
-    revalidateCms("packs");
+    revalidateCms();
     return NextResponse.json(result.data);
   } catch (error) {
     return jsonError(
@@ -89,7 +89,7 @@ export async function DELETE(request: NextRequest) {
     if (!id) return jsonError("ID requis", 400);
     const result = await deletePack(id);
     if (!result.ok) return jsonError(result.error, 503);
-    revalidateCms("packs");
+    revalidateCms();
     return NextResponse.json({ success: true });
   } catch {
     return jsonError("Suppression impossible", 503);

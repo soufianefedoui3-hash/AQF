@@ -14,19 +14,6 @@ export const CMS_PUBLIC_PATHS = [
   "/actualites",
 ] as const;
 
-export type CmsSection =
-  | "about"
-  | "team"
-  | "sector"
-  | "careers"
-  | "settings"
-  | "page"
-  | "ged"
-  | "formations"
-  | "packs"
-  | "news"
-  | "all";
-
 /**
  * Bust Next.js caches aggressively after any admin CMS mutation.
  * Always revalidates every public CMS route (page + layout) so admin
