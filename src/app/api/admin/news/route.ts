@@ -6,6 +6,7 @@ import { slugify } from "@/lib/utils";
 import { saveUploadedFile, validateFile } from "@/lib/upload";
 import { serializeNewsArticle } from "@/lib/news";
 import { z } from "zod";
+import { revalidateCms } from "@/lib/revalidate-cms";
 
 const articleSchema = z.object({
   title: z.string().trim().min(2, "Le titre est requis"),
@@ -90,6 +91,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: result.error }, { status: result.status });
     }
 
+    revalidateCms("news");
     return NextResponse.json(serializeNewsArticle(result.data), { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -153,6 +155,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: result.error }, { status: result.status });
     }
 
+    revalidateCms("news");
     return NextResponse.json(serializeNewsArticle(result.data));
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -186,6 +189,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: result.error }, { status: result.status });
     }
 
+    revalidateCms("news");
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });

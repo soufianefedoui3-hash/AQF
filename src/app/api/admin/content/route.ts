@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { withPrismaQuery, runPrismaMutation } from "@/lib/prisma-safe";
 import { DEFAULT_ADMIN_CONTENT } from "@/lib/seed-data";
 import { getAdminSession } from "@/lib/auth";
+import { revalidateCms, type CmsSection } from "@/lib/revalidate-cms";
 
 export async function GET() {
   const session = await getAdminSession();
@@ -80,7 +81,10 @@ export async function PUT(request: NextRequest) {
                 name: data.name,
                 role: data.role,
                 skills: data.skills,
-                imageUrl: data.imageUrl ?? null,
+                imageUrl:
+                  typeof data.imageUrl === "string" && data.imageUrl.trim()
+                    ? data.imageUrl.trim()
+                    : null,
                 order: data.order ?? 0,
               },
             });
@@ -90,7 +94,10 @@ export async function PUT(request: NextRequest) {
               name: data.name || "Nouveau membre",
               role: data.role || "Rôle",
               skills: data.skills || "",
-              imageUrl: data.imageUrl ?? null,
+              imageUrl:
+                typeof data.imageUrl === "string" && data.imageUrl.trim()
+                  ? data.imageUrl.trim()
+                  : null,
               order: data.order || 0,
             },
           });
@@ -206,6 +213,21 @@ export async function PUT(request: NextRequest) {
     ) {
       return NextResponse.json({ error: "Section invalide" }, { status: 400 });
     }
+
+    const rawSection = String(section || "all");
+    const sectionKey = (
+      rawSection === "team-delete" ? "team" : rawSection
+    ) as CmsSection;
+    const known: CmsSection[] = [
+      "about",
+      "team",
+      "sector",
+      "careers",
+      "settings",
+      "page",
+      "ged",
+    ];
+    revalidateCms(known.includes(sectionKey) ? sectionKey : "all");
 
     return NextResponse.json({ success: true, data: result.data });
   } catch (error) {

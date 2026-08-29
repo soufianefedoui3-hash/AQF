@@ -51,7 +51,18 @@ export const FALLBACK_SECTORS = [
 
 export function resolveSectorImage(slug: string, imageUrl: string | null | undefined) {
   const normalized = normalizeImageUrl(imageUrl);
-  return normalized || SECTOR_DEFAULT_IMAGES[slug] || SECTOR_FALLBACK_IMAGE;
+  // Prefer the DB value (including /uploads/...). Only fill Unsplash defaults
+  // when the record has no image at all — never invent one over a stored path.
+  if (normalized) return normalized;
+  return SECTOR_DEFAULT_IMAGES[slug] || SECTOR_FALLBACK_IMAGE;
+}
+
+/**
+ * Returns the stored image URL as-is (normalized), or null.
+ * Use this when the public UI should show a placeholder instead of Unsplash.
+ */
+export function getStoredSectorImage(imageUrl: string | null | undefined) {
+  return normalizeImageUrl(imageUrl);
 }
 
 export async function getPageContent(key: string, fallback: { title?: string; content: string }) {
@@ -167,11 +178,18 @@ export async function getSectors() {
         slug: sector.slug.trim(),
         name: sector.name.trim(),
         description: sector.description?.trim() || "Description indisponible pour ce secteur.",
-        imageUrl: resolveSectorImage(sector.slug, sector.imageUrl),
+        // Use stored URL only — never invent Unsplash over a DB null/upload path.
+        imageUrl: getStoredSectorImage(sector.imageUrl),
         order: sector.order ?? 0,
       }));
 
-    return mapped.length > 0 ? mapped : [...FALLBACK_SECTORS];
+    // Honor intentional empty CMS. Only use hardcoded list when DB was never seeded.
+    if (mapped.length === 0) {
+      const settingsCount = await prisma.siteSettings.count().catch(() => 0);
+      if (settingsCount === 0) return [...FALLBACK_SECTORS];
+    }
+
+    return mapped;
   } catch {
     return [...FALLBACK_SECTORS];
   }
@@ -183,28 +201,26 @@ export async function getSectorBySlug(slug: string) {
 
   try {
     const sector = await prisma.sector.findUnique({ where: { slug: normalized } });
-    if (sector) {
-      return {
-        ...sector,
-        imageUrl: resolveSectorImage(sector.slug, sector.imageUrl),
-      };
-    }
+    if (!sector) return null;
+
+    return {
+      ...sector,
+      imageUrl: getStoredSectorImage(sector.imageUrl),
+    };
   } catch {
-    /* fall through to hardcoded defaults */
+    const fallback = FALLBACK_SECTORS.find((sector) => sector.slug === normalized);
+    if (!fallback) return null;
+
+    return {
+      id: `fallback-${fallback.slug}`,
+      slug: fallback.slug,
+      name: fallback.name,
+      description: fallback.description,
+      imageUrl: resolveSectorImage(fallback.slug, fallback.imageUrl),
+      order: fallback.order,
+      updatedAt: new Date(0),
+    };
   }
-
-  const fallback = FALLBACK_SECTORS.find((sector) => sector.slug === normalized);
-  if (!fallback) return null;
-
-  return {
-    id: `fallback-${fallback.slug}`,
-    slug: fallback.slug,
-    name: fallback.name,
-    description: fallback.description,
-    imageUrl: resolveSectorImage(fallback.slug, fallback.imageUrl),
-    order: fallback.order,
-    updatedAt: new Date(0),
-  };
 }
 
 export async function getCareersSettings() {
@@ -220,11 +236,12 @@ export async function getCareersSettings() {
     const settings = await prisma.careersSettings.findUnique({ where: { id: "default" } });
     if (!settings) return FALLBACK;
 
+    // Return DB values as stored (even if blank strings) so admin edits win.
     return {
-      title: settings.title?.trim() || FALLBACK.title,
-      content: settings.content?.trim() || FALLBACK.content,
-      email: settings.email?.trim() || FALLBACK.email,
-      phone: settings.phone?.trim() || FALLBACK.phone,
+      title: settings.title ?? "",
+      content: settings.content ?? "",
+      email: settings.email ?? "",
+      phone: settings.phone ?? "",
     };
   } catch {
     return FALLBACK;

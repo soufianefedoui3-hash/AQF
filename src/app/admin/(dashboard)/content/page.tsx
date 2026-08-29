@@ -18,6 +18,7 @@ interface TeamMember {
   name: string;
   role: string;
   skills: string;
+  imageUrl: string | null;
   order: number;
 }
 
@@ -304,6 +305,7 @@ export default function ContentPage() {
                 const ok = await save("team-delete", { id: member.id });
                 if (ok) await loadContent();
               }}
+              onUpload={uploadImage}
             />
           ))}
           <Button
@@ -511,17 +513,38 @@ function TeamEditor({
   saving,
   onSave,
   onDelete,
+  onUpload,
 }: {
   member: TeamMember;
   saving: boolean;
   onSave: (data: TeamMember) => Promise<void>;
   onDelete: () => Promise<void>;
+  onUpload: (file: File, prefix: string) => Promise<string | null>;
 }) {
   const [form, setForm] = useState(member);
+  const [uploading, setUploading] = useState(false);
+  const [previewError, setPreviewError] = useState(false);
+  const previewUrl = form.imageUrl?.trim() || null;
 
   useEffect(() => {
     setForm(member);
+    setPreviewError(false);
   }, [member]);
+
+  async function handleImage(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    const url = await onUpload(file, "team");
+    setUploading(false);
+    if (!url) return;
+
+    const next = { ...form, imageUrl: url };
+    setForm(next);
+    setPreviewError(false);
+    await onSave(next);
+    toast.success("Photo enregistrée");
+  }
 
   return (
     <div className="rounded-2xl border border-primary-100 bg-white p-6">
@@ -544,8 +567,30 @@ function TeamEditor({
           onChange={(e) => setForm({ ...form, skills: e.target.value })}
         />
       </div>
+      <div className="mt-4">
+        <label className="mb-2 block text-sm font-medium">Photo</label>
+        {previewUrl && !previewError ? (
+          <div className="relative mb-3 h-20 w-20 overflow-hidden rounded-full bg-primary-50">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={previewUrl}
+              alt={form.name || "Aperçu"}
+              className="h-full w-full object-cover"
+              onError={() => setPreviewError(true)}
+            />
+          </div>
+        ) : null}
+        <input
+          type="file"
+          accept="image/*"
+          onChange={handleImage}
+          className="text-sm"
+          disabled={uploading}
+        />
+        {previewUrl && <p className="mt-1 text-xs text-text-muted">{previewUrl}</p>}
+      </div>
       <div className="mt-4 flex gap-2">
-        <Button loading={saving} onClick={() => onSave(form)}>
+        <Button loading={saving || uploading} onClick={() => onSave(form)}>
           Enregistrer
         </Button>
         <Button variant="danger" loading={saving} onClick={onDelete}>

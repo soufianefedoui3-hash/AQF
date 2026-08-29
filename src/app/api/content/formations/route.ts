@@ -7,10 +7,8 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const formations = await getFormationTypes();
-    if (Array.isArray(formations) && formations.length > 0) {
-      return NextResponse.json(formations);
-    }
-    return NextResponse.json([...FORMATION_TYPES]);
+    // Honor empty active list from DB; fallback only on failure.
+    return NextResponse.json(Array.isArray(formations) ? formations : [...FORMATION_TYPES]);
   } catch {
     return NextResponse.json([...FORMATION_TYPES]);
   }

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { withPrismaQuery, runPrismaMutation } from "@/lib/prisma-safe";
 import { getAdminSession } from "@/lib/auth";
 import { z } from "zod";
+import { revalidateCms } from "@/lib/revalidate-cms";
 
 const schema = z.object({
   name: z.string().trim().min(1, "Nom requis"),
@@ -65,6 +66,7 @@ export async function POST(request: NextRequest) {
       return uniqueConflictResponse(result);
     }
 
+    revalidateCms("formations");
     return NextResponse.json(result.data, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -103,6 +105,7 @@ export async function PUT(request: NextRequest) {
       return uniqueConflictResponse(result);
     }
 
+    revalidateCms("formations");
     return NextResponse.json(result.data);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -135,6 +138,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: result.error }, { status: result.status });
     }
 
+    revalidateCms("formations");
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });

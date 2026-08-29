@@ -70,12 +70,8 @@ export async function seedDefaultContent(
   for (const sector of DEFAULT_SECTORS) {
     await client.sector.upsert({
       where: { slug: sector.slug },
-      update: {
-        name: sector.name,
-        description: sector.description,
-        // Preserve admin-uploaded / custom images; only set imageUrl on create.
-        order: sector.order,
-      },
+      // Never overwrite admin CMS edits on repair/redeploy.
+      update: {},
       create: sector,
     });
   }
@@ -84,7 +80,8 @@ export async function seedDefaultContent(
     const name = DEFAULT_FORMATION_TYPES[i];
     await client.formationType.upsert({
       where: { name },
-      update: { order: i, active: true },
+      // Preserve active/order changes from admin.
+      update: {},
       create: { name, order: i, active: true },
     });
   }
@@ -92,7 +89,7 @@ export async function seedDefaultContent(
   for (const section of DEFAULT_ABOUT_SECTIONS) {
     await client.aboutSection.upsert({
       where: { key: section.key },
-      update: { title: section.title, content: section.content },
+      update: {},
       create: section,
     });
   }

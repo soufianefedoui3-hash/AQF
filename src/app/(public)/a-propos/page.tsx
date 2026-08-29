@@ -2,6 +2,7 @@ import { Users, FileText, ListChecks } from "lucide-react";
 import { PageHero } from "@/components/ui/PageHero";
 import { PageSection, ContentCard } from "@/components/ui/PageSection";
 import { getAboutData } from "@/lib/content";
+import { normalizeImageUrl } from "@/lib/news";
 
 export default async function AboutPage() {
   const { presentation, steps, team } = await getAboutData();
@@ -49,16 +50,30 @@ export default async function AboutPage() {
           </div>
 
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {team.map((member) => (
-              <ContentCard key={member.id} hover>
-                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-primary-600 to-secondary-500 text-xl font-bold text-white">
-                  {member.name.charAt(0)}
-                </div>
-                <h3 className="text-lg font-semibold text-primary-900">{member.name}</h3>
-                <p className="text-sm font-medium text-accent-600">{member.role}</p>
-                <p className="mt-2 text-sm text-text-muted">{member.skills}</p>
-              </ContentCard>
-            ))}
+            {team.map((member) => {
+              const photo = normalizeImageUrl(member.imageUrl);
+              return (
+                <ContentCard key={member.id} hover>
+                  {photo ? (
+                    <div className="relative mb-4 h-16 w-16 overflow-hidden rounded-full bg-primary-100">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={photo}
+                        alt={member.name}
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-primary-600 to-secondary-500 text-xl font-bold text-white">
+                      {member.name.charAt(0)}
+                    </div>
+                  )}
+                  <h3 className="text-lg font-semibold text-primary-900">{member.name}</h3>
+                  <p className="text-sm font-medium text-accent-600">{member.role}</p>
+                  <p className="mt-2 text-sm text-text-muted">{member.skills}</p>
+                </ContentCard>
+              );
+            })}
           </div>
         </div>
       </PageSection>

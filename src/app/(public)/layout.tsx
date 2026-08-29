@@ -3,6 +3,10 @@ import { Footer } from "@/components/layout/Footer";
 import { WhatsAppWidget } from "@/components/layout/WhatsAppWidget";
 import { getSiteSettings } from "@/lib/content";
 
+/** Always fetch fresh CMS data so admin edits appear immediately. */
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function PublicLayout({
   children,
 }: {

@@ -22,7 +22,10 @@ export default async function CarrieresPage() {
 
     <>
 
-      <PageHero title="Votre expertise, notre force" subtitle={settings.title} />
+      <PageHero
+        title={settings.title?.trim() || "Votre expertise, notre force"}
+        subtitle="Rejoignez AQF et contribuez à l'excellence qualité."
+      />
 
 
 

@@ -15,7 +15,7 @@ export default async function FormationPage() {
   return (
     <>
       <PageHero
-        title="Formation Qualité"
+        title={intro.title?.trim() || "Formation Qualité"}
         subtitle="Des formations adaptées aux étudiants et aux professionnels de santé et du corporate."
         backHref="/services"
         backLabel="Retour aux services"

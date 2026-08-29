@@ -13,15 +13,7 @@ export async function GET() {
         name: sector.name.trim(),
       }));
 
-    if (options.length === 0) {
-      return NextResponse.json(
-        FALLBACK_SECTORS.map((sector) => ({
-          slug: sector.slug,
-          name: sector.name,
-        }))
-      );
-    }
-
+    // Honor empty DB list; fallback only when the query path failed (getSectors catch).
     return NextResponse.json(options);
   } catch {
     return NextResponse.json(

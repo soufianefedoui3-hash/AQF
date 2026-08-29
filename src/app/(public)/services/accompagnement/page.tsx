@@ -30,8 +30,13 @@ export default function AccompagnementPage() {
   useEffect(() => {
     fetch("/api/content/sectors")
       .then(async (res) => {
+        if (!res.ok) {
+          setSectors(DEFAULT_SECTOR_OPTIONS);
+          return;
+        }
+
         const data = await res.json();
-        if (!Array.isArray(data) || data.length === 0) {
+        if (!Array.isArray(data)) {
           setSectors(DEFAULT_SECTOR_OPTIONS);
           return;
         }
@@ -49,7 +54,8 @@ export default function AccompagnementPage() {
             name: item.name.trim(),
           }));
 
-        setSectors(options.length > 0 ? options : DEFAULT_SECTOR_OPTIONS);
+        // Honor successful DB response even when empty.
+        setSectors(options);
       })
       .catch(() => {
         setSectors(DEFAULT_SECTOR_OPTIONS);

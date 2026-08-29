@@ -29,7 +29,7 @@ export default async function HomePage() {
       <section className="py-16 md:py-20">
         <div className="mx-auto max-w-3xl px-4 text-center sm:px-6">
           <span className="mb-4 inline-block rounded-full bg-secondary-100 px-4 py-1.5 text-sm font-medium text-secondary-800 ring-1 ring-secondary-200">
-            Présentation
+            {presentation.title?.trim() || "Présentation"}
           </span>
           <p className="text-lg leading-relaxed text-text-muted">{presentation.content}</p>
         </div>
