@@ -12,6 +12,7 @@
     "build:clean": "npm run clean && npm run build",
     "start": "node --import ./scripts/register-guards.mjs ./node_modules/next/dist/bin/next start -H 0.0.0.0",
     "lint": "next lint",
+    "db:init": "npx tsx scripts/init-sqlite.ts",
     "db:generate": "node scripts/prisma-generate.mjs --strict",
     "db:push": "node scripts/push-schema.mjs",
     "db:seed": "node scripts/seed-db.mjs",
@@ -35,6 +36,9 @@
     "tailwind-merge": "^3.0.2",
     "tsx": "^4.19.3",
     "zod": "^3.24.2"
+  },
+  "optionalDependencies": {
+    "better-sqlite3": "^12.11.1"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

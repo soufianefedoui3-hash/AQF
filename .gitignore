@@ -46,6 +46,13 @@ next-env.d.ts
 /public/uploads/*
 !/public/uploads/.gitkeep
 
-# prisma
+# sqlite
+/data/*.sqlite
+/data/*.sqlite-journal
+/data/*.sqlite-wal
+/data/*.sqlite-shm
+/data/*.db
 prisma/*.db
 prisma/*.db-journal
+prisma/*.db-wal
+prisma/*.db-shm

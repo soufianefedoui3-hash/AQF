@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Native / built-in SQLite drivers must stay outside the Next bundle.
+  serverExternalPackages: ["better-sqlite3"],
   // Prevent accidental static optimization of CMS pages.
   experimental: {
     staleTimes: {

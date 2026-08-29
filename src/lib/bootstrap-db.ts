@@ -1,4 +1,5 @@
 import { resolveProductionDatabaseUrl } from "@/lib/database-url";
+import { ensureSchema, readyDb } from "@/lib/db";
 import { fixAdminAccount, type AdminFixResult } from "@/lib/ensure-admin";
 import { SQLITE_SCHEMA_STATEMENTS } from "@/lib/sql-schema";
 import { prisma } from "@/lib/prisma";
@@ -42,6 +43,11 @@ export async function ensureDatabaseSchema(): Promise<boolean> {
         const databaseUrl = resolveProductionDatabaseUrl();
         console.log(`[db] Ensuring schema at ${databaseUrl}`);
 
+        if (ensureSchema()) {
+          console.log("[db] Schema ensured via direct SQLite.");
+          return true;
+        }
+
         await applySqlSchemaFallback();
         console.log("[db] Schema ensured via SQL fallback.");
         return true;
@@ -76,6 +82,7 @@ export async function bootstrapProductionDatabase(options: {
 
   try {
     const databaseUrl = resolveProductionDatabaseUrl();
+    await readyDb();
     await ensureDatabaseSchema();
     const admin = await fixAdminAccount({ force: options.forceAdmin });
 
