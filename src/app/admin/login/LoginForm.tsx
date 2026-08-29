@@ -4,7 +4,6 @@ import { useState } from "react";
 
 /**
  * Pure client login form — no Prisma, cookies(), headers, layouts, or UI kit.
- * Mounted with ssr:false so Hostinger never server-renders this tree.
  */
 export default function LoginForm() {
   const [loading, setLoading] = useState(false);
