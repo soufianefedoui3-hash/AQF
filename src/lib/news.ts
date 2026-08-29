@@ -38,6 +38,16 @@ export function normalizeImageUrl(url: string | null | undefined): string | null
   if (!url || typeof url !== "string") return null;
   const trimmed = url.trim();
   if (!trimmed) return null;
+
+  // Never serve broken Unsplash CDN URLs through Next/Image.
+  if (
+    trimmed.includes("images.unsplash.com") ||
+    trimmed.includes("source.unsplash.com") ||
+    /unsplash\.com\//i.test(trimmed)
+  ) {
+    return null;
+  }
+
   if (trimmed.startsWith("/") || trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
     return trimmed;
   }

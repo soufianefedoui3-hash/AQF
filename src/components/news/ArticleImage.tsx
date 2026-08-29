@@ -1,10 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import { useState } from "react";
 import { Newspaper } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { normalizeImageUrl } from "@/lib/news";
+import { PLACEHOLDER_GENERIC } from "@/lib/placeholder-images";
 
 interface ArticleImageProps {
   src: string | null | undefined;
@@ -21,12 +21,11 @@ export function ArticleImage({
   className,
   fill = true,
   priority = false,
-  sizes = "(max-width: 768px) 100vw, 33vw",
 }: ArticleImageProps) {
   const [error, setError] = useState(false);
-  const imageUrl = normalizeImageUrl(src);
+  const imageUrl = normalizeImageUrl(src) || PLACEHOLDER_GENERIC;
 
-  if (!imageUrl || error) {
+  if (error) {
     return (
       <div
         className={cn(
@@ -42,13 +41,17 @@ export function ArticleImage({
   }
 
   return (
-    <Image
+    // eslint-disable-next-line @next/next/no-img-element -- avoid Next optimizer upstream 404s
+    <img
       src={imageUrl}
       alt={alt || "Image de l'article"}
-      fill={fill}
-      priority={priority}
-      sizes={sizes}
-      className={cn("object-cover", className)}
+      loading={priority ? "eager" : "lazy"}
+      decoding="async"
+      className={cn(
+        "object-cover",
+        fill && "absolute inset-0 h-full w-full",
+        className
+      )}
       onError={() => setError(true)}
     />
   );

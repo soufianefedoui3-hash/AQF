@@ -4,8 +4,7 @@ export const DEFAULT_SECTORS = [
     name: "Laboratoire de biologie médicale",
     description:
       "Accompagnement ISO 15189, GBEA et bonnes pratiques pour garantir la fiabilité des résultats analytiques et la conformité réglementaire.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1579154204601-01588f351e38?auto=format&fit=crop&w=1200&q=80",
+    imageUrl: "/placeholders/sector-laboratoire-biologie-medicale.svg",
     order: 0,
   },
   {
@@ -13,8 +12,7 @@ export const DEFAULT_SECTORS = [
     name: "Entreprise agroalimentaire",
     description:
       "Mise en conformité ISO 22000, ONSSA et systèmes HACCP pour assurer la sécurité alimentaire de vos produits.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1566645876731-bbfca2ee4e70?auto=format&fit=crop&w=1200&q=80",
+    imageUrl: "/placeholders/sector-entreprise-agroalimentaire.svg",
     order: 1,
   },
   {
@@ -22,8 +20,7 @@ export const DEFAULT_SECTORS = [
     name: "Université",
     description:
       "Structuration des processus qualité, laboratoires de recherche et programmes de formation pour l'enseignement supérieur.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=1200&q=80",
+    imageUrl: "/placeholders/sector-universite.svg",
     order: 2,
   },
   {
@@ -31,8 +28,7 @@ export const DEFAULT_SECTORS = [
     name: "Clinique",
     description:
       "Optimisation des parcours de soins, gestion de la qualité et conformité réglementaire pour les établissements de santé.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=1200&q=80",
+    imageUrl: "/placeholders/sector-clinique.svg",
     order: 3,
   },
   {
@@ -40,8 +36,7 @@ export const DEFAULT_SECTORS = [
     name: "Pharma",
     description:
       "Excellence opérationnelle, BPF et systèmes qualité pour l'industrie pharmaceutique et dispositifs médicaux.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1582719471130-be2718ec2d44?auto=format&fit=crop&w=1200&q=80",
+    imageUrl: "/placeholders/sector-pharma.svg",
     order: 4,
   },
 ] as const;

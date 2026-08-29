@@ -3,10 +3,14 @@ import { BRAND, PRODUCT_PACKS } from "@/lib/constants";
 import { SECTOR_DEFAULT_IMAGES } from "@/lib/formations";
 import { normalizeImageUrl } from "@/lib/news";
 import { liveCmsQuery } from "@/lib/cms-live";
+import {
+  PLACEHOLDER_GENERIC,
+  isBrokenExternalImageUrl,
+  localSectorImage,
+  sanitizePublicImageUrl,
+} from "@/lib/placeholder-images";
 
-export const SECTOR_FALLBACK_IMAGE =
-  "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=1200&q=80";
-
+export const SECTOR_FALLBACK_IMAGE = PLACEHOLDER_GENERIC;
 export const FALLBACK_SECTORS = [
   {
     slug: "laboratoire-biologie-medicale",
@@ -51,13 +55,13 @@ export const FALLBACK_SECTORS = [
 ] as const;
 
 export function resolveSectorImage(slug: string, imageUrl: string | null | undefined) {
-  const normalized = normalizeImageUrl(imageUrl);
-  if (normalized) return normalized;
-  return SECTOR_DEFAULT_IMAGES[slug] || SECTOR_FALLBACK_IMAGE;
+  return localSectorImage(slug, imageUrl);
 }
 
 export function getStoredSectorImage(imageUrl: string | null | undefined) {
-  return normalizeImageUrl(imageUrl);
+  const normalized = normalizeImageUrl(imageUrl);
+  if (!normalized || isBrokenExternalImageUrl(normalized)) return null;
+  return normalized;
 }
 
 export async function getPageContent(key: string, fallback: { title?: string; content: string }) {
@@ -180,7 +184,7 @@ export async function getSectors() {
           slug: sector.slug.trim(),
           name: sector.name.trim(),
           description: sector.description?.trim() || "Description indisponible pour ce secteur.",
-          imageUrl: getStoredSectorImage(sector.imageUrl),
+          imageUrl: resolveSectorImage(sector.slug, sector.imageUrl),
           order: sector.order ?? 0,
         }));
 
@@ -207,7 +211,7 @@ export async function getSectorBySlug(slug: string) {
 
       return {
         ...sector,
-        imageUrl: getStoredSectorImage(sector.imageUrl),
+        imageUrl: resolveSectorImage(sector.slug, sector.imageUrl),
       };
     });
   } catch {
@@ -278,7 +282,7 @@ export async function getPublishedArticles() {
         slug: article.slug.trim(),
         excerpt: article.excerpt?.trim() || null,
         content: article.content?.trim() || "",
-        imageUrl: normalizeImageUrl(article.imageUrl),
+        imageUrl: sanitizePublicImageUrl(article.imageUrl),
         createdAt: article.createdAt.toISOString(),
       }));
   } catch {

@@ -1,18 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { FORMATION_TYPES as FALLBACK_FORMATIONS } from "@/lib/constants";
 import { liveCmsQuery } from "@/lib/cms-live";
+import { SECTOR_PLACEHOLDER_IMAGES } from "@/lib/placeholder-images";
 
+/** Local sector placeholders (no external CDN). */
 export const SECTOR_DEFAULT_IMAGES: Record<string, string> = {
-  "laboratoire-biologie-medicale":
-    "https://images.unsplash.com/photo-1579154204601-01588f351e38?auto=format&fit=crop&w=1200&q=80",
-  "entreprise-agroalimentaire":
-    "https://images.unsplash.com/photo-1566645876731-bbfca2ee4e70?auto=format&fit=crop&w=1200&q=80",
-  universite:
-    "https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=1200&q=80",
-  clinique:
-    "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=1200&q=80",
-  pharma:
-    "https://images.unsplash.com/photo-1582719471130-be2718ec2d44?auto=format&fit=crop&w=1200&q=80",
+  ...SECTOR_PLACEHOLDER_IMAGES,
 };
 
 export async function getFormationTypes() {

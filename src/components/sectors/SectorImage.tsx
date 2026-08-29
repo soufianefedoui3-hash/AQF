@@ -4,6 +4,10 @@ import { useState } from "react";
 import { Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { normalizeImageUrl } from "@/lib/news";
+import {
+  PLACEHOLDER_GENERIC,
+  isBrokenExternalImageUrl,
+} from "@/lib/placeholder-images";
 
 interface SectorImageProps {
   src: string | null | undefined;
@@ -15,8 +19,8 @@ interface SectorImageProps {
 }
 
 /**
- * Renders sector images with native <img> so local /uploads/... paths
- * work reliably (no Next.js image optimizer dependency).
+ * Renders sector images with native <img> so local /uploads and
+ * /placeholders paths work without the Next.js image optimizer.
  */
 export function SectorImage({
   src,
@@ -26,9 +30,13 @@ export function SectorImage({
   priority = false,
 }: SectorImageProps) {
   const [error, setError] = useState(false);
-  const imageUrl = normalizeImageUrl(src);
+  const raw = typeof src === "string" ? src.trim() : "";
+  const imageUrl =
+    raw && !isBrokenExternalImageUrl(raw)
+      ? normalizeImageUrl(raw) || PLACEHOLDER_GENERIC
+      : PLACEHOLDER_GENERIC;
 
-  if (!imageUrl || error) {
+  if (error) {
     return (
       <div
         className={cn(
@@ -44,7 +52,7 @@ export function SectorImage({
   }
 
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- local /uploads paths must bypass the image optimizer
+    // eslint-disable-next-line @next/next/no-img-element -- local placeholders/uploads bypass optimizer
     <img
       src={imageUrl}
       alt={alt || "Image du secteur"}

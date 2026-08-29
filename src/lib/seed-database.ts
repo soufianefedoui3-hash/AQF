@@ -17,6 +17,56 @@ export interface SeedOptions {
   includeAdmin?: boolean;
 }
 
+/** Replace legacy Unsplash URLs in Sector rows with local placeholders. */
+export async function repairBrokenSectorImages(
+  client: PrismaClient
+): Promise<number> {
+  let repaired = 0;
+
+  for (const sector of DEFAULT_SECTORS) {
+    const existing = await client.sector.findUnique({
+      where: { slug: sector.slug },
+      select: { id: true, imageUrl: true },
+    });
+    if (!existing) continue;
+
+    const url = existing.imageUrl?.trim() || "";
+    const isBroken =
+      !url ||
+      url.includes("unsplash.com") ||
+      url.includes("images.unsplash.com");
+
+    if (!isBroken) continue;
+
+    await client.sector.update({
+      where: { id: existing.id },
+      data: { imageUrl: sector.imageUrl },
+    });
+    repaired += 1;
+  }
+
+  // Any other rows still pointing at Unsplash → generic local placeholder.
+  const leftovers = await client.sector.findMany({
+    where: {
+      OR: [
+        { imageUrl: { contains: "unsplash.com" } },
+        { imageUrl: { contains: "images.unsplash.com" } },
+      ],
+    },
+    select: { id: true },
+  });
+
+  for (const row of leftovers) {
+    await client.sector.update({
+      where: { id: row.id },
+      data: { imageUrl: "/placeholders/sector-generic.svg" },
+    });
+    repaired += 1;
+  }
+
+  return repaired;
+}
+
 function getAdminCredentials() {
   let email = (process.env.ADMIN_EMAIL || "admin@aqf.ma").trim();
   let password = (process.env.ADMIN_PASSWORD || "Admin@AQF2026").trim();
@@ -67,10 +117,11 @@ export async function seedDefaultContent(
     });
   }
 
+  await repairBrokenSectorImages(client);
+
   for (const sector of DEFAULT_SECTORS) {
     await client.sector.upsert({
       where: { slug: sector.slug },
-      // Never overwrite admin CMS edits on repair/redeploy.
       update: {},
       create: sector,
     });

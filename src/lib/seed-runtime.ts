@@ -1,6 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { ensureDatabaseSchema } from "@/lib/bootstrap-db";
-import { needsDefaultSeed, seedDefaultContent } from "@/lib/seed-database";
+import {
+  needsDefaultSeed,
+  repairBrokenSectorImages,
+  seedDefaultContent,
+} from "@/lib/seed-database";
 
 let seedInitPromise: Promise<boolean> | null = null;
 
@@ -9,7 +13,8 @@ export function resetDatabaseSeedCache(): void {
 }
 
 /**
- * Seeds default CMS content once when core tables are empty.
+ * Seeds default CMS content once when core tables are empty,
+ * and always repairs legacy Unsplash image URLs.
  */
 export async function ensureDatabaseSeed(): Promise<boolean> {
   if (process.env.SKIP_DB_SEED === "true") {
@@ -22,13 +27,17 @@ export async function ensureDatabaseSeed(): Promise<boolean> {
         await ensureDatabaseSchema();
 
         const shouldSeed = await needsDefaultSeed(prisma);
-        if (!shouldSeed) {
-          return true;
+        if (shouldSeed) {
+          console.log("[db] Seeding default CMS content...");
+          await seedDefaultContent(prisma, { includeAdmin: false });
+          console.log("[db] Default CMS content seeded.");
+        } else {
+          const repaired = await repairBrokenSectorImages(prisma);
+          if (repaired > 0) {
+            console.log(`[db] Replaced ${repaired} broken external sector image URL(s).`);
+          }
         }
 
-        console.log("[db] Seeding default CMS content...");
-        await seedDefaultContent(prisma, { includeAdmin: false });
-        console.log("[db] Default CMS content seeded.");
         return true;
       } catch (error) {
         console.error(
