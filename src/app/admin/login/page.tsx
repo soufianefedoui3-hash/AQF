@@ -4,13 +4,32 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 /**
- * Standalone login UI — minimal imports so Hostinger SSR/client never
- * crashes this route due to optional UI/toast dependencies.
+ * Standalone login UI — zero shared UI / toast / Prisma / auth imports.
+ * Renders even if the rest of the admin tree is broken.
+ *
+ * Auth endpoint: POST /api/admin/auth (alias: /api/auth/login)
+ * Credentials: ADMIN_EMAIL / ADMIN_PASSWORD (default admin@aqf.ma / Admin@AQF2026)
+ * Password is verified against env and synced as bcrypt hash in SQLite Admin.
  */
 export default function AdminLoginPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  async function postLogin(email: string, password: string): Promise<Response> {
+    const payload = JSON.stringify({ email, password });
+    const init: RequestInit = {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: payload,
+    };
+
+    try {
+      return await fetch("/api/admin/auth", init);
+    } catch {
+      return await fetch("/api/auth/login", init);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -30,11 +49,7 @@ export default function AdminLoginPage() {
 
       let res: Response;
       try {
-        res = await fetch("/api/admin/auth", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password }),
-        });
+        res = await postLogin(email, password);
       } catch {
         setError("Impossible de joindre le serveur. Réessayez.");
         return;

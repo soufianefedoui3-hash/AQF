@@ -24,6 +24,9 @@ function getJwtSecretBytes(): Uint8Array {
 }
 
 export const COOKIE_NAME = "aqf_admin_token";
+// Keep in sync with auth-constants (middleware must not import this file).
+export { ADMIN_COOKIE_NAME } from "@/lib/auth-constants";
+
 const TOKEN_EXPIRY = "7d";
 
 export interface AdminSession {

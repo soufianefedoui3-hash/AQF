@@ -24,6 +24,8 @@ npm run dev
 
 **Identifiants admin:** `admin@aqf.ma` / `Admin@AQF2026`
 
+> Login lit `ADMIN_EMAIL` / `ADMIN_PASSWORD` (env) et synchronise un hash bcrypt dans la table SQLite `Admin`. La page `/admin/login` est hors middleware Edge (pas d’import `jose`) pour éviter les 500 Hostinger.
+
 ## Structure du site
 
 | Page | URL |

@@ -1,6 +1,6 @@
 import "@/app/globals.css";
 import type { Metadata } from "next";
-import { Toaster } from "react-hot-toast";
+import { ClientToaster } from "@/components/ui/ClientToaster";
 
 export const metadata: Metadata = {
   title: "AQF | Académie de Qualité et de Formation",
@@ -25,21 +25,7 @@ export default function RootLayout({
     <html lang="fr" className="scroll-smooth">
       <body className="font-sans antialiased">
         {children}
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            duration: 4000,
-            style: {
-              background: "#004d5a",
-              color: "#f7f9fa",
-              borderRadius: "12px",
-              padding: "16px",
-            },
-            success: {
-              iconTheme: { primary: "#7ec8a8", secondary: "#004d5a" },
-            },
-          }}
-        />
+        <ClientToaster />
       </body>
     </html>
   );
