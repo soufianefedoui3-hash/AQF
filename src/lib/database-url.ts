@@ -23,47 +23,43 @@ function absolutizeFileUrl(fileUrl: string): string {
   return toFileUrl(absolutePath);
 }
 
+function isDefaultRelativeSqliteUrl(url: string): boolean {
+  return (
+    url === DEFAULT_RELATIVE_DB ||
+    url === "file:./dev.db" ||
+    url === "file:./prisma/dev.db" ||
+    url === "file:prisma/dev.db" ||
+    url === "file:dev.db"
+  );
+}
+
 /**
- * Resolves SQLite to a stable absolute file URL.
- * In production, remaps default/dev relative paths to prisma/production.db.
- * In development, keeps the configured DATABASE_URL (typically file:./dev.db).
+ * Resolves SQLite to one stable absolute file URL for the whole process.
+ *
+ * Important: only `NODE_ENV === "development"` uses the local dev.db.
+ * Unset / production / staging always use prisma/production.db for default
+ * relative URLs — Hostinger often omits NODE_ENV, which previously caused
+ * admin writes and public reads to hit different database files.
  */
-export function resolveProductionDatabaseUrl(): string {
+export function resolveDatabaseUrl(): string {
   const configured = process.env.DATABASE_URL?.trim();
-  const isProduction = process.env.NODE_ENV === "production";
+  const isDev = process.env.NODE_ENV === "development";
 
-  if (!isProduction) {
-    if (configured?.startsWith("file:")) {
-      const url = absolutizeFileUrl(configured);
+  if (isDev) {
+    const source = configured?.startsWith("file:")
+      ? configured
+      : configured || DEFAULT_RELATIVE_DB;
+    if (source.startsWith("file:")) {
+      const url = absolutizeFileUrl(source);
       process.env.DATABASE_URL = url;
       return url;
     }
-
-    const fallback = configured || DEFAULT_RELATIVE_DB;
-    if (fallback.startsWith("file:")) {
-      const url = absolutizeFileUrl(fallback);
-      process.env.DATABASE_URL = url;
-      return url;
-    }
-
-    return fallback;
+    return source;
   }
 
-  const useProductionDefault =
-    !configured ||
-    configured === DEFAULT_RELATIVE_DB ||
-    configured === "file:./prisma/dev.db" ||
-    configured === "file:./dev.db";
-
-  if (useProductionDefault) {
-    const dbPath = join(process.cwd(), PRODUCTION_DB_RELATIVE);
-    ensureDirectoryForFile(dbPath);
-    const url = toFileUrl(dbPath);
-    process.env.DATABASE_URL = url;
-    return url;
-  }
-
-  if (configured.startsWith("file:")) {
+  // Production / unset NODE_ENV / anything else → stable production.db
+  // unless an explicit non-default file path was configured.
+  if (configured?.startsWith("file:") && !isDefaultRelativeSqliteUrl(configured)) {
     const url = absolutizeFileUrl(configured);
     process.env.DATABASE_URL = url;
     return url;
@@ -74,6 +70,11 @@ export function resolveProductionDatabaseUrl(): string {
   const url = toFileUrl(dbPath);
   process.env.DATABASE_URL = url;
   return url;
+}
+
+/** @deprecated Use resolveDatabaseUrl — kept for existing imports. */
+export function resolveProductionDatabaseUrl(): string {
+  return resolveDatabaseUrl();
 }
 
 export function getProductionDatabasePath(): string {

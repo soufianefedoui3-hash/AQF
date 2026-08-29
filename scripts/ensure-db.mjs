@@ -22,56 +22,50 @@ function error(message) {
 }
 
 /**
- * Resolve a writable SQLite path for production hosts where relative paths
- * or missing directories cause prisma db push to fail on boot.
+ * Resolve a writable SQLite path shared by bootstrap scripts and the Next.js app.
+ * Only NODE_ENV === "development" uses the local dev DB; everything else
+ * (including unset NODE_ENV on Hostinger) uses prisma/production.db.
  */
 export function resolveDatabaseUrl() {
   const configured = process.env.DATABASE_URL?.trim();
-  const isProduction = process.env.NODE_ENV === "production";
+  const isDev = process.env.NODE_ENV === "development";
 
-  // Development: keep configured path (typically file:./dev.db), just absolutize.
-  if (!isProduction) {
-    if (configured?.startsWith("file:")) {
-      const rawPath = configured.replace(/^file:/, "");
-      const absolutePath = rawPath.startsWith("/") || /^[A-Za-z]:[\\/]/.test(rawPath)
-        ? rawPath
-        : resolve(process.cwd(), rawPath);
+  const isDefaultRelative =
+    !configured ||
+    configured === DEFAULT_RELATIVE_DB ||
+    configured === "file:./dev.db" ||
+    configured === "file:./prisma/dev.db" ||
+    configured === "file:prisma/dev.db" ||
+    configured === "file:dev.db";
+
+  if (isDev) {
+    const source = configured?.startsWith("file:")
+      ? configured
+      : DEFAULT_RELATIVE_DB;
+    if (source.startsWith("file:")) {
+      const rawPath = source.replace(/^file:/, "");
+      const absolutePath =
+        rawPath.startsWith("/") || /^[A-Za-z]:[\\/]/.test(rawPath)
+          ? rawPath
+          : resolve(process.cwd(), rawPath);
       mkdirSync(dirname(absolutePath), { recursive: true });
       const absoluteUrl = `file:${absolutePath.replace(/\\/g, "/")}`;
       process.env.DATABASE_URL = absoluteUrl;
       return absoluteUrl;
     }
-
-    const dbPath = join(process.cwd(), "prisma", "dev.db");
-    mkdirSync(dirname(dbPath), { recursive: true });
-    const absoluteUrl = `file:${dbPath.replace(/\\/g, "/")}`;
-    process.env.DATABASE_URL = absoluteUrl;
-    return absoluteUrl;
+    return source;
   }
 
-  const useProductionDefault =
-    !configured ||
-    configured === DEFAULT_RELATIVE_DB ||
-    configured === "file:./prisma/dev.db" ||
-    configured === "file:./dev.db";
-
-  if (useProductionDefault) {
-    const dbPath = join(process.cwd(), "prisma", "production.db");
-    mkdirSync(dirname(dbPath), { recursive: true });
-    const absoluteUrl = `file:${dbPath.replace(/\\/g, "/")}`;
-    process.env.DATABASE_URL = absoluteUrl;
-    return absoluteUrl;
-  }
-
-  if (configured.startsWith("file:")) {
+  if (configured?.startsWith("file:") && !isDefaultRelative) {
     const rawPath = configured.replace(/^file:/, "");
-    const absolutePath = rawPath.startsWith("/") || /^[A-Za-z]:[\\/]/.test(rawPath)
-      ? rawPath
-      : resolve(process.cwd(), rawPath);
-
+    const absolutePath =
+      rawPath.startsWith("/") || /^[A-Za-z]:[\\/]/.test(rawPath)
+        ? rawPath
+        : resolve(process.cwd(), rawPath);
     mkdirSync(dirname(absolutePath), { recursive: true });
-    process.env.DATABASE_URL = `file:${absolutePath.replace(/\\/g, "/")}`;
-    return process.env.DATABASE_URL;
+    const absoluteUrl = `file:${absolutePath.replace(/\\/g, "/")}`;
+    process.env.DATABASE_URL = absoluteUrl;
+    return absoluteUrl;
   }
 
   const dbPath = join(process.cwd(), "prisma", "production.db");

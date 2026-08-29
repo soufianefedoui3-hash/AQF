@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { FORMATION_TYPES as FALLBACK_FORMATIONS } from "@/lib/constants";
+import { liveCmsQuery } from "@/lib/cms-live";
 
 export const SECTOR_DEFAULT_IMAGES: Record<string, string> = {
   "laboratoire-biologie-medicale":
@@ -16,11 +17,12 @@ export const SECTOR_DEFAULT_IMAGES: Record<string, string> = {
 
 export async function getFormationTypes() {
   try {
-    const types = await prisma.formationType.findMany({
-      where: { active: true },
-      orderBy: { order: "asc" },
-    });
-    // Successful query: honor empty result when all formations are deactivated.
+    const types = await liveCmsQuery(() =>
+      prisma.formationType.findMany({
+        where: { active: true },
+        orderBy: { order: "asc" },
+      })
+    );
     return types.map((t) => t.name);
   } catch {
     return [...FALLBACK_FORMATIONS];
@@ -29,7 +31,9 @@ export async function getFormationTypes() {
 
 export async function getFormationTypesFull() {
   try {
-    return await prisma.formationType.findMany({ orderBy: { order: "asc" } });
+    return await liveCmsQuery(() =>
+      prisma.formationType.findMany({ orderBy: { order: "asc" } })
+    );
   } catch {
     return [];
   }

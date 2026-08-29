@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { BRAND, PRODUCT_PACKS } from "@/lib/constants";
 import { SECTOR_DEFAULT_IMAGES } from "@/lib/formations";
 import { normalizeImageUrl } from "@/lib/news";
+import { liveCmsQuery } from "@/lib/cms-live";
 
 export const SECTOR_FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=1200&q=80";
@@ -51,23 +52,19 @@ export const FALLBACK_SECTORS = [
 
 export function resolveSectorImage(slug: string, imageUrl: string | null | undefined) {
   const normalized = normalizeImageUrl(imageUrl);
-  // Prefer the DB value (including /uploads/...). Only fill Unsplash defaults
-  // when the record has no image at all — never invent one over a stored path.
   if (normalized) return normalized;
   return SECTOR_DEFAULT_IMAGES[slug] || SECTOR_FALLBACK_IMAGE;
 }
 
-/**
- * Returns the stored image URL as-is (normalized), or null.
- * Use this when the public UI should show a placeholder instead of Unsplash.
- */
 export function getStoredSectorImage(imageUrl: string | null | undefined) {
   return normalizeImageUrl(imageUrl);
 }
 
 export async function getPageContent(key: string, fallback: { title?: string; content: string }) {
   try {
-    const page = await prisma.pageContent.findUnique({ where: { key } });
+    const page = await liveCmsQuery(() =>
+      prisma.pageContent.findUnique({ where: { key } })
+    );
     return page || { key, title: fallback.title || null, content: fallback.content };
   } catch {
     return { key, title: fallback.title || null, content: fallback.content };
@@ -91,7 +88,9 @@ export async function getFormationIntro() {
 
 export async function getGedService() {
   try {
-    const ged = await prisma.gedService.findUnique({ where: { id: "default" } });
+    const ged = await liveCmsQuery(() =>
+      prisma.gedService.findUnique({ where: { id: "default" } })
+    );
     return (
       ged || {
         id: "default",
@@ -114,13 +113,13 @@ export async function getGedService() {
 
 export async function getProductPacks() {
   try {
-    const packs = await prisma.productPack.findMany({
-      where: { active: true },
-      orderBy: { order: "asc" },
-    });
+    const packs = await liveCmsQuery(() =>
+      prisma.productPack.findMany({
+        where: { active: true },
+        orderBy: { order: "asc" },
+      })
+    );
 
-    // Successful query: honor empty result (admin may have deactivated all packs).
-    // Fallback constants only when the database query itself fails.
     return packs
       .filter((pack) => pack.name?.trim())
       .map((pack) => ({
@@ -154,10 +153,12 @@ export async function getAboutData() {
   };
 
   try {
-    const [sections, team] = await Promise.all([
-      prisma.aboutSection.findMany(),
-      prisma.teamMember.findMany({ orderBy: { order: "asc" } }),
-    ]);
+    const [sections, team] = await liveCmsQuery(() =>
+      Promise.all([
+        prisma.aboutSection.findMany(),
+        prisma.teamMember.findMany({ orderBy: { order: "asc" } }),
+      ])
+    );
 
     return {
       presentation: sections.find((s) => s.key === "presentation") || FALLBACK.presentation,
@@ -171,25 +172,25 @@ export async function getAboutData() {
 
 export async function getSectors() {
   try {
-    const sectors = await prisma.sector.findMany({ orderBy: { order: "asc" } });
-    const mapped = sectors
-      .filter((sector) => sector.slug?.trim() && sector.name?.trim())
-      .map((sector) => ({
-        slug: sector.slug.trim(),
-        name: sector.name.trim(),
-        description: sector.description?.trim() || "Description indisponible pour ce secteur.",
-        // Use stored URL only — never invent Unsplash over a DB null/upload path.
-        imageUrl: getStoredSectorImage(sector.imageUrl),
-        order: sector.order ?? 0,
-      }));
+    return await liveCmsQuery(async () => {
+      const sectors = await prisma.sector.findMany({ orderBy: { order: "asc" } });
+      const mapped = sectors
+        .filter((sector) => sector.slug?.trim() && sector.name?.trim())
+        .map((sector) => ({
+          slug: sector.slug.trim(),
+          name: sector.name.trim(),
+          description: sector.description?.trim() || "Description indisponible pour ce secteur.",
+          imageUrl: getStoredSectorImage(sector.imageUrl),
+          order: sector.order ?? 0,
+        }));
 
-    // Honor intentional empty CMS. Only use hardcoded list when DB was never seeded.
-    if (mapped.length === 0) {
-      const settingsCount = await prisma.siteSettings.count().catch(() => 0);
-      if (settingsCount === 0) return [...FALLBACK_SECTORS];
-    }
+      if (mapped.length === 0) {
+        const settingsCount = await prisma.siteSettings.count().catch(() => 0);
+        if (settingsCount === 0) return [...FALLBACK_SECTORS];
+      }
 
-    return mapped;
+      return mapped;
+    });
   } catch {
     return [...FALLBACK_SECTORS];
   }
@@ -200,13 +201,15 @@ export async function getSectorBySlug(slug: string) {
   if (!normalized) return null;
 
   try {
-    const sector = await prisma.sector.findUnique({ where: { slug: normalized } });
-    if (!sector) return null;
+    return await liveCmsQuery(async () => {
+      const sector = await prisma.sector.findUnique({ where: { slug: normalized } });
+      if (!sector) return null;
 
-    return {
-      ...sector,
-      imageUrl: getStoredSectorImage(sector.imageUrl),
-    };
+      return {
+        ...sector,
+        imageUrl: getStoredSectorImage(sector.imageUrl),
+      };
+    });
   } catch {
     const fallback = FALLBACK_SECTORS.find((sector) => sector.slug === normalized);
     if (!fallback) return null;
@@ -233,10 +236,11 @@ export async function getCareersSettings() {
   };
 
   try {
-    const settings = await prisma.careersSettings.findUnique({ where: { id: "default" } });
+    const settings = await liveCmsQuery(() =>
+      prisma.careersSettings.findUnique({ where: { id: "default" } })
+    );
     if (!settings) return FALLBACK;
 
-    // Return DB values as stored (even if blank strings) so admin edits win.
     return {
       title: settings.title ?? "",
       content: settings.content ?? "",
@@ -250,19 +254,21 @@ export async function getCareersSettings() {
 
 export async function getPublishedArticles() {
   try {
-    const articles = await prisma.newsArticle.findMany({
-      where: { published: true },
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        title: true,
-        slug: true,
-        excerpt: true,
-        content: true,
-        imageUrl: true,
-        createdAt: true,
-      },
-    });
+    const articles = await liveCmsQuery(() =>
+      prisma.newsArticle.findMany({
+        where: { published: true },
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          excerpt: true,
+          content: true,
+          imageUrl: true,
+          createdAt: true,
+        },
+      })
+    );
 
     return articles
       .filter((article) => article.slug?.trim() && article.title?.trim())
@@ -291,7 +297,11 @@ export async function getSiteSettings() {
   };
 
   try {
-    return (await prisma.siteSettings.findUnique({ where: { id: "default" } })) || FALLBACK;
+    return (
+      (await liveCmsQuery(() =>
+        prisma.siteSettings.findUnique({ where: { id: "default" } })
+      )) || FALLBACK
+    );
   } catch {
     return FALLBACK;
   }

@@ -6,6 +6,7 @@ import { ArticleImage } from "@/components/news/ArticleImage";
 import { formatDate } from "@/lib/utils";
 import { getArticleExcerpt, splitArticleContent } from "@/lib/news";
 import { prisma } from "@/lib/prisma";
+import { liveCmsQuery } from "@/lib/cms-live";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -16,9 +17,11 @@ export default async function ArticlePage({ params }: PageProps) {
 
   let article;
   try {
-    article = await prisma.newsArticle.findFirst({
-      where: { slug, published: true },
-    });
+    article = await liveCmsQuery(() =>
+      prisma.newsArticle.findFirst({
+        where: { slug, published: true },
+      })
+    );
   } catch (error) {
     console.error("Article page error:", error);
     notFound();

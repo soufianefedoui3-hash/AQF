@@ -27,44 +27,30 @@ export type CmsSection =
   | "news"
   | "all";
 
-const SECTION_PATHS: Record<CmsSection, readonly string[]> = {
-  about: ["/a-propos"],
-  team: ["/a-propos"],
-  sector: ["/secteurs", "/services/accompagnement"],
-  careers: ["/carrieres"],
-  settings: ["/", "/a-propos", "/carrieres"], // layout footer + WhatsApp
-  page: ["/", "/services/formation"],
-  ged: ["/services/produits"],
-  formations: ["/services/formation"],
-  packs: ["/services/produits"],
-  news: ["/actualites"],
-  all: CMS_PUBLIC_PATHS,
-};
-
 /**
- * Bust Next.js cache for public pages after admin CMS mutations.
- * Always revalidates layout so Footer / WhatsApp pick up settings.
+ * Bust Next.js caches aggressively after any admin CMS mutation.
+ * Revalidates every public CMS route as both page and layout.
  */
-export function revalidateCms(section: CmsSection = "all") {
-  const paths = new Set<string>(SECTION_PATHS[section] || CMS_PUBLIC_PATHS);
-  // Layout-level consumers (footer, WhatsApp) need a broad refresh for settings.
-  if (section === "settings" || section === "all") {
-    for (const path of CMS_PUBLIC_PATHS) paths.add(path);
-  }
-
-  for (const path of paths) {
+export function revalidateCms(_section: CmsSection = "all") {
+  for (const path of CMS_PUBLIC_PATHS) {
     try {
-      revalidatePath(path);
+      revalidatePath(path, "page");
     } catch (error) {
-      console.warn(`[revalidate] Failed for ${path}:`, error);
+      console.warn(`[revalidate] page ${path}:`, error);
+    }
+    try {
+      revalidatePath(path, "layout");
+    } catch (error) {
+      console.warn(`[revalidate] layout ${path}:`, error);
     }
   }
 
-  // Revalidate nested dynamic sector / article routes by layout segment.
   try {
+    revalidatePath("/", "layout");
     revalidatePath("/secteurs", "layout");
     revalidatePath("/actualites", "layout");
-    revalidatePath("/", "layout");
+    revalidatePath("/services", "layout");
+    revalidatePath("/admin", "layout");
   } catch {
     /* ignore */
   }

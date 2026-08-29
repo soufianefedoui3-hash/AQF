@@ -6,6 +6,7 @@ import { getSiteSettings } from "@/lib/content";
 /** Always fetch fresh CMS data so admin edits appear immediately. */
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+export const fetchCache = "force-no-store";
 
 export default async function PublicLayout({
   children,
