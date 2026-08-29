@@ -1,7 +1,6 @@
-import { prisma } from "@/lib/prisma";
 import { FORMATION_TYPES as FALLBACK_FORMATIONS } from "@/lib/constants";
-import { safeCmsQuery } from "@/lib/cms-live";
 import { SECTOR_PLACEHOLDER_IMAGES } from "@/lib/placeholder-images";
+import { listFormations } from "@/lib/cms/store";
 
 /** Local sector placeholders (no external CDN). */
 export const SECTOR_DEFAULT_IMAGES: Record<string, string> = {
@@ -9,22 +8,19 @@ export const SECTOR_DEFAULT_IMAGES: Record<string, string> = {
 };
 
 export async function getFormationTypes() {
-  const types = await safeCmsQuery(
-    () =>
-      prisma.formationType.findMany({
-        where: { active: true },
-        orderBy: { order: "asc" },
-      }),
-    null
-  );
-
-  if (!types) return [...FALLBACK_FORMATIONS];
-  return types.map((t) => t.name);
+  try {
+    const types = await listFormations(true);
+    if (types.length === 0) return [...FALLBACK_FORMATIONS];
+    return types.map((t) => t.name);
+  } catch {
+    return [...FALLBACK_FORMATIONS];
+  }
 }
 
 export async function getFormationTypesFull() {
-  return safeCmsQuery(
-    () => prisma.formationType.findMany({ orderBy: { order: "asc" } }),
-    []
-  );
+  try {
+    return await listFormations(false);
+  } catch {
+    return [];
+  }
 }

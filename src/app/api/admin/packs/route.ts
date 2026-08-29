@@ -1,138 +1,97 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { withPrismaQuery, runPrismaMutation } from "@/lib/prisma-safe";
 import { getAdminSession } from "@/lib/auth";
-import { z } from "zod";
 import { revalidateCms } from "@/lib/revalidate-cms";
+import {
+  createPack,
+  deletePack,
+  listPacks,
+  updatePack,
+} from "@/lib/cms/store";
 
-const schema = z.object({
-  name: z.string().trim().min(1, "Nom requis"),
-  description: z.string().trim().min(1, "Description requise"),
-  order: z.number().int().min(0).optional(),
-  active: z.boolean().optional(),
-});
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+function jsonError(error: string, status: number) {
+  return NextResponse.json({ error }, { status });
+}
+
+function readPackBody(body: Record<string, unknown>) {
+  const name = typeof body.name === "string" ? body.name.trim() : "";
+  const description =
+    typeof body.description === "string" ? body.description.trim() : "";
+  const order = typeof body.order === "number" ? body.order : undefined;
+  const active = typeof body.active === "boolean" ? body.active : undefined;
+  return { name, description, order, active };
+}
 
 export async function GET() {
-  const session = await getAdminSession();
-  if (!session) {
-    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
-  }
-
   try {
-    const packs = await withPrismaQuery(
-      () =>
-        prisma.productPack.findMany({
-          orderBy: { order: "asc" },
-        }),
-      []
-    );
-    return NextResponse.json(packs);
+    const session = await getAdminSession();
+    if (!session) return jsonError("Non autorisé", 401);
+    return NextResponse.json(await listPacks(false));
   } catch {
     return NextResponse.json([]);
   }
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getAdminSession();
-  if (!session) {
-    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
-  }
-
   try {
-    const body = await request.json();
-    const data = schema.parse(body);
+    const session = await getAdminSession();
+    if (!session) return jsonError("Non autorisé", 401);
+    const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+    const data = readPackBody(body);
+    if (!data.name) return jsonError("Nom requis", 400);
+    if (!data.description) return jsonError("Description requise", 400);
 
-    const result = await runPrismaMutation(async () => {
-      const maxOrder = await prisma.productPack.aggregate({ _max: { order: true } });
-      return prisma.productPack.create({
-        data: {
-          name: data.name,
-          description: data.description,
-          order: data.order ?? (maxOrder._max.order ?? -1) + 1,
-          active: data.active ?? true,
-        },
-      });
-    });
-
-    if (!result.ok) {
-      return NextResponse.json({ error: result.error }, { status: result.status });
-    }
-
+    const result = await createPack(data);
+    if (!result.ok) return jsonError(result.error, 503);
     revalidateCms("packs");
     return NextResponse.json(result.data, { status: 201 });
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: error.errors[0]?.message || "Données invalides" },
-        { status: 400 }
-      );
-    }
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+    return jsonError(
+      error instanceof Error ? error.message : "Création impossible",
+      503
+    );
   }
 }
 
 export async function PUT(request: NextRequest) {
-  const session = await getAdminSession();
-  if (!session) {
-    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
-  }
-
   try {
-    const body = await request.json();
-    const { id, ...rest } = body;
-    if (!id) {
-      return NextResponse.json({ error: "ID requis" }, { status: 400 });
-    }
-
-    const data = schema.partial().parse(rest);
-
-    const result = await runPrismaMutation(() =>
-      prisma.productPack.update({
-        where: { id },
-        data,
-      })
-    );
-
-    if (!result.ok) {
-      return NextResponse.json({ error: result.error }, { status: result.status });
-    }
-
+    const session = await getAdminSession();
+    if (!session) return jsonError("Non autorisé", 401);
+    const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+    const id = body.id ? String(body.id) : "";
+    if (!id) return jsonError("ID requis", 400);
+    const data = readPackBody(body);
+    const result = await updatePack(id, {
+      name: data.name || undefined,
+      description: data.description || undefined,
+      order: data.order,
+      active: data.active,
+    });
+    if (!result.ok) return jsonError(result.error, 503);
     revalidateCms("packs");
     return NextResponse.json(result.data);
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: error.errors[0]?.message || "Données invalides" },
-        { status: 400 }
-      );
-    }
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+    return jsonError(
+      error instanceof Error ? error.message : "Mise à jour impossible",
+      503
+    );
   }
 }
 
 export async function DELETE(request: NextRequest) {
-  const session = await getAdminSession();
-  if (!session) {
-    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
-  }
-
   try {
-    const { id } = await request.json();
-    if (!id) {
-      return NextResponse.json({ error: "ID requis" }, { status: 400 });
-    }
-
-    const result = await runPrismaMutation(() =>
-      prisma.productPack.delete({ where: { id } })
-    );
-
-    if (!result.ok) {
-      return NextResponse.json({ error: result.error }, { status: result.status });
-    }
-
+    const session = await getAdminSession();
+    if (!session) return jsonError("Non autorisé", 401);
+    const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+    const id = body.id ? String(body.id) : "";
+    if (!id) return jsonError("ID requis", 400);
+    const result = await deletePack(id);
+    if (!result.ok) return jsonError(result.error, 503);
     revalidateCms("packs");
     return NextResponse.json({ success: true });
   } catch {
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+    return jsonError("Suppression impossible", 503);
   }
 }

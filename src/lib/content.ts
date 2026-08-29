@@ -1,13 +1,24 @@
-import { prisma } from "@/lib/prisma";
 import { BRAND, PRODUCT_PACKS } from "@/lib/constants";
 import { SECTOR_DEFAULT_IMAGES } from "@/lib/formations";
 import { normalizeImageUrl } from "@/lib/news";
-import { liveCmsQuery, safeCmsQuery } from "@/lib/cms-live";
 import {
   PLACEHOLDER_GENERIC,
   localSectorImage,
   sanitizePublicImageUrl,
 } from "@/lib/placeholder-images";
+import {
+  getCareersRow,
+  getGedRow,
+  getNewsBySlug,
+  getPageRow,
+  getSectorRow,
+  getSettingsRow,
+  listAboutSections,
+  listNews,
+  listPacks,
+  listSectors,
+  listTeamMembers,
+} from "@/lib/cms/store";
 
 export const SECTOR_FALLBACK_IMAGE = PLACEHOLDER_GENERIC;
 export const FALLBACK_SECTORS = [
@@ -61,12 +72,16 @@ export function getStoredSectorImage(imageUrl: string | null | undefined) {
   return normalizeImageUrl(imageUrl);
 }
 
-export async function getPageContent(key: string, fallback: { title?: string; content: string }) {
-  const page = await safeCmsQuery(
-    () => prisma.pageContent.findUnique({ where: { key } }),
-    null
-  );
-  return page || { key, title: fallback.title || null, content: fallback.content };
+export async function getPageContent(
+  key: string,
+  fallback: { title?: string; content: string }
+) {
+  try {
+    const page = await getPageRow(key);
+    return page || { key, title: fallback.title || null, content: fallback.content };
+  } catch {
+    return { key, title: fallback.title || null, content: fallback.content };
+  }
 }
 
 export async function getHomepagePresentation() {
@@ -86,9 +101,7 @@ export async function getFormationIntro() {
 
 export async function getGedService() {
   try {
-    const ged = await liveCmsQuery(() =>
-      prisma.gedService.findUnique({ where: { id: "default" } })
-    );
+    const ged = await getGedRow();
     if (!ged) {
       return {
         id: "default",
@@ -98,11 +111,7 @@ export async function getGedService() {
         imageUrl: null as string | null,
       };
     }
-
-    return {
-      ...ged,
-      imageUrl: sanitizePublicImageUrl(ged.imageUrl),
-    };
+    return { ...ged, imageUrl: sanitizePublicImageUrl(ged.imageUrl) };
   } catch {
     return {
       id: "default",
@@ -116,27 +125,24 @@ export async function getGedService() {
 
 export async function getProductPacks() {
   try {
-    const packs = await liveCmsQuery(() =>
-      prisma.productPack.findMany({
-        where: { active: true },
-        orderBy: { order: "asc" },
-      })
-    );
-
-    return packs
+    const packs = await listPacks(true);
+    const mapped = packs
       .filter((pack) => pack.name?.trim())
       .map((pack) => ({
         id: pack.id,
         name: pack.name.trim(),
         description: pack.description?.trim() || "",
       }));
+    if (mapped.length > 0) return mapped;
   } catch {
-    return PRODUCT_PACKS.map((pack, index) => ({
-      id: `fallback-${index}`,
-      name: pack.name,
-      description: pack.description,
-    }));
+    /* fall through */
   }
+
+  return PRODUCT_PACKS.map((pack, index) => ({
+    id: `fallback-${index}`,
+    name: pack.name,
+    description: pack.description,
+  }));
 }
 
 export async function getAboutData() {
@@ -156,15 +162,13 @@ export async function getAboutData() {
   };
 
   try {
-    const [sections, team] = await liveCmsQuery(() =>
-      Promise.all([
-        prisma.aboutSection.findMany(),
-        prisma.teamMember.findMany({ orderBy: { order: "asc" } }),
-      ])
-    );
-
+    const [sections, team] = await Promise.all([
+      listAboutSections(),
+      listTeamMembers(),
+    ]);
     return {
-      presentation: sections.find((s) => s.key === "presentation") || FALLBACK.presentation,
+      presentation:
+        sections.find((s) => s.key === "presentation") || FALLBACK.presentation,
       steps: sections.find((s) => s.key === "steps") || FALLBACK.steps,
       team: team.map((member) => ({
         ...member,
@@ -178,25 +182,24 @@ export async function getAboutData() {
 
 export async function getSectors() {
   try {
-    return await liveCmsQuery(async () => {
-      const sectors = await prisma.sector.findMany({ orderBy: { order: "asc" } });
-      const mapped = sectors
-        .filter((sector) => sector.slug?.trim() && sector.name?.trim())
-        .map((sector) => ({
-          slug: sector.slug.trim(),
-          name: sector.name.trim(),
-          description: sector.description?.trim() || "Description indisponible pour ce secteur.",
-          imageUrl: resolveSectorImage(sector.slug, sector.imageUrl),
-          order: sector.order ?? 0,
-        }));
+    const sectors = await listSectors();
+    const mapped = sectors
+      .filter((sector) => sector.slug?.trim() && sector.name?.trim())
+      .map((sector) => ({
+        slug: sector.slug.trim(),
+        name: sector.name.trim(),
+        description:
+          sector.description?.trim() || "Description indisponible pour ce secteur.",
+        imageUrl: resolveSectorImage(sector.slug, sector.imageUrl),
+        order: sector.order ?? 0,
+      }));
 
-      if (mapped.length === 0) {
-        const settingsCount = await prisma.siteSettings.count().catch(() => 0);
-        if (settingsCount === 0) return [...FALLBACK_SECTORS];
-      }
+    if (mapped.length === 0) {
+      const settings = await getSettingsRow();
+      if (!settings) return [...FALLBACK_SECTORS];
+    }
 
-      return mapped;
-    });
+    return mapped;
   } catch {
     return [...FALLBACK_SECTORS];
   }
@@ -207,19 +210,15 @@ export async function getSectorBySlug(slug: string) {
   if (!normalized) return null;
 
   try {
-    return await liveCmsQuery(async () => {
-      const sector = await prisma.sector.findUnique({ where: { slug: normalized } });
-      if (!sector) return null;
-
-      return {
-        ...sector,
-        imageUrl: resolveSectorImage(sector.slug, sector.imageUrl),
-      };
-    });
+    const sector = await getSectorRow(normalized);
+    if (!sector) return null;
+    return {
+      ...sector,
+      imageUrl: resolveSectorImage(sector.slug, sector.imageUrl),
+    };
   } catch {
     const fallback = FALLBACK_SECTORS.find((sector) => sector.slug === normalized);
     if (!fallback) return null;
-
     return {
       id: `fallback-${fallback.slug}`,
       slug: fallback.slug,
@@ -241,38 +240,23 @@ export async function getCareersSettings() {
     phone: "+212 600 000 000",
   };
 
-  const settings = await safeCmsQuery(
-    () => prisma.careersSettings.findUnique({ where: { id: "default" } }),
-    null
-  );
-  if (!settings) return FALLBACK;
-
-  return {
-    title: String(settings.title ?? "").trim() || FALLBACK.title,
-    content: String(settings.content ?? "").trim() || FALLBACK.content,
-    email: String(settings.email ?? "").trim() || FALLBACK.email,
-    phone: String(settings.phone ?? "").trim() || FALLBACK.phone,
-  };
+  try {
+    const settings = await getCareersRow();
+    if (!settings) return FALLBACK;
+    return {
+      title: settings.title.trim() || FALLBACK.title,
+      content: settings.content.trim() || FALLBACK.content,
+      email: settings.email.trim() || FALLBACK.email,
+      phone: settings.phone.trim() || FALLBACK.phone,
+    };
+  } catch {
+    return FALLBACK;
+  }
 }
 
 export async function getPublishedArticles() {
   try {
-    const articles = await liveCmsQuery(() =>
-      prisma.newsArticle.findMany({
-        where: { published: true },
-        orderBy: { createdAt: "desc" },
-        select: {
-          id: true,
-          title: true,
-          slug: true,
-          excerpt: true,
-          content: true,
-          imageUrl: true,
-          createdAt: true,
-        },
-      })
-    );
-
+    const articles = await listNews(true);
     return articles
       .filter((article) => article.slug?.trim() && article.title?.trim())
       .map((article) => ({
@@ -280,12 +264,25 @@ export async function getPublishedArticles() {
         title: article.title.trim(),
         slug: article.slug.trim(),
         excerpt: article.excerpt?.trim() || null,
-        content: article.content?.trim() || "",
+        content: article.content.trim(),
         imageUrl: sanitizePublicImageUrl(article.imageUrl),
         createdAt: article.createdAt.toISOString(),
       }));
   } catch {
     return [];
+  }
+}
+
+export async function getPublishedArticleBySlug(slug: string) {
+  try {
+    const article = await getNewsBySlug(slug, true);
+    if (!article) return null;
+    return {
+      ...article,
+      imageUrl: sanitizePublicImageUrl(article.imageUrl),
+    };
+  } catch {
+    return null;
   }
 }
 
@@ -300,11 +297,7 @@ export async function getSiteSettings() {
   };
 
   try {
-    return (
-      (await liveCmsQuery(() =>
-        prisma.siteSettings.findUnique({ where: { id: "default" } })
-      )) || FALLBACK
-    );
+    return (await getSettingsRow()) || FALLBACK;
   } catch {
     return FALLBACK;
   }

@@ -1,232 +1,157 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { withPrismaQuery, runPrismaMutation } from "@/lib/prisma-safe";
-import { DEFAULT_ADMIN_CONTENT } from "@/lib/seed-data";
 import { getAdminSession } from "@/lib/auth";
+import { DEFAULT_ADMIN_CONTENT } from "@/lib/seed-data";
 import { revalidateCms } from "@/lib/revalidate-cms";
-import { toLocalImageUrl } from "@/lib/placeholder-images";
+import {
+  deleteTeam,
+  loadAdminContent,
+  upsertAbout,
+  upsertCareers,
+  upsertGed,
+  upsertPage,
+  upsertSector,
+  upsertSettings,
+  upsertTeam,
+} from "@/lib/cms/store";
 
-/** Persist only local upload/placeholder/brand paths — never external URLs. */
-function coerceLocalImageUrl(value: unknown): string | null {
-  if (typeof value !== "string") return null;
-  return toLocalImageUrl(value);
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+function jsonError(error: string, status: number) {
+  return NextResponse.json({ error }, { status });
 }
 
 export async function GET() {
-  const session = await getAdminSession();
-  if (!session) {
-    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+  try {
+    const session = await getAdminSession();
+    if (!session) return jsonError("Non autorisé", 401);
+
+    const data = await loadAdminContent();
+    return NextResponse.json({
+      about: data.about.length > 0 ? data.about : DEFAULT_ADMIN_CONTENT.about,
+      team: data.team,
+      sectors:
+        data.sectors.length > 0 ? data.sectors : DEFAULT_ADMIN_CONTENT.sectors,
+      careers: data.careers || DEFAULT_ADMIN_CONTENT.careers,
+      settings: data.settings || DEFAULT_ADMIN_CONTENT.settings,
+      pages: data.pages.length > 0 ? data.pages : DEFAULT_ADMIN_CONTENT.pages,
+      ged: data.ged || DEFAULT_ADMIN_CONTENT.ged,
+    });
+  } catch (error) {
+    console.error("[cms] admin GET failed:", error);
+    return NextResponse.json(DEFAULT_ADMIN_CONTENT);
   }
-
-  const data = await withPrismaQuery(async () => {
-    const [about, team, sectors, careers, settings, pages, ged] = await Promise.all([
-      prisma.aboutSection.findMany(),
-      prisma.teamMember.findMany({ orderBy: { order: "asc" } }),
-      prisma.sector.findMany({ orderBy: { order: "asc" } }),
-      prisma.careersSettings.findUnique({ where: { id: "default" } }),
-      prisma.siteSettings.findUnique({ where: { id: "default" } }),
-      prisma.pageContent.findMany(),
-      prisma.gedService.findUnique({ where: { id: "default" } }),
-    ]);
-
-    return {
-      about: about.length > 0 ? about : DEFAULT_ADMIN_CONTENT.about,
-      team: team.map((member) => ({
-        ...member,
-        imageUrl: coerceLocalImageUrl(member.imageUrl),
-      })),
-      sectors: (sectors.length > 0 ? sectors : DEFAULT_ADMIN_CONTENT.sectors).map((sector) => ({
-        ...sector,
-        imageUrl: coerceLocalImageUrl(sector.imageUrl),
-      })),
-      careers: careers || DEFAULT_ADMIN_CONTENT.careers,
-      settings: settings || DEFAULT_ADMIN_CONTENT.settings,
-      pages: pages.length > 0 ? pages : DEFAULT_ADMIN_CONTENT.pages,
-      ged: ged
-        ? { ...ged, imageUrl: coerceLocalImageUrl(ged.imageUrl) }
-        : DEFAULT_ADMIN_CONTENT.ged,
-    };
-  }, DEFAULT_ADMIN_CONTENT);
-
-  return NextResponse.json(data);
 }
 
 export async function PUT(request: NextRequest) {
-  const session = await getAdminSession();
-  if (!session) {
-    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
-  }
-
   try {
-    const body = await request.json();
-    const { section, data } = body;
+    const session = await getAdminSession();
+    if (!session) return jsonError("Non autorisé", 401);
 
-    if (!section || !data || typeof data !== "object") {
-      return NextResponse.json(
-        { error: "section et data sont requis" },
-        { status: 400 }
-      );
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return jsonError("JSON invalide", 400);
     }
 
-    const result = await runPrismaMutation(async () => {
-      switch (section) {
-        case "about": {
-          if (!data.key) throw new Error("Clé de section requise");
-          return prisma.aboutSection.upsert({
-            where: { key: data.key },
-            update: { title: data.title || "", content: data.content || "" },
-            create: {
-              key: data.key,
-              title: data.title || "",
-              content: data.content || "",
-            },
-          });
-        }
-        case "team": {
-          if (data.id) {
-            return prisma.teamMember.update({
-              where: { id: data.id },
-              data: {
-                name: data.name,
-                role: data.role,
-                skills: data.skills,
-                imageUrl: coerceLocalImageUrl(data.imageUrl),
-                order: data.order ?? 0,
-              },
-            });
-          }
-          return prisma.teamMember.create({
-            data: {
-              name: data.name || "Nouveau membre",
-              role: data.role || "Rôle",
-              skills: data.skills || "",
-              imageUrl: coerceLocalImageUrl(data.imageUrl),
-              order: data.order || 0,
-            },
-          });
-        }
-        case "team-delete": {
-          if (!data.id) throw new Error("ID requis");
-          return prisma.teamMember.delete({ where: { id: data.id } });
-        }
-        case "sector": {
-          const payload = {
-            name: data.name || "",
-            description: data.description || "",
-            imageUrl: coerceLocalImageUrl(data.imageUrl),
-            order: typeof data.order === "number" ? data.order : 0,
-          };
+    const record =
+      body && typeof body === "object" ? (body as Record<string, unknown>) : {};
+    const section = String(record.section || "");
+    const data =
+      record.data && typeof record.data === "object"
+        ? (record.data as Record<string, unknown>)
+        : null;
 
-          if (data.slug) {
-            return prisma.sector.upsert({
-              where: { slug: data.slug },
-              update: payload,
-              create: { slug: data.slug, ...payload },
-            });
-          }
+    if (!section || !data) {
+      return jsonError("section et data sont requis", 400);
+    }
 
-          if (data.id && !String(data.id).startsWith("default-")) {
-            return prisma.sector.update({
-              where: { id: data.id },
-              data: payload,
-            });
-          }
-
-          throw new Error("slug ou id de secteur valide requis");
-        }
-        case "careers": {
-          return prisma.careersSettings.upsert({
-            where: { id: "default" },
-            update: {
-              title: data.title || "",
-              content: data.content || "",
-              email: data.email || "",
-              phone: data.phone || "",
-            },
-            create: {
-              id: "default",
-              title: data.title || "",
-              content: data.content || "",
-              email: data.email || "",
-              phone: data.phone || "",
-            },
-          });
-        }
-        case "settings": {
-          return prisma.siteSettings.upsert({
-            where: { id: "default" },
-            update: {
-              whatsappNumber: data.whatsappNumber || "",
-              contactEmail: data.contactEmail || "",
-              contactPhone: data.contactPhone || "",
-              address: data.address || "",
-            },
-            create: {
-              id: "default",
-              whatsappNumber: data.whatsappNumber || "",
-              contactEmail: data.contactEmail || "",
-              contactPhone: data.contactPhone || "",
-              address: data.address || "",
-            },
-          });
-        }
-        case "page": {
-          if (!data.key) throw new Error("Clé de page requise");
-          return prisma.pageContent.upsert({
-            where: { key: data.key },
-            update: { title: data.title, content: data.content || "" },
-            create: {
-              key: data.key,
-              title: data.title,
-              content: data.content || "",
-            },
-          });
-        }
-        case "ged": {
-          const gedImage = coerceLocalImageUrl(data.imageUrl);
-          return prisma.gedService.upsert({
-            where: { id: "default" },
-            update: {
-              title: data.title || "",
-              description: data.description || "",
-              imageUrl: gedImage,
-            },
-            create: {
-              id: "default",
-              title: data.title || "",
-              description: data.description || "",
-              imageUrl: gedImage,
-            },
-          });
-        }
-        default:
-          return { __invalidSection: true };
-      }
-    });
+    let result;
+    switch (section) {
+      case "about":
+        if (!data.key) return jsonError("Clé de section requise", 400);
+        result = await upsertAbout({
+          key: String(data.key),
+          title: data.title == null ? "" : String(data.title),
+          content: data.content == null ? "" : String(data.content),
+        });
+        break;
+      case "team":
+        result = await upsertTeam({
+          id: data.id ? String(data.id) : undefined,
+          name: data.name == null ? undefined : String(data.name),
+          role: data.role == null ? undefined : String(data.role),
+          skills: data.skills == null ? undefined : String(data.skills),
+          imageUrl: data.imageUrl,
+          order: typeof data.order === "number" ? data.order : undefined,
+        });
+        break;
+      case "team-delete":
+        if (!data.id) return jsonError("ID requis", 400);
+        result = await deleteTeam(String(data.id));
+        break;
+      case "sector":
+        result = await upsertSector({
+          id: data.id ? String(data.id) : undefined,
+          slug: data.slug ? String(data.slug) : undefined,
+          name: data.name == null ? undefined : String(data.name),
+          description:
+            data.description == null ? undefined : String(data.description),
+          imageUrl: data.imageUrl,
+          order: typeof data.order === "number" ? data.order : undefined,
+        });
+        break;
+      case "careers":
+        result = await upsertCareers({
+          title: data.title == null ? undefined : String(data.title),
+          content: data.content == null ? undefined : String(data.content),
+          email: data.email == null ? undefined : String(data.email),
+          phone: data.phone == null ? undefined : String(data.phone),
+        });
+        break;
+      case "settings":
+        result = await upsertSettings({
+          whatsappNumber:
+            data.whatsappNumber == null ? undefined : String(data.whatsappNumber),
+          contactEmail:
+            data.contactEmail == null ? undefined : String(data.contactEmail),
+          contactPhone:
+            data.contactPhone == null ? undefined : String(data.contactPhone),
+          address: data.address == null ? undefined : String(data.address),
+        });
+        break;
+      case "page":
+        if (!data.key) return jsonError("Clé de page requise", 400);
+        result = await upsertPage({
+          key: String(data.key),
+          title: data.title == null ? null : String(data.title),
+          content: data.content == null ? "" : String(data.content),
+        });
+        break;
+      case "ged":
+        result = await upsertGed({
+          title: data.title == null ? undefined : String(data.title),
+          description:
+            data.description == null ? undefined : String(data.description),
+          imageUrl: data.imageUrl,
+        });
+        break;
+      default:
+        return jsonError("Section invalide", 400);
+    }
 
     if (!result.ok) {
-      return NextResponse.json({ error: result.error }, { status: result.status });
-    }
-
-    if (
-      result.data &&
-      typeof result.data === "object" &&
-      "__invalidSection" in result.data
-    ) {
-      return NextResponse.json({ error: "Section invalide" }, { status: 400 });
+      return jsonError(result.error, 503);
     }
 
     revalidateCms("all");
-
     return NextResponse.json({ success: true, data: result.data });
   } catch (error) {
-    console.error("Content update error:", error);
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error ? error.message : "Erreur serveur",
-      },
-      { status: 500 }
+    console.error("[cms] admin PUT failed:", error);
+    return jsonError(
+      error instanceof Error ? error.message : "Enregistrement impossible",
+      503
     );
   }
 }

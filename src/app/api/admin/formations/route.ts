@@ -1,146 +1,99 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { withPrismaQuery, runPrismaMutation } from "@/lib/prisma-safe";
 import { getAdminSession } from "@/lib/auth";
-import { z } from "zod";
 import { revalidateCms } from "@/lib/revalidate-cms";
+import {
+  createFormation,
+  deleteFormation,
+  listFormations,
+  updateFormation,
+} from "@/lib/cms/store";
 
-const schema = z.object({
-  name: z.string().trim().min(1, "Nom requis"),
-  order: z.number().int().min(0).optional(),
-  active: z.boolean().optional(),
-});
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+function jsonError(error: string, status: number) {
+  return NextResponse.json({ error }, { status });
+}
+
+function readFormationBody(body: Record<string, unknown>) {
+  const name = typeof body.name === "string" ? body.name.trim() : "";
+  const order = typeof body.order === "number" ? body.order : undefined;
+  const active = typeof body.active === "boolean" ? body.active : undefined;
+  return { name, order, active };
+}
 
 export async function GET() {
-  const session = await getAdminSession();
-  if (!session) {
-    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
-  }
-
   try {
-    const formations = await withPrismaQuery(
-      () =>
-        prisma.formationType.findMany({
-          orderBy: { order: "asc" },
-        }),
-      []
-    );
-    return NextResponse.json(formations);
+    const session = await getAdminSession();
+    if (!session) return jsonError("Non autorisé", 401);
+    return NextResponse.json(await listFormations(false));
   } catch {
     return NextResponse.json([]);
   }
 }
 
-function uniqueConflictResponse(result: { status: number; error: string }) {
-  if (result.status === 409) {
-    return NextResponse.json(
-      { error: "Une formation avec ce nom existe déjà" },
-      { status: 409 }
-    );
-  }
-  return NextResponse.json({ error: result.error }, { status: result.status });
-}
-
 export async function POST(request: NextRequest) {
-  const session = await getAdminSession();
-  if (!session) {
-    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
-  }
-
   try {
-    const body = await request.json();
-    const data = schema.parse(body);
+    const session = await getAdminSession();
+    if (!session) return jsonError("Non autorisé", 401);
+    const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+    const data = readFormationBody(body);
+    if (!data.name) return jsonError("Nom requis", 400);
 
-    const result = await runPrismaMutation(async () => {
-      const maxOrder = await prisma.formationType.aggregate({ _max: { order: true } });
-      return prisma.formationType.create({
-        data: {
-          name: data.name,
-          order: data.order ?? (maxOrder._max.order ?? -1) + 1,
-          active: data.active ?? true,
-        },
-      });
-    });
-
+    const result = await createFormation(data);
     if (!result.ok) {
-      return uniqueConflictResponse(result);
+      const status = result.error.includes("existe déjà") ? 409 : 503;
+      return jsonError(result.error, status);
     }
-
     revalidateCms("formations");
     return NextResponse.json(result.data, { status: 201 });
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: error.errors[0]?.message || "Données invalides" },
-        { status: 400 }
-      );
-    }
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+    return jsonError(
+      error instanceof Error ? error.message : "Création impossible",
+      503
+    );
   }
 }
 
 export async function PUT(request: NextRequest) {
-  const session = await getAdminSession();
-  if (!session) {
-    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
-  }
-
   try {
-    const body = await request.json();
-    const { id, ...rest } = body;
-    if (!id) {
-      return NextResponse.json({ error: "ID requis" }, { status: 400 });
-    }
-
-    const data = schema.partial().parse(rest);
-
-    const result = await runPrismaMutation(() =>
-      prisma.formationType.update({
-        where: { id },
-        data,
-      })
-    );
-
+    const session = await getAdminSession();
+    if (!session) return jsonError("Non autorisé", 401);
+    const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+    const id = body.id ? String(body.id) : "";
+    if (!id) return jsonError("ID requis", 400);
+    const data = readFormationBody(body);
+    const result = await updateFormation(id, {
+      name: data.name || undefined,
+      order: data.order,
+      active: data.active,
+    });
     if (!result.ok) {
-      return uniqueConflictResponse(result);
+      const status = result.error.includes("existe déjà") ? 409 : 503;
+      return jsonError(result.error, status);
     }
-
     revalidateCms("formations");
     return NextResponse.json(result.data);
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: error.errors[0]?.message || "Données invalides" },
-        { status: 400 }
-      );
-    }
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+    return jsonError(
+      error instanceof Error ? error.message : "Mise à jour impossible",
+      503
+    );
   }
 }
 
 export async function DELETE(request: NextRequest) {
-  const session = await getAdminSession();
-  if (!session) {
-    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
-  }
-
   try {
-    const { id } = await request.json();
-    if (!id) {
-      return NextResponse.json({ error: "ID requis" }, { status: 400 });
-    }
-
-    const result = await runPrismaMutation(() =>
-      prisma.formationType.delete({ where: { id } })
-    );
-
-    if (!result.ok) {
-      return NextResponse.json({ error: result.error }, { status: result.status });
-    }
-
+    const session = await getAdminSession();
+    if (!session) return jsonError("Non autorisé", 401);
+    const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+    const id = body.id ? String(body.id) : "";
+    if (!id) return jsonError("ID requis", 400);
+    const result = await deleteFormation(id);
+    if (!result.ok) return jsonError(result.error, 503);
     revalidateCms("formations");
     return NextResponse.json({ success: true });
   } catch {
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+    return jsonError("Suppression impossible", 503);
   }
 }

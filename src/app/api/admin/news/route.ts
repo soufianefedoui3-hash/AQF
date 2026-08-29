@@ -1,23 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { withPrismaQuery, runPrismaMutation } from "@/lib/prisma-safe";
 import { getAdminSession } from "@/lib/auth";
 import { slugify } from "@/lib/utils";
 import { saveUploadedFile, validateFile } from "@/lib/upload";
 import { serializeNewsArticle } from "@/lib/news";
-import { z } from "zod";
 import { revalidateCms } from "@/lib/revalidate-cms";
+import {
+  createNews,
+  deleteNews,
+  getNewsById,
+  listNews,
+  updateNews,
+} from "@/lib/cms/store";
 
-const articleSchema = z.object({
-  title: z.string().trim().min(2, "Le titre est requis"),
-  content: z.string().trim().min(1, "Le contenu est requis"),
-  excerpt: z.string().trim().optional().nullable(),
-  published: z.boolean(),
-});
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+function jsonError(error: string, status: number) {
+  return NextResponse.json({ error }, { status });
+}
 
 function parseArticleForm(formData: FormData) {
-  const title = String(formData.get("title") ?? "");
-  const content = String(formData.get("content") ?? "");
+  const title = String(formData.get("title") ?? "").trim();
+  const content = String(formData.get("content") ?? "").trim();
   const excerptRaw = formData.get("excerpt");
   const excerpt =
     excerptRaw === null || String(excerptRaw).trim() === ""
@@ -25,37 +29,29 @@ function parseArticleForm(formData: FormData) {
       : String(excerptRaw).trim();
   const published = formData.get("published") === "true";
 
-  return articleSchema.parse({ title, content, excerpt, published });
+  if (title.length < 2) throw new Error("Le titre est requis");
+  if (!content) throw new Error("Le contenu est requis");
+
+  return { title, content, excerpt, published };
 }
 
 export async function GET() {
-  const session = await getAdminSession();
-  if (!session) {
-    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
-  }
-
   try {
-    const articles = await withPrismaQuery(
-      () =>
-        prisma.newsArticle.findMany({
-          orderBy: { createdAt: "desc" },
-        }),
-      []
-    );
-
+    const session = await getAdminSession();
+    if (!session) return jsonError("Non autorisé", 401);
+    const articles = await listNews(false);
     return NextResponse.json(articles.map(serializeNewsArticle));
-  } catch {
+  } catch (error) {
+    console.error("[cms] news GET failed:", error);
     return NextResponse.json([]);
   }
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getAdminSession();
-  if (!session) {
-    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
-  }
-
   try {
+    const session = await getAdminSession();
+    if (!session) return jsonError("Non autorisé", 401);
+
     const formData = await request.formData();
     const data = parseArticleForm(formData);
     const image = formData.get("image");
@@ -66,132 +62,91 @@ export async function POST(request: NextRequest) {
         maxSizeMB: 5,
         allowedTypes: ["image/"],
       });
-      if (imageError) {
-        return NextResponse.json({ error: imageError }, { status: 400 });
-      }
+      if (imageError) return jsonError(imageError, 400);
       imageUrl = await saveUploadedFile(image, "news");
     }
 
     const slug = `${slugify(data.title)}-${Date.now().toString(36)}`;
+    const result = await createNews({
+      title: data.title,
+      slug,
+      content: data.content,
+      excerpt: data.excerpt,
+      imageUrl,
+      published: data.published,
+    });
 
-    const result = await runPrismaMutation(() =>
-      prisma.newsArticle.create({
-        data: {
-          title: data.title,
-          slug,
-          content: data.content,
-          excerpt: data.excerpt,
-          imageUrl,
-          published: data.published,
-        },
-      })
-    );
-
-    if (!result.ok) {
-      return NextResponse.json({ error: result.error }, { status: result.status });
-    }
-
+    if (!result.ok) return jsonError(result.error, 503);
     revalidateCms("news");
     return NextResponse.json(serializeNewsArticle(result.data), { status: 201 });
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: error.errors[0]?.message || "Données invalides" },
-        { status: 400 }
-      );
-    }
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+    return jsonError(
+      error instanceof Error ? error.message : "Création impossible",
+      400
+    );
   }
 }
 
 export async function PUT(request: NextRequest) {
-  const session = await getAdminSession();
-  if (!session) {
-    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
-  }
-
   try {
+    const session = await getAdminSession();
+    if (!session) return jsonError("Non autorisé", 401);
+
     const formData = await request.formData();
     const id = String(formData.get("id") ?? "");
-    if (!id) {
-      return NextResponse.json({ error: "ID requis" }, { status: 400 });
-    }
+    if (!id) return jsonError("ID requis", 400);
 
     const data = parseArticleForm(formData);
     const image = formData.get("image");
+    const existing = await getNewsById(id);
+    if (!existing) return jsonError("Article introuvable", 404);
 
-    const updateData: {
-      title: string;
-      content: string;
-      excerpt: string | null;
-      published: boolean;
-      imageUrl?: string;
-    } = {
-      title: data.title,
-      content: data.content,
-      excerpt: data.excerpt ?? null,
-      published: data.published,
-    };
-
+    let imageUrl = existing.imageUrl;
     if (image instanceof File && image.size > 0) {
       const imageError = validateFile(image, {
         maxSizeMB: 5,
         allowedTypes: ["image/"],
       });
-      if (imageError) {
-        return NextResponse.json({ error: imageError }, { status: 400 });
-      }
-      updateData.imageUrl = await saveUploadedFile(image, "news");
+      if (imageError) return jsonError(imageError, 400);
+      imageUrl = await saveUploadedFile(image, "news");
     }
 
-    const result = await runPrismaMutation(() =>
-      prisma.newsArticle.update({
-        where: { id },
-        data: updateData,
-      })
-    );
+    const result = await updateNews(id, {
+      title: data.title,
+      content: data.content,
+      excerpt: data.excerpt,
+      published: data.published,
+      imageUrl,
+    });
 
-    if (!result.ok) {
-      return NextResponse.json({ error: result.error }, { status: result.status });
-    }
-
+    if (!result.ok) return jsonError(result.error, 503);
     revalidateCms("news");
     return NextResponse.json(serializeNewsArticle(result.data));
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: error.errors[0]?.message || "Données invalides" },
-        { status: 400 }
-      );
-    }
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+    return jsonError(
+      error instanceof Error ? error.message : "Mise à jour impossible",
+      400
+    );
   }
 }
 
 export async function DELETE(request: NextRequest) {
-  const session = await getAdminSession();
-  if (!session) {
-    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
-  }
-
   try {
+    const session = await getAdminSession();
+    if (!session) return jsonError("Non autorisé", 401);
+
     const body = await request.json().catch(() => null);
-    const id = body && typeof body === "object" && "id" in body ? String(body.id || "") : "";
-    if (!id) {
-      return NextResponse.json({ error: "ID requis" }, { status: 400 });
-    }
+    const id =
+      body && typeof body === "object" && "id" in body
+        ? String((body as { id?: unknown }).id || "")
+        : "";
+    if (!id) return jsonError("ID requis", 400);
 
-    const result = await runPrismaMutation(() =>
-      prisma.newsArticle.delete({ where: { id } })
-    );
-
-    if (!result.ok) {
-      return NextResponse.json({ error: result.error }, { status: result.status });
-    }
-
+    const result = await deleteNews(id);
+    if (!result.ok) return jsonError(result.error, 503);
     revalidateCms("news");
     return NextResponse.json({ success: true });
   } catch {
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+    return jsonError("Suppression impossible", 503);
   }
 }

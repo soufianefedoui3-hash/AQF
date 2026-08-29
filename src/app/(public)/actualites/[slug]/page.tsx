@@ -5,8 +5,9 @@ import { PageSection } from "@/components/ui/PageSection";
 import { ArticleImage } from "@/components/news/ArticleImage";
 import { formatDate } from "@/lib/utils";
 import { getArticleExcerpt, splitArticleContent } from "@/lib/news";
-import { prisma } from "@/lib/prisma";
-import { safeCmsQuery } from "@/lib/cms-live";
+import { getPublishedArticleBySlug } from "@/lib/content";
+
+export const dynamic = "force-dynamic";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -15,13 +16,7 @@ interface PageProps {
 export default async function ArticlePage({ params }: PageProps) {
   const { slug } = await params;
 
-  const article = await safeCmsQuery(
-    () =>
-      prisma.newsArticle.findFirst({
-        where: { slug, published: true },
-      }),
-    null
-  );
+  const article = await getPublishedArticleBySlug(slug);
 
   if (!article) notFound();
 
