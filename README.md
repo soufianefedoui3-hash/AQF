@@ -88,11 +88,10 @@ ADMIN_FORCE_RESET="true"
 | `postinstall` | après `npm install` | `prisma generate` (non-fatal) |
 | `build` | déploiement Hostinger | `npx prisma generate && next build` |
 | `postbuild` | après build (auto) | DB push + seed via `safe-lifecycle` (jamais bloquant) |
-| `prestart` | avant `npm start` | léger: prépare le chemin SQLite seulement (pas de Prisma CLI) |
-| `start` | démarrage Hostinger | `next start -H 0.0.0.0` (PORT via env) |
+| `start` | démarrage Hostinger | `next start` avec guards contre `Server is not running` |
 | `db:deploy` | manuel | schema push + seed idempotent |
 
-Le seed est **automatique** au déploiement via `postbuild`, mais **idempotent** : il ne réécrit pas le contenu CMS si `SiteSettings` existe déjà. `prestart` ne lance plus de bootstrap lourd (évite les erreurs Node `Server is not running` sur Hostinger).
+Le seed est **automatique** au déploiement via `postbuild`, mais **idempotent** : il ne réécrit pas le contenu CMS si `SiteSettings` existe déjà. `prestart` a été retiré (évite les courses Hostinger / `Error: Server is not running`). Le runtime n’utilise plus `prisma` CLI en live (SQL fallback uniquement).
 
 ### Réinitialiser l'admin en production
 
