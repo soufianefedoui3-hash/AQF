@@ -1,7 +1,5 @@
 /** @type {import('next').NextConfig} */
 
-const assetPrefix = process.env.NEXT_PUBLIC_ASSET_PREFIX?.trim() || undefined;
-
 const NO_STORE = [
   { key: "Cache-Control", value: "private, no-store, no-cache, must-revalidate, max-age=0" },
   { key: "CDN-Cache-Control", value: "no-store" },
@@ -21,8 +19,9 @@ const IMMUTABLE_STATIC = [
 ];
 
 const nextConfig = {
-  // Hostinger: never require TypeScript to load this file (use .mjs).
-  assetPrefix,
+  // Hostinger Node.js: default asset URLs (/_next/static/...).
+  // Do not set output:'standalone', basePath, or assetPrefix — those
+  // break CSS/JS on shared hosting when the app is served at the domain root.
   poweredByHeader: false,
   compress: true,
   trailingSlash: false,
@@ -51,6 +50,17 @@ const nextConfig = {
     },
   },
 
+  async rewrites() {
+    return {
+      fallback: [
+        {
+          source: "/_next/static/css/:file",
+          destination: "/styles/aqf.css",
+        },
+      ],
+    };
+  },
+
   images: {
     remotePatterns: [],
     localPatterns: [
@@ -77,6 +87,10 @@ const nextConfig = {
         headers: IMMUTABLE_STATIC,
       },
       {
+        source: "/styles/:path*",
+        headers: IMMUTABLE_STATIC,
+      },
+      {
         source: "/api/:path*",
         headers: NO_STORE,
       },
@@ -88,7 +102,7 @@ const nextConfig = {
       },
       {
         source:
-          "/:path((?!_next/static|_next/image|brand|placeholders|uploads).*)",
+          "/:path((?!_next/static|_next/image|brand|placeholders|uploads|styles).*)",
         headers: NO_STORE,
       },
     ];

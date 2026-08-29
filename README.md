@@ -58,7 +58,7 @@ Si un ancien fichier `prisma/production.db` existe déjà, il est réutilisé au
 | Commande Hostinger | Script |
 |--------------------|--------|
 | Build | `npm run build` |
-| Start | `npm start` |
+| Start | `npm start` (`server.mjs` on `PORT`, not standalone) |
 
 `npm run build` compile Tailwind puis copie `.next/static` vers `public/_next/static` pour que `/_next/static/*.css` ne 404 jamais derrière LiteSpeed/hCDN.
 
