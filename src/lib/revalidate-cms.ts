@@ -32,7 +32,7 @@ export type CmsSection =
  * Always revalidates every public CMS route (page + layout) so admin
  * edits appear immediately on the website.
  */
-export function revalidateCms(_section: CmsSection = "all") {
+export function revalidateCms() {
   for (const path of CMS_PUBLIC_PATHS) {
     try {
       revalidatePath(path);

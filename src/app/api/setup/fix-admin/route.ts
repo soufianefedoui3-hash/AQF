@@ -3,6 +3,9 @@ import { bootstrapProductionDatabase } from "@/lib/bootstrap-db";
 import { getAdminStatus } from "@/lib/ensure-admin";
 import { getSetupSecretConfigured, isSetupAuthorized } from "@/lib/setup-auth";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 function unauthorized() {
   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 }
@@ -17,12 +20,11 @@ function secretNotConfigured() {
 }
 
 export async function GET(request: NextRequest) {
-  if (!getSetupSecretConfigured()) return secretNotConfigured();
-  if (!isSetupAuthorized(request)) return unauthorized();
-
   try {
-    const status = await getAdminStatus();
+    if (!getSetupSecretConfigured()) return secretNotConfigured();
+    if (!isSetupAuthorized(request)) return unauthorized();
 
+    const status = await getAdminStatus();
     return NextResponse.json({
       success: true,
       ...status,
@@ -30,38 +32,38 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("Fix-admin status error:", error);
-    return NextResponse.json({ error: "Unable to inspect admin account" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Unable to inspect admin account" },
+      { status: 503 }
+    );
   }
 }
 
 export async function POST(request: NextRequest) {
-  if (!getSetupSecretConfigured()) return secretNotConfigured();
-  if (!isSetupAuthorized(request)) return unauthorized();
-
   try {
+    if (!getSetupSecretConfigured()) return secretNotConfigured();
+    if (!isSetupAuthorized(request)) return unauthorized();
+
     const body = await request.json().catch(() => ({}));
     const force = body.force === true || body.forceReset === true;
-
     const bootstrap = await bootstrapProductionDatabase({ forceAdmin: force });
 
     if (!bootstrap.ok || !bootstrap.admin) {
       return NextResponse.json(
         { error: bootstrap.error || "Bootstrap failed" },
-        { status: 500 }
+        { status: 503 }
       );
     }
 
-    const result = bootstrap.admin;
-
     return NextResponse.json({
       success: true,
-      ...result,
+      ...bootstrap.admin,
       databaseUrl: bootstrap.databaseUrl,
-      loginEmail: result.email,
+      loginEmail: bootstrap.admin.email,
       hint: "Use ADMIN_EMAIL and ADMIN_PASSWORD from server environment variables.",
     });
   } catch (error) {
     console.error("Fix-admin error:", error);
-    return NextResponse.json({ error: "Admin fix failed" }, { status: 500 });
+    return NextResponse.json({ error: "Admin fix failed" }, { status: 503 });
   }
 }

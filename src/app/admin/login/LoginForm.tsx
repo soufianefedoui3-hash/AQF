@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 /**
- * Pure client login form — no Prisma, cookies(), headers, layouts, or UI kit.
+ * Pure client login form — no cookies(), headers, or server modules.
  */
 export default function LoginForm() {
   const [loading, setLoading] = useState(false);

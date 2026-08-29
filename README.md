@@ -1,36 +1,35 @@
 # AQF — Académie de Qualité et de Formation
 
-Site web professionnel multi-pages et tableau de bord d'administration pour AQF.
+Site web professionnel et tableau de bord d'administration pour AQF.
 
-## Stack technique
+## Stack
 
 - **Next.js 15** (App Router)
 - **Tailwind CSS 4**
-- **Lucide React**
-- **Prisma + SQLite** (PostgreSQL compatible en production)
+- **SQLite** via `node:sqlite` (Node 22+) ou `better-sqlite3`
+- Pas de Prisma, pas de CDN d'images
 
 ## Démarrage rapide
 
 ```bash
 npm install
 cp .env.example .env
-npm run db:push
-npm run db:seed
+npm run db:init
 npm run dev
 ```
 
 - **Site public:** http://localhost:3000
-- **Admin:** http://localhost:3000/admin
+- **Admin:** http://localhost:3000/admin/login
 
-**Identifiants admin:** `admin@aqf.ma` / `Admin@AQF2026`
+**Identifiants:** `ADMIN_EMAIL` / `ADMIN_PASSWORD` (défaut `admin@aqf.ma` / `Admin@AQF2026`)
 
-> Login lit `ADMIN_EMAIL` / `ADMIN_PASSWORD` (env) et synchronise un hash bcrypt dans la table SQLite `Admin`. La page `/admin/login` est hors middleware Edge (pas d’import `jose`) pour éviter les 500 Hostinger.
+Le schéma SQLite et le contenu par défaut sont créés au premier `readyDb()` — aucun CLI de base de données au démarrage.
 
-## Structure du site
+## Pages
 
 | Page | URL |
 |------|-----|
-| Accueil (minimal) | `/` |
+| Accueil | `/` |
 | À propos | `/a-propos` |
 | Services | `/services` |
 | Accompagnement | `/services/accompagnement` |
@@ -38,91 +37,35 @@ npm run dev
 | Audit | `/services/audit` |
 | Produits & GED | `/services/produits` |
 | Secteurs | `/secteurs` |
-| Détail secteur | `/secteurs/[slug]` |
 | Actualités | `/actualites` |
 | Carrières | `/carrieres` |
-
-## Admin (`/admin`)
-
-- Tableau de bord & statistiques
-- Gestion des leads (Accompagnement, Audit, Formation, GED)
-- CMS : Accueil, Formation, GED, À propos, Équipe, Secteurs, Carrières
-- Actualités (CRUD + images)
-- Candidatures (CV / lettres téléchargeables)
-
-## Production (PostgreSQL)
-
-Modifiez `prisma/schema.prisma` :
-
-```prisma
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-```
-
-Puis `npm run db:push && npm run db:seed && npm run build && npm start`.
+| Admin | `/admin` |
 
 ## Déploiement Hostinger (Node.js + SQLite)
 
-### Variables d'environnement (hPanel)
+Variables hPanel :
 
 ```env
-DATABASE_URL="file:./dev.db"
 JWT_SECRET="your-long-random-secret"
 ADMIN_EMAIL="admin@aqf.ma"
 ADMIN_PASSWORD="Admin@AQF2026"
 ```
 
-Optionnel :
+Optionnel : `DATABASE_PATH="./data/aqf.sqlite"`, `SETUP_SECRET`, `ADMIN_FORCE_RESET=true`.
 
-```env
-SETUP_SECRET="your-setup-secret"
-ADMIN_FORCE_RESET="true"
-```
+Si un ancien fichier `prisma/production.db` existe déjà, il est réutilisé automatiquement.
 
-### Scripts automatiques
+| Commande Hostinger | Script |
+|--------------------|--------|
+| Build | `npm run build` |
+| Start | `npm start` |
 
-| Script | Quand | Action |
-|--------|-------|--------|
-| `postinstall` | après `npm install` | `prisma generate` (non-fatal) |
-| `build` | déploiement Hostinger | `npx prisma generate && next build` |
-| `postbuild` | après build (auto) | DB push + seed via `safe-lifecycle` (jamais bloquant) |
-| `start` | démarrage Hostinger | `next start` avec guards contre `Server is not running` |
-| `db:deploy` | manuel | schema push + seed idempotent |
+Pas de `postinstall` / `postbuild` Prisma. La base s'ouvre et se crée à la première requête.
 
-Le seed est **automatique** au déploiement via `postbuild`, mais **idempotent** : il ne réécrit pas le contenu CMS si `SiteSettings` existe déjà. `prestart` a été retiré (évite les courses Hostinger / `Error: Server is not running`). Le runtime n’utilise plus `prisma` CLI en live (SQL fallback uniquement).
-
-### Réinitialiser l'admin en production
-
-**Option A — variable d'environnement (recommandé)**
-
-1. Définir `ADMIN_FORCE_RESET=true` dans hPanel
-2. Redémarrer l'application (ou redeploy)
-3. Se connecter avec `ADMIN_EMAIL` / `ADMIN_PASSWORD`
-4. Remettre `ADMIN_FORCE_RESET=false`
-
-**Option B — API bootstrap (sans SSH)**
-
-```bash
-curl -X POST https://aqf.ma/api/setup/bootstrap \
-  -H "Authorization: Bearer YOUR_SETUP_SECRET" \
-  -H "Content-Type: application/json" \
-  -d "{\"forceReset\": true}"
-```
-
-**Option C — terminal Hostinger**
+Réinitialiser l'admin :
 
 ```bash
 npm run admin:reset
-# ou création admin + sync schéma :
-npm run db:bootstrap
 ```
 
-### Notes SQLite sur Hostinger
-
-- Schema push utilise le CLI Prisma local, avec **fallback SQL** si le CLI est introuvable.
-- `postbuild` / `prestart` ne font **jamais échouer** le déploiement Hostinger (exit code 0).
-- Si besoin manuel : `npm run db:deploy` ou `POST /api/setup/fix-admin` (avec `SETUP_SECRET`).
-- Hostinger : Build = **`npm run build`**, Start = **`npm start`**.
-- Pour un site en production durable, migrez vers MySQL/PostgreSQL Hostinger quand possible.
+ou `POST /api/setup/bootstrap` avec `Authorization: Bearer SETUP_SECRET`.

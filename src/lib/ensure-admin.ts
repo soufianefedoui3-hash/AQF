@@ -1,7 +1,7 @@
-import { prisma } from "@/lib/prisma";
-import { hashPassword, verifyPassword } from "@/lib/password";
+import { execute, newId, queryOne, readyDb } from "@/lib/db";
 import { databaseFileExists, getDatabasePath } from "@/lib/database-url";
 import { getAdminCredentials } from "@/lib/env-credentials";
+import { hashPassword, verifyPassword } from "@/lib/password";
 
 export { getAdminCredentials };
 
@@ -24,9 +24,20 @@ export interface AdminStatusResult {
   databaseExists: boolean;
 }
 
+type AdminRow = { id: string; email: string; passwordHash: string };
+
+async function findAdmin(email: string): Promise<AdminRow | null> {
+  await readyDb();
+  const row = queryOne<AdminRow>(
+    `SELECT id, email, passwordHash FROM "Admin" WHERE email = ?`,
+    [email]
+  );
+  return row;
+}
+
 export async function getAdminStatus(): Promise<AdminStatusResult> {
   const { email, password } = getAdminCredentials();
-  const existing = await prisma.admin.findUnique({ where: { email } });
+  const existing = await findAdmin(email);
 
   if (!existing) {
     return {
@@ -39,7 +50,6 @@ export async function getAdminStatus(): Promise<AdminStatusResult> {
   }
 
   let passwordValid = false;
-
   try {
     passwordValid = await verifyPassword(password, existing.passwordHash);
   } catch {
@@ -55,15 +65,12 @@ export async function getAdminStatus(): Promise<AdminStatusResult> {
   };
 }
 
-/**
- * Creates, resets, or repairs the admin account.
- * Repairs automatically when the stored bcrypt hash does not match ADMIN_PASSWORD.
- */
-export async function fixAdminAccount(options: { force?: boolean } = {}): Promise<AdminFixResult> {
+export async function fixAdminAccount(
+  options: { force?: boolean } = {}
+): Promise<AdminFixResult> {
   const { email, password } = getAdminCredentials();
   const force = options.force === true || process.env.ADMIN_FORCE_RESET === "true";
-  const existing = await prisma.admin.findUnique({ where: { email } });
-
+  const existing = await findAdmin(email);
   const base = {
     email,
     databasePath: getDatabasePath(),
@@ -72,8 +79,10 @@ export async function fixAdminAccount(options: { force?: boolean } = {}): Promis
 
   if (!existing) {
     const passwordHash = await hashPassword(password);
-    await prisma.admin.create({ data: { email, passwordHash } });
-
+    execute(
+      `INSERT INTO "Admin" ("id", "email", "passwordHash") VALUES (?, ?, ?)`,
+      [newId(), email, passwordHash]
+    );
     return {
       ...base,
       created: true,
@@ -103,10 +112,10 @@ export async function fixAdminAccount(options: { force?: boolean } = {}): Promis
   }
 
   const passwordHash = await hashPassword(password);
-  await prisma.admin.update({
-    where: { email },
-    data: { passwordHash },
-  });
+  execute(`UPDATE "Admin" SET "passwordHash" = ? WHERE "email" = ?`, [
+    passwordHash,
+    email,
+  ]);
 
   return {
     ...base,
@@ -118,7 +127,8 @@ export async function fixAdminAccount(options: { force?: boolean } = {}): Promis
   };
 }
 
-/** @deprecated Use fixAdminAccount() */
-export async function ensureAdminAccount(forceReset = false): Promise<AdminFixResult> {
+export async function ensureAdminAccount(
+  forceReset = false
+): Promise<AdminFixResult> {
   return fixAdminAccount({ force: forceReset });
 }

@@ -1,10 +1,7 @@
 import { existsSync } from "fs";
 import { getSqliteFileUrl, resolveSqlitePath } from "@/lib/db/path";
 
-/**
- * Compatibility wrapper for existing Prisma callers.
- * The rebuilt app uses `@/lib/db` directly; this keeps one SQLite file.
- */
+/** Compatibility helpers around the SQLite file path. */
 export function resolveDatabaseUrl(): string {
   try {
     const url = getSqliteFileUrl();

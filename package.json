@@ -6,30 +6,19 @@
     "dev": "next dev",
     "dev:clean": "node scripts/clean-dev.mjs",
     "restart": "npm run clean && npm run dev",
-    "build": "npx prisma generate && next build",
-    "postbuild": "node scripts/safe-lifecycle.mjs deploy-db.mjs",
+    "build": "next build",
     "clean": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true}); try{require('fs').rmSync('node_modules/.cache',{recursive:true,force:true})}catch(e){}\"",
     "build:clean": "npm run clean && npm run build",
     "start": "node --import ./scripts/register-guards.mjs ./node_modules/next/dist/bin/next start -H 0.0.0.0",
     "lint": "next lint",
     "db:init": "npx tsx scripts/init-sqlite.ts",
-    "db:generate": "node scripts/prisma-generate.mjs --strict",
-    "db:push": "node scripts/push-schema.mjs",
-    "db:seed": "node scripts/seed-db.mjs",
-    "db:bootstrap": "node scripts/deploy-db.mjs",
-    "db:deploy": "node scripts/deploy-db.mjs",
-    "admin:reset": "node scripts/reset-admin.mjs",
-    "postinstall": "node scripts/prisma-generate.mjs"
+    "admin:reset": "npx tsx scripts/reset-admin.ts"
   },
   "dependencies": {
-    "@prisma/client": "^6.5.0",
     "bcryptjs": "^3.0.2",
     "clsx": "^2.1.1",
-    "date-fns": "^4.1.0",
-    "jose": "^6.0.10",
     "lucide-react": "^0.487.0",
     "next": "^15.2.4",
-    "prisma": "^6.5.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-hot-toast": "^2.5.2",
@@ -39,9 +28,6 @@
   },
   "optionalDependencies": {
     "better-sqlite3": "^12.11.1"
-  },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",

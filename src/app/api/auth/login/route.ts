@@ -1,5 +1,6 @@
-/**
- * Alias route expected by some docs/tools: POST /api/auth/login
- * Same bulletproof handler as /api/admin/auth.
- */
-export { POST, GET, DELETE, runtime, dynamic } from "@/app/api/admin/auth/route";
+import { DELETE, GET, POST } from "@/app/api/admin/auth/route";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+export { DELETE, GET, POST };
