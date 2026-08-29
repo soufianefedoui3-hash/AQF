@@ -1,10 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
-import {
-  isBrokenExternalImageUrl,
-  sanitizePublicImageUrl,
-} from "@/lib/placeholder-images";
+import { toLocalImageUrl } from "@/lib/placeholder-images";
 
 interface PageHeroProps {
   title: string;
@@ -23,10 +20,7 @@ export function PageHero({
   image,
   className,
 }: PageHeroProps) {
-  const safeImage =
-    image && !isBrokenExternalImageUrl(image)
-      ? sanitizePublicImageUrl(image) || undefined
-      : undefined;
+  const safeImage = toLocalImageUrl(image) || undefined;
 
   return (
     <section

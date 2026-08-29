@@ -14,7 +14,7 @@ export function resetDatabaseSeedCache(): void {
 
 /**
  * Seeds default CMS content once when core tables are empty,
- * and always repairs legacy Unsplash image URLs.
+ * and always repairs external/disallowed image URLs to local paths.
  */
 export async function ensureDatabaseSeed(): Promise<boolean> {
   if (process.env.SKIP_DB_SEED === "true") {

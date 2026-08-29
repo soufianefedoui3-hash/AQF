@@ -9,12 +9,8 @@ const nextConfig: NextConfig = {
     },
   },
   images: {
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "**",
-      },
-    ],
+    // Local uploads/placeholders/brand only — no remote image CDNs.
+    remotePatterns: [],
     localPatterns: [
       {
         pathname: "/uploads/**",

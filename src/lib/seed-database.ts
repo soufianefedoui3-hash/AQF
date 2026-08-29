@@ -12,12 +12,22 @@ import {
   DEFAULT_SITE_SETTINGS,
   DEFAULT_TEAM_MEMBERS,
 } from "@/lib/seed-data";
+import {
+  PLACEHOLDER_GENERIC,
+  isAllowedLocalImageUrl,
+} from "@/lib/placeholder-images";
 
 export interface SeedOptions {
   includeAdmin?: boolean;
 }
 
-/** Replace legacy Unsplash URLs in Sector rows with local placeholders. */
+function needsImageRepair(url: string | null | undefined): boolean {
+  const trimmed = typeof url === "string" ? url.trim() : "";
+  if (!trimmed) return true;
+  return !isAllowedLocalImageUrl(trimmed);
+}
+
+/** Strip every external/disallowed image URL; keep only /uploads, /placeholders, /brand. */
 export async function repairBrokenSectorImages(
   client: PrismaClient
 ): Promise<number> {
@@ -29,14 +39,7 @@ export async function repairBrokenSectorImages(
       select: { id: true, imageUrl: true },
     });
     if (!existing) continue;
-
-    const url = existing.imageUrl?.trim() || "";
-    const isBroken =
-      !url ||
-      url.includes("unsplash.com") ||
-      url.includes("images.unsplash.com");
-
-    if (!isBroken) continue;
+    if (!needsImageRepair(existing.imageUrl)) continue;
 
     await client.sector.update({
       where: { id: existing.id },
@@ -45,59 +48,37 @@ export async function repairBrokenSectorImages(
     repaired += 1;
   }
 
-  // Any other sector rows still pointing at Unsplash → generic local placeholder.
   const leftoverSectors = await client.sector.findMany({
-    where: {
-      OR: [
-        { imageUrl: { contains: "unsplash.com" } },
-        { imageUrl: { contains: "images.unsplash.com" } },
-      ],
-    },
-    select: { id: true },
+    select: { id: true, imageUrl: true },
   });
-
   for (const row of leftoverSectors) {
+    if (!needsImageRepair(row.imageUrl)) continue;
     await client.sector.update({
       where: { id: row.id },
-      data: { imageUrl: "/placeholders/sector-generic.svg" },
+      data: { imageUrl: PLACEHOLDER_GENERIC },
     });
     repaired += 1;
   }
 
-  // Clear broken external URLs on other CMS image fields (use local upload or null).
-  const clearUnsplash = async (
-    rows: Array<{ id: string }>,
+  const clearExternal = async (
+    rows: Array<{ id: string; imageUrl: string | null }>,
     update: (id: string) => Promise<unknown>
   ) => {
     for (const row of rows) {
+      if (!row.imageUrl?.trim()) continue;
+      if (isAllowedLocalImageUrl(row.imageUrl)) continue;
       await update(row.id);
       repaired += 1;
     }
   };
 
-  await clearUnsplash(
-    await client.newsArticle.findMany({
-      where: {
-        OR: [
-          { imageUrl: { contains: "unsplash.com" } },
-          { imageUrl: { contains: "images.unsplash.com" } },
-        ],
-      },
-      select: { id: true },
-    }),
+  await clearExternal(
+    await client.newsArticle.findMany({ select: { id: true, imageUrl: true } }),
     (id) => client.newsArticle.update({ where: { id }, data: { imageUrl: null } })
   );
 
-  await clearUnsplash(
-    await client.teamMember.findMany({
-      where: {
-        OR: [
-          { imageUrl: { contains: "unsplash.com" } },
-          { imageUrl: { contains: "images.unsplash.com" } },
-        ],
-      },
-      select: { id: true },
-    }),
+  await clearExternal(
+    await client.teamMember.findMany({ select: { id: true, imageUrl: true } }),
     (id) => client.teamMember.update({ where: { id }, data: { imageUrl: null } })
   );
 
@@ -105,11 +86,7 @@ export async function repairBrokenSectorImages(
     where: { id: "default" },
     select: { id: true, imageUrl: true },
   });
-  if (
-    ged?.imageUrl &&
-    (ged.imageUrl.includes("unsplash.com") ||
-      ged.imageUrl.includes("images.unsplash.com"))
-  ) {
+  if (ged?.imageUrl && !isAllowedLocalImageUrl(ged.imageUrl)) {
     await client.gedService.update({
       where: { id: "default" },
       data: { imageUrl: null },

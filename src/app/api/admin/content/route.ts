@@ -4,6 +4,13 @@ import { withPrismaQuery, runPrismaMutation } from "@/lib/prisma-safe";
 import { DEFAULT_ADMIN_CONTENT } from "@/lib/seed-data";
 import { getAdminSession } from "@/lib/auth";
 import { revalidateCms } from "@/lib/revalidate-cms";
+import { toLocalImageUrl } from "@/lib/placeholder-images";
+
+/** Persist only local upload/placeholder/brand paths — never external URLs. */
+function coerceLocalImageUrl(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  return toLocalImageUrl(value);
+}
 
 export async function GET() {
   const session = await getAdminSession();
@@ -24,18 +31,20 @@ export async function GET() {
 
     return {
       about: about.length > 0 ? about : DEFAULT_ADMIN_CONTENT.about,
-      team,
+      team: team.map((member) => ({
+        ...member,
+        imageUrl: coerceLocalImageUrl(member.imageUrl),
+      })),
       sectors: (sectors.length > 0 ? sectors : DEFAULT_ADMIN_CONTENT.sectors).map((sector) => ({
         ...sector,
-        imageUrl:
-          typeof sector.imageUrl === "string" && sector.imageUrl.trim()
-            ? sector.imageUrl.trim()
-            : null,
+        imageUrl: coerceLocalImageUrl(sector.imageUrl),
       })),
       careers: careers || DEFAULT_ADMIN_CONTENT.careers,
       settings: settings || DEFAULT_ADMIN_CONTENT.settings,
       pages: pages.length > 0 ? pages : DEFAULT_ADMIN_CONTENT.pages,
-      ged: ged || DEFAULT_ADMIN_CONTENT.ged,
+      ged: ged
+        ? { ...ged, imageUrl: coerceLocalImageUrl(ged.imageUrl) }
+        : DEFAULT_ADMIN_CONTENT.ged,
     };
   }, DEFAULT_ADMIN_CONTENT);
 
@@ -81,10 +90,7 @@ export async function PUT(request: NextRequest) {
                 name: data.name,
                 role: data.role,
                 skills: data.skills,
-                imageUrl:
-                  typeof data.imageUrl === "string" && data.imageUrl.trim()
-                    ? data.imageUrl.trim()
-                    : null,
+                imageUrl: coerceLocalImageUrl(data.imageUrl),
                 order: data.order ?? 0,
               },
             });
@@ -94,10 +100,7 @@ export async function PUT(request: NextRequest) {
               name: data.name || "Nouveau membre",
               role: data.role || "Rôle",
               skills: data.skills || "",
-              imageUrl:
-                typeof data.imageUrl === "string" && data.imageUrl.trim()
-                  ? data.imageUrl.trim()
-                  : null,
+              imageUrl: coerceLocalImageUrl(data.imageUrl),
               order: data.order || 0,
             },
           });
@@ -107,12 +110,10 @@ export async function PUT(request: NextRequest) {
           return prisma.teamMember.delete({ where: { id: data.id } });
         }
         case "sector": {
-          const rawImage =
-            typeof data.imageUrl === "string" ? data.imageUrl.trim() : "";
           const payload = {
             name: data.name || "",
             description: data.description || "",
-            imageUrl: rawImage || null,
+            imageUrl: coerceLocalImageUrl(data.imageUrl),
             order: typeof data.order === "number" ? data.order : 0,
           };
 
@@ -182,18 +183,19 @@ export async function PUT(request: NextRequest) {
           });
         }
         case "ged": {
+          const gedImage = coerceLocalImageUrl(data.imageUrl);
           return prisma.gedService.upsert({
             where: { id: "default" },
             update: {
               title: data.title || "",
               description: data.description || "",
-              imageUrl: data.imageUrl ?? null,
+              imageUrl: gedImage,
             },
             create: {
               id: "default",
               title: data.title || "",
               description: data.description || "",
-              imageUrl: data.imageUrl ?? null,
+              imageUrl: gedImage,
             },
           });
         }

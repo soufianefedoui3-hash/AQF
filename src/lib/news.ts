@@ -1,3 +1,5 @@
+import { toLocalImageUrl } from "@/lib/placeholder-images";
+
 export interface NewsArticleDTO {
   id: string;
   title: string;
@@ -34,24 +36,9 @@ export function serializeNewsArticle(article: {
   };
 }
 
+/** Only `/uploads`, `/placeholders`, and `/brand` paths — never external URLs. */
 export function normalizeImageUrl(url: string | null | undefined): string | null {
-  if (!url || typeof url !== "string") return null;
-  const trimmed = url.trim();
-  if (!trimmed) return null;
-
-  // Never serve broken Unsplash CDN URLs through Next/Image.
-  if (
-    trimmed.includes("images.unsplash.com") ||
-    trimmed.includes("source.unsplash.com") ||
-    /unsplash\.com\//i.test(trimmed)
-  ) {
-    return null;
-  }
-
-  if (trimmed.startsWith("/") || trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-    return trimmed;
-  }
-  return `/${trimmed.replace(/^\/+/, "")}`;
+  return toLocalImageUrl(url);
 }
 
 export function getArticleExcerpt(

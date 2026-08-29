@@ -5,7 +5,6 @@ import { normalizeImageUrl } from "@/lib/news";
 import { liveCmsQuery, safeCmsQuery } from "@/lib/cms-live";
 import {
   PLACEHOLDER_GENERIC,
-  isBrokenExternalImageUrl,
   localSectorImage,
   sanitizePublicImageUrl,
 } from "@/lib/placeholder-images";
@@ -59,9 +58,7 @@ export function resolveSectorImage(slug: string, imageUrl: string | null | undef
 }
 
 export function getStoredSectorImage(imageUrl: string | null | undefined) {
-  const normalized = normalizeImageUrl(imageUrl);
-  if (!normalized || isBrokenExternalImageUrl(normalized)) return null;
-  return normalized;
+  return normalizeImageUrl(imageUrl);
 }
 
 export async function getPageContent(key: string, fallback: { title?: string; content: string }) {
@@ -104,10 +101,7 @@ export async function getGedService() {
 
     return {
       ...ged,
-      imageUrl:
-        ged.imageUrl && !isBrokenExternalImageUrl(ged.imageUrl)
-          ? sanitizePublicImageUrl(ged.imageUrl)
-          : null,
+      imageUrl: sanitizePublicImageUrl(ged.imageUrl),
     };
   } catch {
     return {

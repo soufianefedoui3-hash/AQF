@@ -3,10 +3,9 @@
 import { useState } from "react";
 import { Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { normalizeImageUrl } from "@/lib/news";
 import {
   PLACEHOLDER_GENERIC,
-  isBrokenExternalImageUrl,
+  toLocalImageUrl,
 } from "@/lib/placeholder-images";
 
 interface SectorImageProps {
@@ -30,11 +29,7 @@ export function SectorImage({
   priority = false,
 }: SectorImageProps) {
   const [error, setError] = useState(false);
-  const raw = typeof src === "string" ? src.trim() : "";
-  const imageUrl =
-    raw && !isBrokenExternalImageUrl(raw)
-      ? normalizeImageUrl(raw) || PLACEHOLDER_GENERIC
-      : PLACEHOLDER_GENERIC;
+  const imageUrl = toLocalImageUrl(src) || PLACEHOLDER_GENERIC;
 
   if (error) {
     return (

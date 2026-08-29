@@ -3,8 +3,7 @@
 import { useState } from "react";
 import { Newspaper } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { normalizeImageUrl } from "@/lib/news";
-import { PLACEHOLDER_GENERIC } from "@/lib/placeholder-images";
+import { PLACEHOLDER_GENERIC, toLocalImageUrl } from "@/lib/placeholder-images";
 
 interface ArticleImageProps {
   src: string | null | undefined;
@@ -23,7 +22,7 @@ export function ArticleImage({
   priority = false,
 }: ArticleImageProps) {
   const [error, setError] = useState(false);
-  const imageUrl = normalizeImageUrl(src) || PLACEHOLDER_GENERIC;
+  const imageUrl = toLocalImageUrl(src) || PLACEHOLDER_GENERIC;
 
   if (error) {
     return (
