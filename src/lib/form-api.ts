@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
-import { runPrismaMutation } from "@/lib/prisma-safe";
+import type { StoreResult } from "@/lib/leads/store";
 
 export async function readJsonBody(request: Request): Promise<unknown | null> {
   try {
@@ -17,14 +17,13 @@ export function zodErrorResponse(error: ZodError) {
   );
 }
 
-export async function createWithPrisma<T>(
-  create: () => Promise<T>
-): Promise<NextResponse> {
-  const result = await runPrismaMutation(create);
+export function jsonError(error: string, status: number) {
+  return NextResponse.json({ error }, { status });
+}
 
+export function createdFromStore(result: StoreResult<unknown>): NextResponse {
   if (!result.ok) {
-    return NextResponse.json({ error: result.error }, { status: result.status });
+    return jsonError(result.error || "Enregistrement temporairement indisponible", 503);
   }
-
   return NextResponse.json({ success: true }, { status: 201 });
 }

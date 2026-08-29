@@ -1,83 +1,68 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { withPrismaQuery, runPrismaMutation } from "@/lib/prisma-safe";
 import { getAdminSession } from "@/lib/auth";
+import { jsonError } from "@/lib/form-api";
+import {
+  deleteApplication,
+  listApplications,
+  updateApplicationStatus,
+} from "@/lib/leads/store";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const session = await getAdminSession();
-  if (!session) {
-    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+  try {
+    const session = await getAdminSession();
+    if (!session) return jsonError("Non autorisé", 401);
+    return NextResponse.json(await listApplications());
+  } catch (error) {
+    console.error("[admin] applications GET failed:", error);
+    return NextResponse.json([]);
   }
-
-  const applications = await withPrismaQuery(
-    () =>
-      prisma.jobApplication.findMany({
-        orderBy: { createdAt: "desc" },
-      }),
-    []
-  );
-
-  return NextResponse.json(applications);
 }
 
 export async function PATCH(request: NextRequest) {
-  const session = await getAdminSession();
-  if (!session) {
-    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
-  }
-
   try {
-    const body = await request.json();
-    const id = String(body.id || "").trim();
-    const status = String(body.status || "").trim();
+    const session = await getAdminSession();
+    if (!session) return jsonError("Non autorisé", 401);
+
+    const body = (await request.json().catch(() => null)) as Record<
+      string,
+      unknown
+    > | null;
+    const id = String(body?.id || "").trim();
+    const status = String(body?.status || "").trim();
 
     if (!id || !status) {
-      return NextResponse.json(
-        { error: "id et status sont requis" },
-        { status: 400 }
-      );
+      return jsonError("id et status sont requis", 400);
     }
 
-    const result = await runPrismaMutation(() =>
-      prisma.jobApplication.update({ where: { id }, data: { status } })
-    );
-
-    if (!result.ok) {
-      return NextResponse.json({ error: result.error }, { status: result.status });
-    }
-
+    const result = await updateApplicationStatus(id, status);
+    if (!result.ok) return jsonError(result.error, 503);
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Application update error:", error);
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+    console.error("[admin] applications PATCH failed:", error);
+    return jsonError("Mise à jour temporairement indisponible", 503);
   }
 }
 
 export async function DELETE(request: NextRequest) {
-  const session = await getAdminSession();
-  if (!session) {
-    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
-  }
-
   try {
-    const body = await request.json();
-    const id = String(body.id || "").trim();
+    const session = await getAdminSession();
+    if (!session) return jsonError("Non autorisé", 401);
 
-    if (!id) {
-      return NextResponse.json({ error: "ID requis" }, { status: 400 });
-    }
+    const body = (await request.json().catch(() => null)) as Record<
+      string,
+      unknown
+    > | null;
+    const id = String(body?.id || "").trim();
+    if (!id) return jsonError("ID requis", 400);
 
-    const result = await runPrismaMutation(() =>
-      prisma.jobApplication.delete({ where: { id } })
-    );
-
-    if (!result.ok) {
-      return NextResponse.json({ error: result.error }, { status: result.status });
-    }
-
+    const result = await deleteApplication(id);
+    if (!result.ok) return jsonError(result.error, 503);
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Application delete error:", error);
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+    console.error("[admin] applications DELETE failed:", error);
+    return jsonError("Suppression temporairement indisponible", 503);
   }
 }

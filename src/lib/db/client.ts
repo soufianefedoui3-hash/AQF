@@ -30,16 +30,19 @@ function applySchema(database: SqlDatabase): boolean {
  * Never throws. Schema is created lazily on first successful open.
  */
 export function getDb(): SqlDatabase | null {
-  if (globalForDb.aqfSqlite !== undefined) {
+  if (globalForDb.aqfSqlite) {
     return globalForDb.aqfSqlite;
   }
 
   try {
     const filePath = resolveSqlitePath();
     const database = openSqlite(filePath);
-    globalForDb.aqfSqlite = database;
+    if (!database) {
+      return null;
+    }
 
-    if (database && !globalForDb.aqfSchemaReady) {
+    globalForDb.aqfSqlite = database;
+    if (!globalForDb.aqfSchemaReady) {
       applySchema(database);
     }
 
@@ -49,7 +52,6 @@ export function getDb(): SqlDatabase | null {
       "[db] getDb failed:",
       error instanceof Error ? error.message : error
     );
-    globalForDb.aqfSqlite = null;
     return null;
   }
 }

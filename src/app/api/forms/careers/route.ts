@@ -1,7 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { NextRequest } from "next/server";
 import { saveUploadedFile, validateFile } from "@/lib/upload";
-import { runPrismaMutation } from "@/lib/prisma-safe";
+import { createdFromStore, jsonError } from "@/lib/form-api";
+import { insertApplication } from "@/lib/leads/store";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,52 +19,38 @@ export async function POST(request: NextRequest) {
     const letter = formData.get("letter");
 
     if (!positionName || !applicantName || !email) {
-      return NextResponse.json({ error: "Champs requis manquants" }, { status: 400 });
+      return jsonError("Champs requis manquants", 400);
     }
-
     if (!email.includes("@")) {
-      return NextResponse.json({ error: "Email invalide" }, { status: 400 });
+      return jsonError("Email invalide", 400);
     }
-
     if (!(cv instanceof File) || cv.size === 0) {
-      return NextResponse.json({ error: "CV (PDF) requis" }, { status: 400 });
+      return jsonError("CV (PDF) requis", 400);
     }
-
     if (!(letter instanceof File) || letter.size === 0) {
-      return NextResponse.json(
-        { error: "Lettre de motivation (PDF) requise" },
-        { status: 400 }
-      );
+      return jsonError("Lettre de motivation (PDF) requise", 400);
     }
 
     const cvError = validateFile(cv, { allowedTypes: ["application/pdf"] });
     const letterError = validateFile(letter, { allowedTypes: ["application/pdf"] });
-
-    if (cvError) return NextResponse.json({ error: cvError }, { status: 400 });
-    if (letterError) return NextResponse.json({ error: letterError }, { status: 400 });
+    if (cvError) return jsonError(cvError, 400);
+    if (letterError) return jsonError(letterError, 400);
 
     const cvPath = await saveUploadedFile(cv, "cv");
     const letterPath = await saveUploadedFile(letter, "letter");
 
-    const result = await runPrismaMutation(() =>
-      prisma.jobApplication.create({
-        data: {
-          positionName,
-          applicantName,
-          email,
-          phone,
-          cvPath,
-          letterPath,
-        },
+    return createdFromStore(
+      await insertApplication({
+        positionName,
+        applicantName,
+        email,
+        phone,
+        cvPath,
+        letterPath,
       })
     );
-
-    if (!result.ok) {
-      return NextResponse.json({ error: result.error }, { status: result.status });
-    }
-
-    return NextResponse.json({ success: true }, { status: 201 });
-  } catch {
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+  } catch (error) {
+    console.error("[forms] careers:", error);
+    return jsonError("Enregistrement temporairement indisponible", 503);
   }
 }

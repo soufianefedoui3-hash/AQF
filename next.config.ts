@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   // Native / built-in SQLite drivers must stay outside the Next bundle.
-  serverExternalPackages: ["better-sqlite3"],
+  serverExternalPackages: ["better-sqlite3", "node:sqlite"],
   webpack: (config, { isServer }) => {
     if (isServer) {
       const extras = ["better-sqlite3", "node:sqlite"];
