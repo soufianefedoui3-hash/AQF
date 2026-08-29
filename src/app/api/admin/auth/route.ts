@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
+  COOKIE_NAME,
   clearAdminCookie,
   createAdminToken,
   getAdminSession,
-  setAdminCookie,
 } from "@/lib/auth";
 
 export const runtime = "nodejs";
@@ -35,11 +35,29 @@ function isValidLogin(email: string, password: string): boolean {
   return email === getAdminEmail() && password === getAdminPassword();
 }
 
+function applyAdminCookie(response: NextResponse, token: string) {
+  response.cookies.set(COOKIE_NAME, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 7,
+  });
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const email = String(body.email || "").trim().toLowerCase();
-    const password = String(body.password || "").trim();
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "JSON invalide" }, { status: 400 });
+    }
+
+    const record =
+      body && typeof body === "object" ? (body as Record<string, unknown>) : {};
+    const email = String(record.email || "").trim().toLowerCase();
+    const password = String(record.password || "").trim();
 
     if (!email || !password || !isValidLogin(email, password)) {
       return NextResponse.json({ error: "Identifiants invalides" }, { status: 401 });
@@ -50,9 +68,10 @@ export async function POST(request: NextRequest) {
       adminId: adminEmail,
       email: adminEmail,
     });
-    await setAdminCookie(token);
 
-    return NextResponse.json({ success: true });
+    const response = NextResponse.json({ success: true });
+    applyAdminCookie(response, token);
+    return response;
   } catch (error) {
     console.error("Admin login error:", error);
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
@@ -60,11 +79,26 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE() {
-  await clearAdminCookie();
-  return NextResponse.json({ success: true });
+  try {
+    await clearAdminCookie();
+  } catch (error) {
+    console.error("Admin logout error:", error);
+  }
+
+  const response = NextResponse.json({ success: true });
+  response.cookies.delete(COOKIE_NAME);
+  return response;
 }
 
 export async function GET() {
-  const session = await getAdminSession();
-  return NextResponse.json({ authenticated: !!session, email: session?.email });
+  try {
+    const session = await getAdminSession();
+    return NextResponse.json({
+      authenticated: !!session,
+      email: session?.email ?? null,
+    });
+  } catch (error) {
+    console.error("Admin session check error:", error);
+    return NextResponse.json({ authenticated: false, email: null });
+  }
 }

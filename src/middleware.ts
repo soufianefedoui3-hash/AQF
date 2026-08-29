@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { verifyAdminToken, COOKIE_NAME } from "@/lib/auth";
+import { verifyAdminToken, COOKIE_NAME } from "@/lib/auth-edge";
 
 function withNoStore(response: NextResponse) {
   response.headers.set(
@@ -12,40 +12,61 @@ function withNoStore(response: NextResponse) {
   return response;
 }
 
+/**
+ * Admin auth gate + no-store headers.
+ * Uses Edge-safe JWT helpers only (never next/headers / Prisma).
+ */
 export async function middleware(request: NextRequest) {
-  try {
-    const { pathname } = request.nextUrl;
+  const { pathname } = request.nextUrl;
 
-    // Never cache HTML/CMS pages or APIs — admin edits must show immediately.
+  try {
     const isStaticAsset =
       pathname.startsWith("/_next") ||
       pathname.startsWith("/uploads") ||
       pathname.startsWith("/brand") ||
       /\.(?:ico|png|jpg|jpeg|gif|webp|svg|css|js|map|woff2?)$/i.test(pathname);
 
-    if (pathname === "/admin/login") {
-      const token = request.cookies.get(COOKIE_NAME)?.value;
-      if (token) {
-        const session = await verifyAdminToken(token);
-        if (session) {
-          return withNoStore(
-            NextResponse.redirect(new URL("/admin", request.url))
-          );
+    if (isStaticAsset) {
+      return NextResponse.next();
+    }
+
+    // Login page must always render — never redirect-loop or crash here.
+    if (pathname === "/admin/login" || pathname.startsWith("/admin/login/")) {
+      try {
+        const token = request.cookies.get(COOKIE_NAME)?.value;
+        if (token) {
+          const session = await verifyAdminToken(token);
+          if (session) {
+            return withNoStore(
+              NextResponse.redirect(new URL("/admin", request.url))
+            );
+          }
         }
+      } catch (error) {
+        console.error("[middleware] login token check failed:", error);
       }
       return withNoStore(NextResponse.next());
     }
 
     if (pathname.startsWith("/admin")) {
-      const token = request.cookies.get(COOKIE_NAME)?.value;
-      if (!token) {
-        return withNoStore(
-          NextResponse.redirect(new URL("/admin/login", request.url))
-        );
-      }
+      try {
+        const token = request.cookies.get(COOKIE_NAME)?.value;
+        if (!token) {
+          return withNoStore(
+            NextResponse.redirect(new URL("/admin/login", request.url))
+          );
+        }
 
-      const session = await verifyAdminToken(token);
-      if (!session) {
+        const session = await verifyAdminToken(token);
+        if (!session) {
+          const res = withNoStore(
+            NextResponse.redirect(new URL("/admin/login", request.url))
+          );
+          res.cookies.delete(COOKIE_NAME);
+          return res;
+        }
+      } catch (error) {
+        console.error("[middleware] admin auth failed:", error);
         return withNoStore(
           NextResponse.redirect(new URL("/admin/login", request.url))
         );
@@ -54,19 +75,17 @@ export async function middleware(request: NextRequest) {
       return withNoStore(NextResponse.next());
     }
 
-    if (!isStaticAsset) {
-      return withNoStore(NextResponse.next());
-    }
-
-    return NextResponse.next();
-  } catch (error) {
-    console.error("Middleware error:", error);
-    if (request.nextUrl.pathname.startsWith("/admin")) {
-      return withNoStore(
-        NextResponse.redirect(new URL("/admin/login", request.url))
-      );
-    }
     return withNoStore(NextResponse.next());
+  } catch (error) {
+    console.error("[middleware] unexpected error:", error);
+    // Never blank the login page — fall through to the route.
+    if (pathname.startsWith("/admin/login")) {
+      return NextResponse.next();
+    }
+    if (pathname.startsWith("/admin")) {
+      return NextResponse.redirect(new URL("/admin/login", request.url));
+    }
+    return NextResponse.next();
   }
 }
 

@@ -66,9 +66,16 @@ export default function AdminLoginPage() {
             label="Email administrateur"
             type="email"
             required
+            autoComplete="username"
             defaultValue="admin@aqf.ma"
           />
-          <Input name="password" label="Mot de passe" type="password" required />
+          <Input
+            name="password"
+            label="Mot de passe"
+            type="password"
+            required
+            autoComplete="current-password"
+          />
           <Button type="submit" loading={loading} className="w-full">
             <Lock className="h-4 w-4" />
             Se connecter
