@@ -13,16 +13,25 @@ export default async function PublicLayout({
 }: {
   children: React.ReactNode;
 }) {
-  let settings;
+  let settings = {
+    whatsappNumber: "+212600000000",
+    contactEmail: "contact@aqf.ma",
+    contactPhone: "+212 600 000 000",
+    address: "Maroc",
+  };
+
   try {
-    settings = await getSiteSettings();
-  } catch {
-    settings = {
-      whatsappNumber: "+212600000000",
-      contactEmail: "contact@aqf.ma",
-      contactPhone: "+212 600 000 000",
-      address: "Maroc",
-    };
+    const live = await getSiteSettings();
+    if (live) {
+      settings = {
+        whatsappNumber: live.whatsappNumber || settings.whatsappNumber,
+        contactEmail: live.contactEmail || settings.contactEmail,
+        contactPhone: live.contactPhone || settings.contactPhone,
+        address: live.address || settings.address,
+      };
+    }
+  } catch (error) {
+    console.error("[layout] site settings failed:", error);
   }
 
   return (

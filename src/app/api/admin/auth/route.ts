@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import {
   COOKIE_NAME,
@@ -5,40 +6,52 @@ import {
   createAdminToken,
   getAdminSession,
 } from "@/lib/auth";
+import { getAdminCredentials } from "@/lib/env-credentials";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const DEFAULT_EMAIL = "admin@aqf.ma";
-const DEFAULT_PASSWORD = "Admin@AQF2026";
-
-function stripQuotes(value: string): string {
-  const trimmed = value.trim();
-  if (
-    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
-    (trimmed.startsWith("'") && trimmed.endsWith("'"))
-  ) {
-    return trimmed.slice(1, -1).trim();
+function safeEqual(a: string, b: string): boolean {
+  try {
+    const left = Buffer.from(a);
+    const right = Buffer.from(b);
+    if (left.length !== right.length) return false;
+    return timingSafeEqual(left, right);
+  } catch {
+    return false;
   }
-  return trimmed;
-}
-
-function getAdminEmail(): string {
-  return stripQuotes(process.env.ADMIN_EMAIL || DEFAULT_EMAIL).toLowerCase();
-}
-
-function getAdminPassword(): string {
-  return stripQuotes(process.env.ADMIN_PASSWORD || DEFAULT_PASSWORD);
 }
 
 function isValidLogin(email: string, password: string): boolean {
-  return email === getAdminEmail() && password === getAdminPassword();
+  const { email: expectedEmail, password: expectedPassword } =
+    getAdminCredentials();
+  return safeEqual(email, expectedEmail) && safeEqual(password, expectedPassword);
 }
 
-function applyAdminCookie(response: NextResponse, token: string) {
+/**
+ * Behind Hostinger / reverse proxies, NODE_ENV=production alone is not enough:
+ * Secure cookies are dropped on plain HTTP and login appears to "fail".
+ */
+function shouldUseSecureCookie(request: NextRequest): boolean {
+  if (process.env.COOKIE_SECURE === "true") return true;
+  if (process.env.COOKIE_SECURE === "false") return false;
+
+  const forwarded = request.headers.get("x-forwarded-proto");
+  if (forwarded) {
+    return forwarded.split(",")[0]?.trim().toLowerCase() === "https";
+  }
+
+  return request.nextUrl.protocol === "https:";
+}
+
+function applyAdminCookie(
+  response: NextResponse,
+  token: string,
+  request: NextRequest
+) {
   response.cookies.set(COOKIE_NAME, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: shouldUseSecureCookie(request),
     sameSite: "lax",
     path: "/",
     maxAge: 60 * 60 * 24 * 7,
@@ -59,26 +72,46 @@ export async function POST(request: NextRequest) {
     const email = String(record.email || "").trim().toLowerCase();
     const password = String(record.password || "").trim();
 
-    if (!email || !password || !isValidLogin(email, password)) {
+    if (!email || !password) {
+      return NextResponse.json(
+        { error: "Email et mot de passe requis" },
+        { status: 400 }
+      );
+    }
+
+    if (!isValidLogin(email, password)) {
       return NextResponse.json({ error: "Identifiants invalides" }, { status: 401 });
     }
 
-    const adminEmail = getAdminEmail();
-    const token = await createAdminToken({
-      adminId: adminEmail,
-      email: adminEmail,
-    });
+    const { email: adminEmail } = getAdminCredentials();
 
-    const response = NextResponse.json({ success: true });
-    applyAdminCookie(response, token);
+    let token: string;
+    try {
+      token = await createAdminToken({
+        adminId: adminEmail,
+        email: adminEmail,
+      });
+    } catch (tokenError) {
+      console.error("Admin JWT creation failed:", tokenError);
+      return NextResponse.json(
+        { error: "Impossible de créer la session" },
+        { status: 500 }
+      );
+    }
+
+    const response = NextResponse.json({ success: true, email: adminEmail });
+    applyAdminCookie(response, token, request);
     return response;
   } catch (error) {
     console.error("Admin login error:", error);
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Erreur serveur — réessayez dans un instant" },
+      { status: 500 }
+    );
   }
 }
 
-export async function DELETE() {
+export async function DELETE(request: NextRequest) {
   try {
     await clearAdminCookie();
   } catch (error) {
@@ -86,7 +119,13 @@ export async function DELETE() {
   }
 
   const response = NextResponse.json({ success: true });
-  response.cookies.delete(COOKIE_NAME);
+  response.cookies.set(COOKIE_NAME, "", {
+    httpOnly: true,
+    secure: shouldUseSecureCookie(request),
+    sameSite: "lax",
+    path: "/",
+    maxAge: 0,
+  });
   return response;
 }
 

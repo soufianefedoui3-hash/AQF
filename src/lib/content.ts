@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { BRAND, PRODUCT_PACKS } from "@/lib/constants";
 import { SECTOR_DEFAULT_IMAGES } from "@/lib/formations";
 import { normalizeImageUrl } from "@/lib/news";
-import { liveCmsQuery } from "@/lib/cms-live";
+import { liveCmsQuery, safeCmsQuery } from "@/lib/cms-live";
 import {
   PLACEHOLDER_GENERIC,
   isBrokenExternalImageUrl,
@@ -65,14 +65,11 @@ export function getStoredSectorImage(imageUrl: string | null | undefined) {
 }
 
 export async function getPageContent(key: string, fallback: { title?: string; content: string }) {
-  try {
-    const page = await liveCmsQuery(() =>
-      prisma.pageContent.findUnique({ where: { key } })
-    );
-    return page || { key, title: fallback.title || null, content: fallback.content };
-  } catch {
-    return { key, title: fallback.title || null, content: fallback.content };
-  }
+  const page = await safeCmsQuery(
+    () => prisma.pageContent.findUnique({ where: { key } }),
+    null
+  );
+  return page || { key, title: fallback.title || null, content: fallback.content };
 }
 
 export async function getHomepagePresentation() {
@@ -250,21 +247,18 @@ export async function getCareersSettings() {
     phone: "+212 600 000 000",
   };
 
-  try {
-    const settings = await liveCmsQuery(() =>
-      prisma.careersSettings.findUnique({ where: { id: "default" } })
-    );
-    if (!settings) return FALLBACK;
+  const settings = await safeCmsQuery(
+    () => prisma.careersSettings.findUnique({ where: { id: "default" } }),
+    null
+  );
+  if (!settings) return FALLBACK;
 
-    return {
-      title: settings.title ?? "",
-      content: settings.content ?? "",
-      email: settings.email ?? "",
-      phone: settings.phone ?? "",
-    };
-  } catch {
-    return FALLBACK;
-  }
+  return {
+    title: String(settings.title ?? "").trim() || FALLBACK.title,
+    content: String(settings.content ?? "").trim() || FALLBACK.content,
+    email: String(settings.email ?? "").trim() || FALLBACK.email,
+    phone: String(settings.phone ?? "").trim() || FALLBACK.phone,
+  };
 }
 
 export async function getPublishedArticles() {

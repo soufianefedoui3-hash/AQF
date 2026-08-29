@@ -4,7 +4,12 @@ import { Logo } from "@/components/brand/Logo";
 import { getSiteSettings } from "@/lib/content";
 
 export async function Footer() {
-  const settings = await getSiteSettings();
+  let settings;
+  try {
+    settings = await getSiteSettings();
+  } catch {
+    settings = null;
+  }
   const email = settings?.contactEmail || "contact@aqf.ma";
   const phone = settings?.contactPhone || "+212 600 000 000";
   const address = settings?.address || "Maroc";

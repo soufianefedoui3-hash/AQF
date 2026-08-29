@@ -5,20 +5,18 @@ import { SignJWT, jwtVerify } from "jose";
  * Do NOT import next/headers or Node-only modules here.
  */
 
-function getJwtSecret() {
-  const secret = process.env.JWT_SECRET?.trim();
-  if (secret) return secret;
+function getJwtSecretBytes(): Uint8Array {
+  const secret =
+    process.env.JWT_SECRET?.trim() || "dev-secret-change-in-production";
 
-  if (process.env.NODE_ENV === "production") {
+  if (!process.env.JWT_SECRET?.trim() && process.env.NODE_ENV === "production") {
     console.warn(
       "[auth] JWT_SECRET is not set in production — using an insecure fallback."
     );
   }
 
-  return "dev-secret-change-in-production";
+  return new TextEncoder().encode(secret);
 }
-
-const JWT_SECRET = new TextEncoder().encode(getJwtSecret());
 
 export const COOKIE_NAME = "aqf_admin_token";
 const TOKEN_EXPIRY = "7d";
@@ -33,7 +31,7 @@ export async function createAdminToken(payload: AdminSession): Promise<string> {
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(TOKEN_EXPIRY)
-    .sign(JWT_SECRET);
+    .sign(getJwtSecretBytes());
 }
 
 export async function verifyAdminToken(
@@ -41,7 +39,7 @@ export async function verifyAdminToken(
 ): Promise<AdminSession | null> {
   try {
     if (!token?.trim()) return null;
-    const { payload } = await jwtVerify(token, JWT_SECRET);
+    const { payload } = await jwtVerify(token, getJwtSecretBytes());
     const adminId =
       typeof payload.adminId === "string" ? payload.adminId : null;
     const email = typeof payload.email === "string" ? payload.email : null;
