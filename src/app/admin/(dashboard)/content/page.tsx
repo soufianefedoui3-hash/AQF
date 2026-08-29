@@ -569,9 +569,12 @@ function SectorEditor({
 }) {
   const [form, setForm] = useState(sector);
   const [uploading, setUploading] = useState(false);
+  const [previewError, setPreviewError] = useState(false);
+  const previewUrl = form.imageUrl?.trim() || null;
 
   useEffect(() => {
     setForm(sector);
+    setPreviewError(false);
   }, [sector]);
 
   async function handleImage(e: React.ChangeEvent<HTMLInputElement>) {
@@ -580,10 +583,14 @@ function SectorEditor({
     setUploading(true);
     const url = await onUpload(file, "sector");
     setUploading(false);
-    if (url) {
-      setForm((prev) => ({ ...prev, imageUrl: url }));
-      toast.success("Image prête — cliquez Enregistrer pour la sauvegarder");
-    }
+    if (!url) return;
+
+    const next = { ...form, imageUrl: url };
+    setForm(next);
+    setPreviewError(false);
+    // Persist immediately so the public secteurs pages get the new image.
+    await onSave(next);
+    toast.success("Image enregistrée");
   }
 
   return (
@@ -603,8 +610,19 @@ function SectorEditor({
       </div>
       <div className="mt-4">
         <label className="mb-2 block text-sm font-medium">Image</label>
+        {previewUrl && !previewError ? (
+          <div className="relative mb-3 h-40 w-full overflow-hidden rounded-xl bg-primary-50">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={previewUrl}
+              alt={form.name || "Aperçu secteur"}
+              className="h-full w-full object-cover"
+              onError={() => setPreviewError(true)}
+            />
+          </div>
+        ) : null}
         <input type="file" accept="image/*" onChange={handleImage} className="text-sm" disabled={uploading} />
-        {form.imageUrl && <p className="mt-1 text-xs text-text-muted">{form.imageUrl}</p>}
+        {previewUrl && <p className="mt-1 text-xs text-text-muted">{previewUrl}</p>}
       </div>
       <Button
         className="mt-4"

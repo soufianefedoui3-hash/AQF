@@ -24,7 +24,13 @@ export async function GET() {
     return {
       about: about.length > 0 ? about : DEFAULT_ADMIN_CONTENT.about,
       team,
-      sectors: sectors.length > 0 ? sectors : DEFAULT_ADMIN_CONTENT.sectors,
+      sectors: (sectors.length > 0 ? sectors : DEFAULT_ADMIN_CONTENT.sectors).map((sector) => ({
+        ...sector,
+        imageUrl:
+          typeof sector.imageUrl === "string" && sector.imageUrl.trim()
+            ? sector.imageUrl.trim()
+            : null,
+      })),
       careers: careers || DEFAULT_ADMIN_CONTENT.careers,
       settings: settings || DEFAULT_ADMIN_CONTENT.settings,
       pages: pages.length > 0 ? pages : DEFAULT_ADMIN_CONTENT.pages,
@@ -94,10 +100,12 @@ export async function PUT(request: NextRequest) {
           return prisma.teamMember.delete({ where: { id: data.id } });
         }
         case "sector": {
+          const rawImage =
+            typeof data.imageUrl === "string" ? data.imageUrl.trim() : "";
           const payload = {
             name: data.name || "",
             description: data.description || "",
-            imageUrl: data.imageUrl ?? null,
+            imageUrl: rawImage || null,
             order: typeof data.order === "number" ? data.order : 0,
           };
 

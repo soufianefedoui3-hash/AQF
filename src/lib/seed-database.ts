@@ -73,7 +73,7 @@ export async function seedDefaultContent(
       update: {
         name: sector.name,
         description: sector.description,
-        imageUrl: sector.imageUrl,
+        // Preserve admin-uploaded / custom images; only set imageUrl on create.
         order: sector.order,
       },
       create: sector,
