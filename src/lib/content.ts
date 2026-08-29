@@ -95,22 +95,30 @@ export async function getGedService() {
     const ged = await liveCmsQuery(() =>
       prisma.gedService.findUnique({ where: { id: "default" } })
     );
-    return (
-      ged || {
+    if (!ged) {
+      return {
         id: "default",
         title: "GED — Gestion Électronique des Documents",
         description:
           "Notre solution web GED permet de centraliser, structurer et sécuriser l'ensemble de votre documentation qualité. Gestion des versions, traçabilité, workflows de validation et accès contrôlé — le tout conforme aux exigences ISO.",
-        imageUrl: null,
-      }
-    );
+        imageUrl: null as string | null,
+      };
+    }
+
+    return {
+      ...ged,
+      imageUrl:
+        ged.imageUrl && !isBrokenExternalImageUrl(ged.imageUrl)
+          ? sanitizePublicImageUrl(ged.imageUrl)
+          : null,
+    };
   } catch {
     return {
       id: "default",
       title: "GED — Gestion Électronique des Documents",
       description:
         "Notre solution web GED permet de centraliser, structurer et sécuriser l'ensemble de votre documentation qualité.",
-      imageUrl: null,
+      imageUrl: null as string | null,
     };
   }
 }
@@ -167,7 +175,10 @@ export async function getAboutData() {
     return {
       presentation: sections.find((s) => s.key === "presentation") || FALLBACK.presentation,
       steps: sections.find((s) => s.key === "steps") || FALLBACK.steps,
-      team,
+      team: team.map((member) => ({
+        ...member,
+        imageUrl: sanitizePublicImageUrl(member.imageUrl),
+      })),
     };
   } catch {
     return { ...FALLBACK, team: [] };

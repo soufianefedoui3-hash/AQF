@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  isBrokenExternalImageUrl,
+  sanitizePublicImageUrl,
+} from "@/lib/placeholder-images";
 
 interface PageHeroProps {
   title: string;
@@ -19,6 +23,11 @@ export function PageHero({
   image,
   className,
 }: PageHeroProps) {
+  const safeImage =
+    image && !isBrokenExternalImageUrl(image)
+      ? sanitizePublicImageUrl(image) || undefined
+      : undefined;
+
   return (
     <section
       className={cn(
@@ -26,14 +35,14 @@ export function PageHero({
         className
       )}
     >
-      {image && (
+      {safeImage && (
         <div
           className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url(${image})` }}
+          style={{ backgroundImage: `url(${safeImage})` }}
           aria-hidden
         />
       )}
-      {image && <div className="absolute inset-0 bg-brand-gradient/90" aria-hidden />}
+      {safeImage && <div className="absolute inset-0 bg-brand-gradient/90" aria-hidden />}
 
       <div
         className="pointer-events-none absolute inset-0 opacity-10"

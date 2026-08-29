@@ -29,10 +29,16 @@ export type CmsSection =
 
 /**
  * Bust Next.js caches aggressively after any admin CMS mutation.
- * Revalidates every public CMS route as both page and layout.
+ * Always revalidates every public CMS route (page + layout) so admin
+ * edits appear immediately on the website.
  */
 export function revalidateCms(_section: CmsSection = "all") {
   for (const path of CMS_PUBLIC_PATHS) {
+    try {
+      revalidatePath(path);
+    } catch (error) {
+      console.warn(`[revalidate] ${path}:`, error);
+    }
     try {
       revalidatePath(path, "page");
     } catch (error) {

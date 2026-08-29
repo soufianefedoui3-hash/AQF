@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { PageHero } from "@/components/ui/PageHero";
 import { PageSection } from "@/components/ui/PageSection";
 import { SectionHeader } from "@/components/ui/SectionHeader";
@@ -50,12 +49,11 @@ export default async function ProduitsPage() {
             {ged.imageUrl ? (
               <>
                 <div className="relative aspect-video">
-                  <Image
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
                     src={ged.imageUrl}
                     alt={ged.title}
-                    fill
-                    className="object-cover opacity-90"
-                    sizes="(max-width: 1024px) 100vw, 50vw"
+                    className="absolute inset-0 h-full w-full object-cover opacity-90"
                   />
                 </div>
                 <div

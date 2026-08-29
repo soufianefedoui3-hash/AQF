@@ -45,8 +45,8 @@ export async function repairBrokenSectorImages(
     repaired += 1;
   }
 
-  // Any other rows still pointing at Unsplash → generic local placeholder.
-  const leftovers = await client.sector.findMany({
+  // Any other sector rows still pointing at Unsplash → generic local placeholder.
+  const leftoverSectors = await client.sector.findMany({
     where: {
       OR: [
         { imageUrl: { contains: "unsplash.com" } },
@@ -56,10 +56,63 @@ export async function repairBrokenSectorImages(
     select: { id: true },
   });
 
-  for (const row of leftovers) {
+  for (const row of leftoverSectors) {
     await client.sector.update({
       where: { id: row.id },
       data: { imageUrl: "/placeholders/sector-generic.svg" },
+    });
+    repaired += 1;
+  }
+
+  // Clear broken external URLs on other CMS image fields (use local upload or null).
+  const clearUnsplash = async (
+    rows: Array<{ id: string }>,
+    update: (id: string) => Promise<unknown>
+  ) => {
+    for (const row of rows) {
+      await update(row.id);
+      repaired += 1;
+    }
+  };
+
+  await clearUnsplash(
+    await client.newsArticle.findMany({
+      where: {
+        OR: [
+          { imageUrl: { contains: "unsplash.com" } },
+          { imageUrl: { contains: "images.unsplash.com" } },
+        ],
+      },
+      select: { id: true },
+    }),
+    (id) => client.newsArticle.update({ where: { id }, data: { imageUrl: null } })
+  );
+
+  await clearUnsplash(
+    await client.teamMember.findMany({
+      where: {
+        OR: [
+          { imageUrl: { contains: "unsplash.com" } },
+          { imageUrl: { contains: "images.unsplash.com" } },
+        ],
+      },
+      select: { id: true },
+    }),
+    (id) => client.teamMember.update({ where: { id }, data: { imageUrl: null } })
+  );
+
+  const ged = await client.gedService.findUnique({
+    where: { id: "default" },
+    select: { id: true, imageUrl: true },
+  });
+  if (
+    ged?.imageUrl &&
+    (ged.imageUrl.includes("unsplash.com") ||
+      ged.imageUrl.includes("images.unsplash.com"))
+  ) {
+    await client.gedService.update({
+      where: { id: "default" },
+      data: { imageUrl: null },
     });
     repaired += 1;
   }
