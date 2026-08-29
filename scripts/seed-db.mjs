@@ -72,7 +72,11 @@ async function main() {
     } catch (countError) {
       warn(`Could not inspect database yet: ${countError.message}`);
     } finally {
-      await prisma.$disconnect();
+      try {
+        await prisma.$disconnect();
+      } catch {
+        /* ignore engine teardown / net close noise */
+      }
     }
 
     if (alreadySeeded) {

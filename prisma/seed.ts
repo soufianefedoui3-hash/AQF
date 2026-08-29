@@ -24,8 +24,12 @@ async function main() {
 main()
   .catch((error) => {
     console.error(error);
-    process.exit(1);
+    process.exitCode = 1;
   })
   .finally(async () => {
-    await prisma.$disconnect();
+    try {
+      await prisma.$disconnect();
+    } catch {
+      /* ignore engine teardown / net close noise */
+    }
   });

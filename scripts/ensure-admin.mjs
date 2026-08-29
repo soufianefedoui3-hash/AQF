@@ -79,6 +79,10 @@ export async function runEnsureAdmin(options = {}) {
   try {
     return await ensureAdmin(prisma, options);
   } finally {
-    await prisma.$disconnect();
+    try {
+      await prisma.$disconnect();
+    } catch {
+      /* ignore engine teardown / net close noise */
+    }
   }
 }

@@ -304,6 +304,10 @@ export async function applySqlSchemaFallback(databaseUrl) {
     await applySqlSchemaWithClient(client);
     return { ok: true };
   } finally {
-    await client.$disconnect();
+    try {
+      await client.$disconnect();
+    } catch {
+      /* ignore engine teardown / net close noise */
+    }
   }
 }
