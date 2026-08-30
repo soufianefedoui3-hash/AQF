@@ -37,7 +37,9 @@ export function CertificateGenerator() {
   const [format, setFormat] = useState<CertificateFormat>("a4");
   const [exporting, setExporting] = useState(false);
   const [uploadingBg, setUploadingBg] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const bgInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setData(loadDraft());
@@ -68,18 +70,24 @@ export function CertificateGenerator() {
     setData((prev) => ({ ...prev, [key]: value }));
   }
 
-  async function handleBackgroundUpload(file: File | undefined) {
+  async function uploadImage(
+    file: File | undefined,
+    key: "backgroundImage" | "logoImage",
+    prefix: string
+  ) {
     if (!file) return;
     const type = file.type.toLowerCase();
     if (!["image/png", "image/jpeg", "image/jpg"].includes(type)) {
       toast.error("Utilisez un fichier PNG ou JPG");
       return;
     }
-    setUploadingBg(true);
+    const setBusy = key === "backgroundImage" ? setUploadingBg : setUploadingLogo;
+    const input = key === "backgroundImage" ? bgInputRef.current : logoInputRef.current;
+    setBusy(true);
     try {
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("prefix", "certificate-bg");
+      formData.append("prefix", prefix);
       const res = await fetch("/api/admin/upload", {
         method: "POST",
         body: formData,
@@ -91,13 +99,13 @@ export function CertificateGenerator() {
         toast.error(payload?.error || "Échec du téléchargement");
         return;
       }
-      update("backgroundImage", payload.url);
-      toast.success("Arrière-plan mis à jour");
+      update(key, payload.url);
+      toast.success(key === "logoImage" ? "Logo mis à jour" : "Arrière-plan mis à jour");
     } catch {
       toast.error("Échec du téléchargement");
     } finally {
-      setUploadingBg(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      setBusy(false);
+      if (input) input.value = "";
     }
   }
 
@@ -118,7 +126,7 @@ export function CertificateGenerator() {
       const canvas = await html2canvas(node, {
         scale: 4,
         useCORS: true,
-        backgroundColor: data.backgroundImage.trim() ? "#ffffff" : "#0c7f88",
+        backgroundColor: "#ffffff",
         width: CERTIFICATE_WIDTH,
         height: CERTIFICATE_HEIGHT,
         windowWidth: CERTIFICATE_WIDTH,
@@ -196,14 +204,51 @@ export function CertificateGenerator() {
           <div className="space-y-5">
             <div className="space-y-3">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent-700">
-                Télécharger l&apos;arrière-plan de l&apos;attestation
+                Télécharger le logo
               </p>
               <input
-                ref={fileInputRef}
+                ref={logoInputRef}
                 type="file"
                 accept="image/png,image/jpeg,.png,.jpg,.jpeg"
                 className="sr-only"
-                onChange={(e) => void handleBackgroundUpload(e.target.files?.[0])}
+                onChange={(e) => void uploadImage(e.target.files?.[0], "logoImage", "certificate-logo")}
+              />
+              {data.logoImage ? (
+                <div className="flex h-20 items-center justify-center overflow-hidden rounded-xl border border-primary-100 bg-surface-muted">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={data.logoImage} alt="Logo" className="max-h-16 max-w-full object-contain" />
+                </div>
+              ) : (
+                <p className="text-xs text-text-muted">PNG ou JPG. Affiché en haut au centre.</p>
+              )}
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  loading={uploadingLogo}
+                  onClick={() => logoInputRef.current?.click()}
+                >
+                  <ImagePlus className="h-4 w-4" />
+                  {data.logoImage ? "Remplacer" : "Choisir un fichier"}
+                </Button>
+                {data.logoImage ? (
+                  <Button type="button" variant="ghost" onClick={() => update("logoImage", "")}>
+                    <Trash2 className="h-4 w-4" />
+                    Retirer
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+            <div className="space-y-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent-700">
+                Télécharger l&apos;arrière-plan de l&apos;attestation
+              </p>
+              <input
+                ref={bgInputRef}
+                type="file"
+                accept="image/png,image/jpeg,.png,.jpg,.jpeg"
+                className="sr-only"
+                onChange={(e) => void uploadImage(e.target.files?.[0], "backgroundImage", "certificate-bg")}
               />
               {data.backgroundImage ? (
                 <div className="overflow-hidden rounded-xl border border-primary-100">
@@ -216,7 +261,7 @@ export function CertificateGenerator() {
                 </div>
               ) : (
                 <p className="text-xs text-text-muted">
-                  PNG ou JPG. Le texte dynamique se place au-dessus de l&apos;image.
+                  PNG ou JPG. Le texte reste au-dessus de l&apos;image.
                 </p>
               )}
               <div className="flex gap-2">
@@ -224,7 +269,7 @@ export function CertificateGenerator() {
                   type="button"
                   variant="ghost"
                   loading={uploadingBg}
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => bgInputRef.current?.click()}
                 >
                   <ImagePlus className="h-4 w-4" />
                   {data.backgroundImage ? "Remplacer" : "Choisir un fichier"}
