@@ -81,9 +81,9 @@ export function CertificateGenerator() {
       ]);
 
       const canvas = await html2canvas(node, {
-        scale: 3,
+        scale: 4,
         useCORS: true,
-        backgroundColor: "#0c7f88",
+        backgroundColor: "#004d5a",
         width: CERTIFICATE_WIDTH,
         height: CERTIFICATE_HEIGHT,
         windowWidth: CERTIFICATE_WIDTH,
@@ -105,7 +105,7 @@ export function CertificateGenerator() {
         pdf.internal.pageSize.getWidth(),
         pdf.internal.pageSize.getHeight(),
         undefined,
-        "FAST"
+        "SLOW"
       );
       pdf.save(certificateFileName(data.studentName));
       toast.success(`PDF ${format.toUpperCase()} généré`);
@@ -152,70 +152,85 @@ export function CertificateGenerator() {
         le format A4 ou A3 pour un export PDF prêt à imprimer.
       </p>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,22rem)_1fr]">
-        <aside className="rounded-2xl border border-primary-100 bg-white p-5 shadow-sm">
-          <div className="mb-4 flex items-center gap-2 text-primary-900">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,23rem)_1fr]">
+        <aside className="h-fit rounded-2xl border border-primary-100 bg-white p-5 shadow-sm xl:sticky xl:top-4">
+          <div className="mb-5 flex items-center gap-2 text-primary-900">
             <Award className="h-5 w-5 text-accent-600" />
             <h3 className="font-semibold">Variables de l&apos;attestation</h3>
           </div>
-          <div className="space-y-4">
-            <Input
-              label="[Prénom NOM]"
-              value={data.studentName}
-              onChange={(e) => update("studentName", e.target.value)}
-              placeholder="Prénom NOM"
-            />
-            <Input
-              label="[INTITULÉ DE LA FORMATION/ACCOMPAGNEMENT]"
-              value={data.trainingTitle}
-              onChange={(e) => update("trainingTitle", e.target.value)}
-              placeholder="Intitulé de la formation / accompagnement"
-            />
-            <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-5">
+            <div className="space-y-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent-700">
+                Participant
+              </p>
               <Input
-                type="date"
-                label="[DATE DE DÉBUT]"
-                value={data.startDate}
-                onChange={(e) => update("startDate", e.target.value)}
-              />
-              <Input
-                type="date"
-                label="[DATE DE FIN]"
-                value={data.endDate}
-                onChange={(e) => update("endDate", e.target.value)}
+                label="[Prénom NOM]"
+                value={data.studentName}
+                onChange={(e) => update("studentName", e.target.value)}
+                placeholder="Prénom NOM"
               />
             </div>
-            <Input
-              type="number"
-              min={1}
-              label="[NOMBRE] heures"
-              value={data.hours}
-              onChange={(e) => update("hours", e.target.value)}
-            />
-            <Input
-              label="[NOM DU FORMATEUR/RESPONSABLE]"
-              value={data.trainerName}
-              onChange={(e) => update("trainerName", e.target.value)}
-              placeholder="Nom du formateur / responsable"
-            />
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent-700">
+                Formation
+              </p>
               <Input
-                label="[LIEU DE DÉLIVRANCE]"
-                value={data.issuePlace}
-                onChange={(e) => update("issuePlace", e.target.value)}
-                placeholder="Lieu de délivrance"
+                label="[INTITULÉ DE LA FORMATION/ACCOMPAGNEMENT]"
+                value={data.trainingTitle}
+                onChange={(e) => update("trainingTitle", e.target.value)}
+                placeholder="Intitulé de la formation / accompagnement"
+              />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Input
+                  type="date"
+                  label="[DATE DE DÉBUT]"
+                  value={data.startDate}
+                  onChange={(e) => update("startDate", e.target.value)}
+                />
+                <Input
+                  type="date"
+                  label="[DATE DE FIN]"
+                  value={data.endDate}
+                  onChange={(e) => update("endDate", e.target.value)}
+                />
+              </div>
+              <Input
+                type="number"
+                min={1}
+                label="[NOMBRE] heures"
+                value={data.hours}
+                onChange={(e) => update("hours", e.target.value)}
               />
               <Input
-                type="date"
-                label="[DATE DE DÉLIVRANCE]"
-                value={data.issueDate}
-                onChange={(e) => update("issueDate", e.target.value)}
+                label="[NOM DU FORMATEUR/RESPONSABLE]"
+                value={data.trainerName}
+                onChange={(e) => update("trainerName", e.target.value)}
+                placeholder="Nom du formateur / responsable"
               />
+            </div>
+            <div className="space-y-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent-700">
+                Délivrance
+              </p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Input
+                  label="[LIEU DE DÉLIVRANCE]"
+                  value={data.issuePlace}
+                  onChange={(e) => update("issuePlace", e.target.value)}
+                  placeholder="Lieu de délivrance"
+                />
+                <Input
+                  type="date"
+                  label="[DATE DE DÉLIVRANCE]"
+                  value={data.issueDate}
+                  onChange={(e) => update("issueDate", e.target.value)}
+                />
+              </div>
             </div>
           </div>
         </aside>
 
-        <div className="min-w-0 rounded-2xl border border-primary-100 bg-surface-muted p-4 shadow-sm">
+        <div className="min-w-0 rounded-2xl border border-primary-100 bg-[#eef2f3] p-4 shadow-sm">
           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-accent-700">
             Aperçu live
           </p>
