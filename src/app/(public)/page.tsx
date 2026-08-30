@@ -1,6 +1,6 @@
 import { ArrowRight } from "lucide-react";
 import { NAV_LINKS, HOMEPAGE_STATS } from "@/lib/constants";
-import { getHomepagePresentation } from "@/lib/content";
+import { getHomepageSections } from "@/lib/content";
 import { NavCard } from "@/components/layout/NavCard";
 import { Button } from "@/components/ui/Button";
 import { Logo } from "@/components/brand/Logo";
@@ -9,7 +9,8 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function HomePage() {
-  const presentation = await getHomepagePresentation();
+  const sections = await getHomepageSections();
+  const [presentation, ...extraSections] = sections;
 
   return (
     <>
@@ -36,6 +37,23 @@ export default async function HomePage() {
           </span>
           <p className="text-lg leading-relaxed text-text-muted">{presentation.content}</p>
         </div>
+        {extraSections.length > 0 ? (
+          <div className="mx-auto mt-12 grid max-w-5xl gap-6 px-4 sm:px-6 md:grid-cols-2">
+            {extraSections.map((section) => (
+              <div
+                key={section.key}
+                className="rounded-2xl border border-primary-100 bg-white p-6 text-left shadow-sm"
+              >
+                <h3 className="mb-3 text-lg font-semibold text-primary-900">
+                  {section.title?.trim() || "Section"}
+                </h3>
+                <p className="whitespace-pre-line text-sm leading-relaxed text-text-muted">
+                  {section.content}
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : null}
       </section>
 
       <section className="bg-surface-muted py-14 md:py-16">

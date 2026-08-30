@@ -6,13 +6,13 @@ import { Input, Textarea } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { FormationsManager } from "@/components/admin/FormationsManager";
 import { PacksManager } from "@/components/admin/PacksManager";
+import {
+  pageBlocks,
+  SectionBlocksEditor,
+  sortAboutBlocks,
+  type ContentBlock,
+} from "@/components/admin/SectionBlocksEditor";
 import { adminFetch } from "@/lib/admin-fetch";
-
-interface AboutSection {
-  key: string;
-  title: string;
-  content: string;
-}
 
 interface TeamMember {
   id: string;
@@ -89,7 +89,7 @@ async function readErrorMessage(res: Response): Promise<string> {
 }
 
 export default function ContentPage() {
-  const [about, setAbout] = useState<AboutSection[]>([]);
+  const [about, setAbout] = useState<ContentBlock[]>([]);
   const [team, setTeam] = useState<TeamMember[]>([]);
   const [sectors, setSectors] = useState<Sector[]>([]);
   const [careers, setCareers] = useState<CareersSettings>(DEFAULT_CAREERS);
@@ -220,49 +220,71 @@ export default function ContentPage() {
       </div>
 
       {activeTab === "about" && (
-        <div className="space-y-6">
-          {(["presentation", "steps"] as const).map((key) => {
-            const section = about.find((s) => s.key === key) || {
-              key,
-              title: key === "presentation" ? "Présentation du site" : "Étapes à suivre",
+        <SectionBlocksEditor
+          blocks={sortAboutBlocks(about)}
+          saving={saving}
+          onSave={async (data) => {
+            const ok = await save("about", data);
+            if (ok) await loadContent();
+          }}
+          onAdd={async () => {
+            const ok = await save("about", {
+              key: `section-${crypto.randomUUID()}`,
+              title: "Nouvelle section",
               content: "",
-            };
-            return (
-              <AboutEditor
-                key={key}
-                section={section}
-                saving={saving}
-                onSave={async (data) => {
-                  const ok = await save("about", data);
-                  if (ok) await loadContent();
-                }}
-              />
-            );
-          })}
-        </div>
+            });
+            if (ok) await loadContent();
+          }}
+          onDelete={async (key) => {
+            const ok = await save("about-delete", { key });
+            if (ok) await loadContent();
+          }}
+        />
       )}
 
       {activeTab === "homepage" && (
-        <PageEditor
-          pageKey="homepage_presentation"
-          label="Présentation de l'accueil"
-          pages={pages}
+        <SectionBlocksEditor
+          blocks={pageBlocks(pages, "homepage_presentation", "homepage:")}
           saving={saving}
           onSave={async (data) => {
             const ok = await save("page", data);
+            if (ok) await loadContent();
+          }}
+          onAdd={async () => {
+            const hasPrimary = pages.some((page) => page.key === "homepage_presentation");
+            const ok = await save("page", {
+              key: hasPrimary ? `homepage:${crypto.randomUUID()}` : "homepage_presentation",
+              title: "Nouvelle section",
+              content: "",
+            });
+            if (ok) await loadContent();
+          }}
+          onDelete={async (key) => {
+            const ok = await save("page-delete", { key });
             if (ok) await loadContent();
           }}
         />
       )}
 
       {activeTab === "formation" && (
-        <PageEditor
-          pageKey="formation_intro"
-          label="Introduction Formation Qualité"
-          pages={pages}
+        <SectionBlocksEditor
+          blocks={pageBlocks(pages, "formation_intro", "formation:")}
           saving={saving}
           onSave={async (data) => {
             const ok = await save("page", data);
+            if (ok) await loadContent();
+          }}
+          onAdd={async () => {
+            const hasPrimary = pages.some((page) => page.key === "formation_intro");
+            const ok = await save("page", {
+              key: hasPrimary ? `formation:${crypto.randomUUID()}` : "formation_intro",
+              title: "Nouvelle section",
+              content: "",
+            });
+            if (ok) await loadContent();
+          }}
+          onDelete={async (key) => {
+            const ok = await save("page-delete", { key });
             if (ok) await loadContent();
           }}
         />
@@ -273,18 +295,41 @@ export default function ContentPage() {
       {activeTab === "packs" && <PacksManager />}
 
       {activeTab === "ged" && (
-        <GedEditor
-          ged={ged}
-          saving={saving}
-          onSave={async (data) => {
-            const ok = await save("ged", data);
-            if (ok) {
-              setGed(data);
-              await loadContent();
-            }
-          }}
-          onUpload={uploadImage}
-        />
+        <div className="space-y-6">
+          <GedEditor
+            ged={ged}
+            saving={saving}
+            onSave={async (data) => {
+              const ok = await save("ged", data);
+              if (ok) {
+                setGed(data);
+                await loadContent();
+              }
+            }}
+            onUpload={uploadImage}
+          />
+          <SectionBlocksEditor
+            blocks={pages.filter((page) => page.key.startsWith("ged:"))}
+            saving={saving}
+            addLabel="Ajouter une section"
+            onSave={async (data) => {
+              const ok = await save("page", data);
+              if (ok) await loadContent();
+            }}
+            onAdd={async () => {
+              const ok = await save("page", {
+                key: `ged:${crypto.randomUUID()}`,
+                title: "Nouvelle section",
+                content: "",
+              });
+              if (ok) await loadContent();
+            }}
+            onDelete={async (key) => {
+              const ok = await save("page-delete", { key });
+              if (ok) await loadContent();
+            }}
+          />
+        </div>
       )}
 
       {activeTab === "team" && (
@@ -339,25 +384,67 @@ export default function ContentPage() {
                   const ok = await save("sector", data);
                   if (ok) await loadContent();
                 }}
+                onDelete={async () => {
+                  if (!confirm("Supprimer ce secteur ?")) return;
+                  const ok = await save("sector-delete", { id: sector.id });
+                  if (ok) await loadContent();
+                }}
                 onUpload={uploadImage}
               />
             ))
           )}
+          <Button
+            variant="outline"
+            loading={saving}
+            onClick={async () => {
+              const ok = await save("sector", {
+                name: "Nouveau secteur",
+                description: "",
+                order: sectors.length,
+              });
+              if (ok) await loadContent();
+            }}
+          >
+            Ajouter une section
+          </Button>
         </div>
       )}
 
       {activeTab === "careers" && (
-        <CareersEditor
-          settings={careers}
-          saving={saving}
-          onSave={async (data) => {
-            const ok = await save("careers", data);
-            if (ok) {
-              setCareers(data);
-              await loadContent();
-            }
-          }}
-        />
+        <div className="space-y-6">
+          <CareersEditor
+            settings={careers}
+            saving={saving}
+            onSave={async (data) => {
+              const ok = await save("careers", data);
+              if (ok) {
+                setCareers(data);
+                await loadContent();
+              }
+            }}
+          />
+          <SectionBlocksEditor
+            blocks={pages.filter((page) => page.key.startsWith("careers:"))}
+            saving={saving}
+            addLabel="Ajouter une section"
+            onSave={async (data) => {
+              const ok = await save("page", data);
+              if (ok) await loadContent();
+            }}
+            onAdd={async () => {
+              const ok = await save("page", {
+                key: `careers:${crypto.randomUUID()}`,
+                title: "Nouvelle section",
+                content: "",
+              });
+              if (ok) await loadContent();
+            }}
+            onDelete={async (key) => {
+              const ok = await save("page-delete", { key });
+              if (ok) await loadContent();
+            }}
+          />
+        </div>
       )}
 
       {activeTab === "settings" && (
@@ -373,45 +460,6 @@ export default function ContentPage() {
           }}
         />
       )}
-    </div>
-  );
-}
-
-function PageEditor({
-  pageKey,
-  label,
-  pages,
-  saving,
-  onSave,
-}: {
-  pageKey: string;
-  label: string;
-  pages: PageContentItem[];
-  saving: boolean;
-  onSave: (data: PageContentItem) => Promise<void>;
-}) {
-  const existing = pages.find((p) => p.key === pageKey);
-  const [title, setTitle] = useState(existing?.title || label);
-  const [content, setContent] = useState(existing?.content || "");
-
-  useEffect(() => {
-    setTitle(existing?.title || label);
-    setContent(existing?.content || "");
-  }, [existing?.title, existing?.content, label]);
-
-  return (
-    <div className="rounded-2xl border border-primary-100 bg-white p-6">
-      <Input label="Titre" value={title || ""} onChange={(e) => setTitle(e.target.value)} />
-      <div className="mt-4">
-        <Textarea label="Contenu" value={content} onChange={(e) => setContent(e.target.value)} />
-      </div>
-      <Button
-        className="mt-4"
-        loading={saving}
-        onClick={() => onSave({ key: pageKey, title, content })}
-      >
-        Enregistrer
-      </Button>
     </div>
   );
 }
@@ -466,40 +514,6 @@ function GedEditor({
         {form.imageUrl && <p className="mt-1 text-xs text-text-muted">{form.imageUrl}</p>}
       </div>
       <Button className="mt-4" loading={saving || uploading} onClick={() => onSave(form)}>
-        Enregistrer
-      </Button>
-    </div>
-  );
-}
-
-function AboutEditor({
-  section,
-  saving,
-  onSave,
-}: {
-  section: AboutSection;
-  saving: boolean;
-  onSave: (data: AboutSection) => Promise<void>;
-}) {
-  const [title, setTitle] = useState(section.title);
-  const [content, setContent] = useState(section.content);
-
-  useEffect(() => {
-    setTitle(section.title);
-    setContent(section.content);
-  }, [section.title, section.content]);
-
-  return (
-    <div className="rounded-2xl border border-primary-100 bg-white p-6">
-      <Input label="Titre" value={title} onChange={(e) => setTitle(e.target.value)} />
-      <div className="mt-4">
-        <Textarea label="Contenu" value={content} onChange={(e) => setContent(e.target.value)} />
-      </div>
-      <Button
-        className="mt-4"
-        loading={saving}
-        onClick={() => onSave({ key: section.key, title, content })}
-      >
         Enregistrer
       </Button>
     </div>
@@ -603,11 +617,13 @@ function SectorEditor({
   sector,
   saving,
   onSave,
+  onDelete,
   onUpload,
 }: {
   sector: Sector;
   saving: boolean;
   onSave: (data: Sector) => Promise<void>;
+  onDelete: () => Promise<void>;
   onUpload: (file: File, prefix: string) => Promise<string | null>;
 }) {
   const [form, setForm] = useState(sector);
@@ -667,13 +683,14 @@ function SectorEditor({
         <input type="file" accept="image/*" onChange={handleImage} className="text-sm" disabled={uploading} />
         {previewUrl && <p className="mt-1 text-xs text-text-muted">{previewUrl}</p>}
       </div>
-      <Button
-        className="mt-4"
-        loading={saving || uploading}
-        onClick={() => onSave(form)}
-      >
-        Enregistrer
-      </Button>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Button loading={saving || uploading} onClick={() => onSave(form)}>
+          Enregistrer
+        </Button>
+        <Button variant="danger" loading={saving} onClick={onDelete}>
+          Supprimer
+        </Button>
+      </div>
     </div>
   );
 }

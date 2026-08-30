@@ -2,7 +2,7 @@ import { Mail, Phone } from "lucide-react";
 import { PageHero } from "@/components/ui/PageHero";
 import { PageSection, ContentCard } from "@/components/ui/PageSection";
 import { CareersApplicationForm } from "@/components/forms/CareersApplicationForm";
-import { getCareersSettings } from "@/lib/content";
+import { getCareersExtraSections, getCareersSettings } from "@/lib/content";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +19,7 @@ export default async function CarrieresPage() {
       phone: "+212 600 000 000",
     };
   }
+  const extraSections = await getCareersExtraSections();
 
   const phone = String(settings.phone || "").trim();
   const email = String(settings.email || "").trim();
@@ -71,6 +72,20 @@ export default async function CarrieresPage() {
 
           <CareersApplicationForm />
         </div>
+        {extraSections.length > 0 ? (
+          <div className="mt-8 grid gap-6 md:grid-cols-2">
+            {extraSections.map((section) => (
+              <ContentCard key={section.key}>
+                <h3 className="mb-3 text-lg font-semibold text-primary-900">
+                  {section.title?.trim() || "Section"}
+                </h3>
+                <p className="whitespace-pre-line text-sm leading-relaxed text-text-muted">
+                  {section.content}
+                </p>
+              </ContentCard>
+            ))}
+          </div>
+        ) : null}
       </PageSection>
     </>
   );

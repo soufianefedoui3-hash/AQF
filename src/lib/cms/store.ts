@@ -40,6 +40,17 @@ function localImage(value: unknown): string | null {
   return toLocalImageUrl(typeof value === "string" ? value : null);
 }
 
+function slugifyName(value: string): string {
+  const slug = value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+  return slug || `secteur-${newId().slice(0, 8)}`;
+}
+
 async function withDb<T>(work: () => T | Promise<T>, fallbackError: string): Promise<CmsResult<T>> {
   try {
     await readyDb();
@@ -394,6 +405,14 @@ export async function upsertAbout(data: {
   }, "Impossible d'enregistrer la section");
 }
 
+export async function deleteAbout(key: string): Promise<CmsResult<true>> {
+  return withDb(async () => {
+    const result = execute(`DELETE FROM "AboutSection" WHERE "key" = ?`, [key.trim()]);
+    if (!result.ok) throw new Error(result.error || "Suppression impossible");
+    return true as const;
+  }, "Impossible de supprimer la section");
+}
+
 export async function upsertTeam(data: {
   id?: string;
   name?: string;
@@ -481,8 +500,25 @@ export async function upsertSector(data: {
       return mapSector(row);
     }
 
-    throw new Error("slug ou id de secteur valide requis");
+    let slug = slugifyName(payload.name || "nouveau-secteur");
+    if (queryOne(`SELECT "id" FROM "Sector" WHERE "slug" = ?`, [slug])) {
+      slug = `${slug}-${newId().slice(0, 6)}`;
+    }
+    const id = newId();
+    execute(
+      `INSERT INTO "Sector" ("id", "slug", "name", "description", "imageUrl", "order", "updatedAt") VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [id, slug, payload.name || "Nouveau secteur", payload.description, payload.imageUrl, payload.order, updatedAt]
+    );
+    return mapSector({ id, slug, ...payload, name: payload.name || "Nouveau secteur", updatedAt });
   }, "Impossible d'enregistrer le secteur");
+}
+
+export async function deleteSector(id: string): Promise<CmsResult<true>> {
+  return withDb(async () => {
+    const result = execute(`DELETE FROM "Sector" WHERE "id" = ?`, [id]);
+    if (!result.ok) throw new Error(result.error || "Suppression impossible");
+    return true as const;
+  }, "Impossible de supprimer le secteur");
 }
 
 export async function upsertCareers(data: {
@@ -573,6 +609,14 @@ export async function upsertPage(data: {
     }
     return mapPage({ id, key, title, content, updatedAt });
   }, "Impossible d'enregistrer la page");
+}
+
+export async function deletePage(key: string): Promise<CmsResult<true>> {
+  return withDb(async () => {
+    const result = execute(`DELETE FROM "PageContent" WHERE "key" = ?`, [key.trim()]);
+    if (!result.ok) throw new Error(result.error || "Suppression impossible");
+    return true as const;
+  }, "Impossible de supprimer la section");
 }
 
 export async function upsertGed(data: {

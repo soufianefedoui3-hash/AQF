@@ -16,6 +16,7 @@ import {
   listAboutSections,
   listNews,
   listPacks,
+  listPages,
   listSectors,
   listTeamMembers,
 } from "@/lib/cms/store";
@@ -84,19 +85,77 @@ export async function getPageContent(
   }
 }
 
+const FALLBACK_HOMEPAGE = {
+  key: "homepage_presentation",
+  title: "Présentation",
+  content: `${BRAND.fullName} est votre partenaire de confiance en management de la qualité, formation professionnelle et audit. Nous accompagnons les laboratoires, entreprises agroalimentaires, universités, cliniques et industries pharmaceutiques vers l'excellence opérationnelle et la conformité aux normes internationales.`,
+};
+
+const FALLBACK_FORMATION = {
+  key: "formation_intro",
+  title: "Formation Qualité",
+  content:
+    "Nos formations qualité sont conçues sur mesure pour répondre aux besoins des étudiants souhaitant se spécialiser, ainsi que des professionnels de santé et du corporate désireux de renforcer leurs compétences en management de la qualité, normes ISO et bonnes pratiques sectorielles.",
+};
+
+async function getPrefixedPageBlocks(
+  primaryKey: string,
+  extraPrefix: string,
+  fallback: { key: string; title: string; content: string }
+) {
+  try {
+    const pages = await listPages();
+    const primary = pages.find((page) => page.key === primaryKey);
+    const extras = pages
+      .filter((page) => page.key.startsWith(extraPrefix))
+      .sort((a, b) => a.key.localeCompare(b.key));
+    if (!primary && extras.length === 0) return [fallback];
+    return primary ? [primary, ...extras] : extras;
+  } catch {
+    return [fallback];
+  }
+}
+
+export async function getHomepageSections() {
+  return getPrefixedPageBlocks(
+    "homepage_presentation",
+    "homepage:",
+    FALLBACK_HOMEPAGE
+  );
+}
+
 export async function getHomepagePresentation() {
-  return getPageContent("homepage_presentation", {
-    title: "Présentation",
-    content: `${BRAND.fullName} est votre partenaire de confiance en management de la qualité, formation professionnelle et audit. Nous accompagnons les laboratoires, entreprises agroalimentaires, universités, cliniques et industries pharmaceutiques vers l'excellence opérationnelle et la conformité aux normes internationales.`,
-  });
+  const [first] = await getHomepageSections();
+  return first;
+}
+
+export async function getFormationSections() {
+  return getPrefixedPageBlocks("formation_intro", "formation:", FALLBACK_FORMATION);
 }
 
 export async function getFormationIntro() {
-  return getPageContent("formation_intro", {
-    title: "Formation Qualité",
-    content:
-      "Nos formations qualité sont conçues sur mesure pour répondre aux besoins des étudiants souhaitant se spécialiser, ainsi que des professionnels de santé et du corporate désireux de renforcer leurs compétences en management de la qualité, normes ISO et bonnes pratiques sectorielles.",
-  });
+  const [first] = await getFormationSections();
+  return first;
+}
+
+export async function getCareersExtraSections() {
+  try {
+    return (await listPages())
+      .filter((page) => page.key.startsWith("careers:"))
+      .sort((a, b) => a.key.localeCompare(b.key));
+  } catch {
+    return [];
+  }
+}
+
+export async function getGedExtraSections() {
+  try {
+    return (await listPages())
+      .filter((page) => page.key.startsWith("ged:"))
+      .sort((a, b) => a.key.localeCompare(b.key));
+  } catch {
+    return [];
+  }
 }
 
 export async function getGedService() {
@@ -166,17 +225,35 @@ export async function getAboutData() {
       listAboutSections(),
       listTeamMembers(),
     ]);
+    const rank = (key: string) =>
+      key === "presentation" ? 0 : key === "steps" ? 1 : 2;
+    const sorted = [...sections].sort(
+      (a, b) => rank(a.key) - rank(b.key) || a.key.localeCompare(b.key)
+    );
+    const extras = sorted.filter(
+      (section) => section.key !== "presentation" && section.key !== "steps"
+    );
     return {
       presentation:
         sections.find((s) => s.key === "presentation") || FALLBACK.presentation,
       steps: sections.find((s) => s.key === "steps") || FALLBACK.steps,
+      sections:
+        sorted.length > 0
+          ? sorted
+          : [FALLBACK.presentation, FALLBACK.steps],
+      extras,
       team: team.map((member) => ({
         ...member,
         imageUrl: sanitizePublicImageUrl(member.imageUrl),
       })),
     };
   } catch {
-    return { ...FALLBACK, team: [] };
+    return {
+      ...FALLBACK,
+      sections: [FALLBACK.presentation, FALLBACK.steps],
+      extras: [],
+      team: [],
+    };
   }
 }
 

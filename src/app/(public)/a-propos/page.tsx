@@ -4,8 +4,11 @@ import { PageSection, ContentCard } from "@/components/ui/PageSection";
 import { getAboutData } from "@/lib/content";
 import { normalizeImageUrl } from "@/lib/news";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function AboutPage() {
-  const { presentation, steps, team } = await getAboutData();
+  const { sections, team } = await getAboutData();
 
   return (
     <>
@@ -16,29 +19,27 @@ export default async function AboutPage() {
 
       <PageSection>
         <div className="mb-12 grid gap-6 lg:mb-16 lg:grid-cols-2 lg:gap-8">
-          <ContentCard>
-            <div className="mb-4 flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-100">
-                <FileText className="h-5 w-5 text-primary-700" />
+          {sections.map((section, index) => (
+            <ContentCard key={section.key}>
+              <div className="mb-4 flex items-center gap-3">
+                <div
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
+                    index % 2 === 0 ? "bg-primary-100" : "bg-secondary-100"
+                  }`}
+                >
+                  {index % 2 === 0 ? (
+                    <FileText className="h-5 w-5 text-primary-700" />
+                  ) : (
+                    <ListChecks className="h-5 w-5 text-secondary-700" />
+                  )}
+                </div>
+                <h2 className="text-lg font-semibold text-primary-900">{section.title}</h2>
               </div>
-              <h2 className="text-lg font-semibold text-primary-900">{presentation.title}</h2>
-            </div>
-            <p className="whitespace-pre-line text-sm leading-relaxed text-text-muted">
-              {presentation.content}
-            </p>
-          </ContentCard>
-
-          <ContentCard>
-            <div className="mb-4 flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-secondary-100">
-                <ListChecks className="h-5 w-5 text-secondary-700" />
-              </div>
-              <h2 className="text-lg font-semibold text-primary-900">{steps.title}</h2>
-            </div>
-            <p className="whitespace-pre-line text-sm leading-relaxed text-text-muted">
-              {steps.content}
-            </p>
-          </ContentCard>
+              <p className="whitespace-pre-line text-sm leading-relaxed text-text-muted">
+                {section.content}
+              </p>
+            </ContentCard>
+          ))}
         </div>
 
         <div>

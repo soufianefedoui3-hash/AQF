@@ -3,6 +3,9 @@ import { sessionFromRequest } from "@/lib/auth";
 import { DEFAULT_ADMIN_CONTENT } from "@/lib/seed-data";
 import { revalidateCms } from "@/lib/revalidate-cms";
 import {
+  deleteAbout,
+  deletePage,
+  deleteSector,
   deleteTeam,
   loadAdminContent,
   upsertAbout,
@@ -77,6 +80,10 @@ export async function PUT(request: NextRequest) {
           content: data.content == null ? "" : String(data.content),
         });
         break;
+      case "about-delete":
+        if (!data.key) return jsonError("Clé de section requise", 400);
+        result = await deleteAbout(String(data.key));
+        break;
       case "team":
         result = await upsertTeam({
           id: data.id ? String(data.id) : undefined,
@@ -101,6 +108,10 @@ export async function PUT(request: NextRequest) {
           imageUrl: data.imageUrl,
           order: typeof data.order === "number" ? data.order : undefined,
         });
+        break;
+      case "sector-delete":
+        if (!data.id) return jsonError("ID requis", 400);
+        result = await deleteSector(String(data.id));
         break;
       case "careers":
         result = await upsertCareers({
@@ -128,6 +139,10 @@ export async function PUT(request: NextRequest) {
           title: data.title == null ? null : String(data.title),
           content: data.content == null ? "" : String(data.content),
         });
+        break;
+      case "page-delete":
+        if (!data.key) return jsonError("Clé de page requise", 400);
+        result = await deletePage(String(data.key));
         break;
       case "ged":
         result = await upsertGed({

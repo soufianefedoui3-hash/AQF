@@ -4,10 +4,17 @@ import { SectionHeader } from "@/components/ui/SectionHeader";
 import { PackMockup } from "@/components/ui/PackMockup";
 import { GedRequestForm } from "@/components/forms/GedRequestForm";
 import { Logo } from "@/components/brand/Logo";
-import { getGedService, getProductPacks } from "@/lib/content";
+import { getGedExtraSections, getGedService, getProductPacks } from "@/lib/content";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function ProduitsPage() {
-  const [ged, packs] = await Promise.all([getGedService(), getProductPacks()]);
+  const [ged, packs, extraSections] = await Promise.all([
+    getGedService(),
+    getProductPacks(),
+    getGedExtraSections(),
+  ]);
 
   return (
     <>
@@ -86,6 +93,23 @@ export default async function ProduitsPage() {
             </div>
           </div>
         </div>
+        {extraSections.length > 0 ? (
+          <div className="mt-10 grid gap-6 md:grid-cols-2">
+            {extraSections.map((section) => (
+              <div
+                key={section.key}
+                className="rounded-2xl border border-primary-100 bg-white p-6 shadow-sm"
+              >
+                <h3 className="mb-3 text-lg font-semibold text-primary-900">
+                  {section.title?.trim() || "Section"}
+                </h3>
+                <p className="whitespace-pre-line text-sm leading-relaxed text-text-muted">
+                  {section.content}
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : null}
       </PageSection>
     </>
   );
