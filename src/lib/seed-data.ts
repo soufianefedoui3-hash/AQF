@@ -1,3 +1,5 @@
+import { SITE_COPY_DEFAULTS } from "@/lib/site-copy";
+
 export const DEFAULT_SECTORS = [
   {
     slug: "laboratoire-biologie-medicale",
@@ -168,6 +170,7 @@ export const DEFAULT_CONTENT_LABELS: Record<string, string> = {
   accompagnement: "Accompagnement",
   audit: "Audit",
   products: "Produits & Services",
+  ...SITE_COPY_DEFAULTS,
 };
 
 export const ADMIN_CONTENT_TAB_IDS = [

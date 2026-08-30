@@ -9,6 +9,7 @@ import {
   getTabLayoutBlocks,
   labelOf,
 } from "@/lib/content";
+import { resolveCopy } from "@/lib/site-copy";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -27,9 +28,9 @@ export default async function ProduitsPage() {
     <>
       <PageHero
         title={labelOf(labels, "products", "Produits et Services")}
-        subtitle="Packs d'implémentation prêts à l'emploi et solutions web sur mesure."
+        subtitle={resolveCopy(labels, "subtitle_packs")}
         backHref="/services"
-        backLabel="Retour aux services"
+        backLabel={resolveCopy(labels, "back_to_services")}
       />
       <ProductsPageBody
         packsTitle={labelOf(labels, "packs", "Packs produits")}
@@ -37,6 +38,12 @@ export default async function ProduitsPage() {
         packs={packs}
         ged={ged}
         extraSections={extraSections}
+        packsBadge={resolveCopy(labels, "products_packs_badge")}
+        packsSubtitle={resolveCopy(labels, "products_packs_subtitle")}
+        gedBadge={resolveCopy(labels, "products_ged_badge")}
+        gedSubtitle={resolveCopy(labels, "products_ged_subtitle")}
+        gedFallback={resolveCopy(labels, "products_ged_fallback")}
+        emptyLabel={resolveCopy(labels, "products_empty")}
       />
       <PageBlockList blocks={packBlocks} showEmpty={false} />
       <PageBlockList blocks={gedBlocks} showEmpty={false} />

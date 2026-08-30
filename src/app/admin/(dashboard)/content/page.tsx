@@ -26,11 +26,19 @@ import { ProductsPageBody } from "@/components/content/ProductsPageBody";
 import { SectorsPageBody } from "@/components/content/SectorsPageBody";
 import { ServicesPageBody } from "@/components/content/ServicesPageBody";
 import { adminFetch } from "@/lib/admin-fetch";
+import { EditableRegion } from "@/components/admin/EditableRegion";
 import { SERVICE_LINKS } from "@/lib/constants";
+import { livePageHref } from "@/lib/preview-pages";
 import {
-  LIVE_PAGE_SUBTITLES,
-  livePageHref,
-} from "@/lib/preview-pages";
+  exploreDescKey,
+  formationBenefitsFromLabels,
+  homepageStatsFromLabels,
+  resolveCopy,
+  serviceDescKey,
+  SITE_COPY_DEFAULTS,
+  STAT_INDEXES,
+  subtitleKey,
+} from "@/lib/site-copy";
 import {
   DEFAULT_CONTENT_LABELS,
   PUBLIC_NAV_LABEL_IDS,
@@ -342,6 +350,13 @@ export default function ContentPage() {
     return labels[id]?.trim() || DEFAULT_CONTENT_LABELS[id] || id;
   }
 
+  async function saveLabels(updates: Record<string, string>): Promise<boolean> {
+    const items = Object.entries(updates).map(([id, label]) => ({ id, label }));
+    const ok = Boolean(await save("labels", { items }));
+    if (ok) setLabels((prev) => ({ ...prev, ...updates }));
+    return ok;
+  }
+
   async function saveLabel(id: string, label: string): Promise<boolean> {
     const next = label.trim() || DEFAULT_CONTENT_LABELS[id] || id;
     const ok = Boolean(await save("label", { id, label: next }));
@@ -378,7 +393,7 @@ export default function ContentPage() {
           : link.href === "/services/produits"
             ? tabLabel("products") || link.title
             : tabLabel("formation") || link.title,
-    description: link.description,
+    description: resolveCopy(labels, serviceDescKey(link.href), link.description),
   }));
 
   const previewFooter = {
@@ -403,15 +418,25 @@ export default function ContentPage() {
           : activeTab === "team"
             ? tabLabel("about")
             : tabLabel(activeTab);
-  const previewSubtitle = LIVE_PAGE_SUBTITLES[activeTab];
+  const previewSubtitle = resolveCopy(labels, subtitleKey(activeTab));
   const previewHero = activeTab === "homepage" ? "homepage" : "page";
   const previewBack =
     activeTab === "formation" ||
     activeTab === "formations" ||
     activeTab === "packs" ||
     activeTab === "ged"
-      ? { backHref: "/services", backLabel: "Retour aux services" }
+      ? {
+          backHref: "/services",
+          backLabel: resolveCopy(labels, "back_to_services"),
+        }
       : {};
+  const footerCopy = {
+    tagline: resolveCopy(labels, "footer_tagline"),
+    navTitle: resolveCopy(labels, "footer_nav"),
+    servicesTitle: resolveCopy(labels, "footer_services"),
+    contactTitle: resolveCopy(labels, "footer_contact"),
+    copyright: resolveCopy(labels, "footer_copyright"),
+  };
 
   async function createCustomPage() {
     const title = newTitle.trim();
@@ -602,7 +627,26 @@ export default function ContentPage() {
           saving={saving}
           navLinks={previewNavLinks}
           footer={previewFooter}
+          footerCopy={footerCopy}
           whatsappNumber={settings.whatsappNumber}
+          onSaveFooterCopy={async (values) => {
+            const ok = await saveLabels({
+              footer_tagline: values.tagline,
+              footer_nav: values.navTitle,
+              footer_services: values.servicesTitle,
+              footer_contact: values.contactTitle,
+              footer_copyright: values.copyright,
+            });
+            if (!ok) return;
+            const next = {
+              ...settings,
+              contactEmail: values.email,
+              contactPhone: values.phone,
+              address: values.address,
+            };
+            const saved = await save("settings", next);
+            if (saved) setSettings(next);
+          }}
           onSave={async (data) => {
             const result = await save("custom-page", data);
             if (result) await loadContent();
@@ -627,7 +671,29 @@ export default function ContentPage() {
         showInNav={Boolean(activeSitePage?.showInNav)}
         saving={saving}
         footer={previewFooter}
+        footerCopy={footerCopy}
+        heroTagline={resolveCopy(labels, "hero_tagline")}
         whatsappNumber={settings.whatsappNumber}
+        onSaveHeroTagline={(tagline) => saveLabels({ hero_tagline: tagline })}
+        onSaveSubtitle={(subtitle) => saveLabels({ [subtitleKey(activeTab)]: subtitle })}
+        onSaveFooterCopy={async (values) => {
+          const ok = await saveLabels({
+            footer_tagline: values.tagline,
+            footer_nav: values.navTitle,
+            footer_services: values.servicesTitle,
+            footer_contact: values.contactTitle,
+            footer_copyright: values.copyright,
+          });
+          if (!ok) return;
+          const next = {
+            ...settings,
+            contactEmail: values.email,
+            contactPhone: values.phone,
+            address: values.address,
+          };
+          const saved = await save("settings", next);
+          if (saved) setSettings(next);
+        }}
         onRename={async (label) => {
           if (activeTab === "careers") {
             const next = { ...careers, title: label };
@@ -664,6 +730,43 @@ export default function ContentPage() {
           blocks={sortAboutBlocks(about)}
           team={team}
           teamTitle={tabLabel("team")}
+          wrapTeamTitle={(node) => (
+            <EditableRegion
+              label="Titre équipe"
+              disabled={saving}
+              fields={[{ key: "title", label: "Titre" }]}
+              values={{ title: tabLabel("team") }}
+              onSave={(next) => saveLabel("team", next.title)}
+            >
+              {node}
+            </EditableRegion>
+          )}
+          wrapMember={(member, node) => (
+            <EditableRegion
+              label={member.name}
+              disabled={saving}
+              fields={[
+                { key: "name", label: "Nom" },
+                { key: "role", label: "Rôle" },
+                { key: "skills", label: "Compétences", type: "textarea", rows: 3 },
+              ]}
+              values={{
+                name: member.name,
+                role: member.role,
+                skills: member.skills,
+              }}
+              onSave={async (next) => {
+                const ok = await save("team", { ...member, ...next });
+                if (ok) await loadContent({ silent: true });
+              }}
+              onDelete={async () => {
+                const ok = await save("team-delete", { id: member.id });
+                if (ok) await loadContent({ silent: true });
+              }}
+            >
+              {node}
+            </EditableRegion>
+          )}
           saving={saving}
           onSave={async (data) => {
             const ok = await save("about", data);
@@ -708,8 +811,83 @@ export default function ContentPage() {
               if (ok) await loadContent();
             }}
           />
-          <HomepageStats />
-          <HomepageExplore navLinks={previewNavLinks} />
+          <HomepageStats
+            stats={homepageStatsFromLabels(labels)}
+            wrapStat={(stat, index, node) => {
+              const n = STAT_INDEXES[index] ?? 1;
+              return (
+                <EditableRegion
+                  label={`Statistique ${n}`}
+                  disabled={saving}
+                  fields={[
+                    { key: "value", label: "Valeur" },
+                    { key: "label", label: "Libellé" },
+                  ]}
+                  values={{ value: stat.value, label: stat.label }}
+                  onSave={(next) =>
+                    saveLabels({
+                      [`stat_${n}_value`]: next.value,
+                      [`stat_${n}_label`]: next.label,
+                    })
+                  }
+                  onDelete={() =>
+                    saveLabels({
+                      [`stat_${n}_value`]: "",
+                      [`stat_${n}_label`]: "",
+                    })
+                  }
+                >
+                  {node}
+                </EditableRegion>
+              );
+            }}
+          />
+          <HomepageExplore
+            navLinks={previewNavLinks}
+            title={resolveCopy(labels, "explore_title")}
+            ctaLabel={resolveCopy(labels, "explore_cta")}
+            descriptions={Object.fromEntries(
+              previewNavLinks
+                .filter((link) => link.href !== "/")
+                .map((link) => [link.href, resolveCopy(labels, exploreDescKey(link.href))])
+            )}
+            wrapHeader={(node) => (
+              <EditableRegion
+                label="Titre explorer"
+                disabled={saving}
+                fields={[{ key: "title", label: "Titre" }]}
+                values={{ title: resolveCopy(labels, "explore_title") }}
+                onSave={(next) => saveLabels({ explore_title: next.title })}
+                onDelete={() => saveLabels({ explore_title: "" })}
+              >
+                {node}
+              </EditableRegion>
+            )}
+            wrapCard={(link, node) => (
+              <EditableRegion
+                label={link.label}
+                disabled={saving}
+                fields={[{ key: "description", label: "Description", type: "textarea", rows: 3 }]}
+                values={{ description: resolveCopy(labels, exploreDescKey(link.href)) }}
+                onSave={(next) => saveLabels({ [exploreDescKey(link.href)]: next.description })}
+                onDelete={() => saveLabels({ [exploreDescKey(link.href)]: "" })}
+              >
+                {node}
+              </EditableRegion>
+            )}
+            wrapCta={(node) => (
+              <EditableRegion
+                label="Bouton explorer"
+                disabled={saving}
+                fields={[{ key: "cta", label: "Texte du bouton" }]}
+                values={{ cta: resolveCopy(labels, "explore_cta") }}
+                onSave={(next) => saveLabels({ explore_cta: next.cta })}
+                onDelete={() => saveLabels({ explore_cta: "" })}
+              >
+                {node}
+              </EditableRegion>
+            )}
+          />
         </>
       )}
 
@@ -719,6 +897,110 @@ export default function ContentPage() {
           extraSections={pageBlocks(pages, "formation_intro", "formation:").slice(1)}
           catalogTitle={tabLabel("formations")}
           formations={formationTypes}
+          benefitsTitle={resolveCopy(labels, "formation_benefits_title")}
+          benefits={formationBenefitsFromLabels(labels)}
+          enrollTitle={resolveCopy(labels, "formation_enroll_title")}
+          emptyLabel={resolveCopy(labels, "formation_empty")}
+          wrapIntro={(node) => {
+            const intro = pageBlocks(pages, "formation_intro", "formation:")[0];
+            return (
+              <EditableRegion
+                label="Introduction"
+                disabled={saving}
+                fields={[
+                  { key: "title", label: "Titre" },
+                  { key: "content", label: "Texte", type: "textarea", rows: 6 },
+                ]}
+                values={{
+                  title: intro?.title || "",
+                  content: intro?.content || "",
+                }}
+                onSave={async (next) => {
+                  const ok = await save("page", {
+                    key: intro?.key || "formation_intro",
+                    title: next.title,
+                    content: next.content,
+                  });
+                  if (ok) await loadContent({ silent: true });
+                }}
+                onAdd={async () => {
+                  const ok = await save("page", {
+                    key: `formation:${crypto.randomUUID()}`,
+                    title: "Nouvelle section",
+                    content: "",
+                  });
+                  if (ok) await loadContent({ silent: true });
+                }}
+              >
+                {node}
+              </EditableRegion>
+            );
+          }}
+          wrapExtra={(section, node) => (
+            <EditableRegion
+              label="Section"
+              disabled={saving}
+              fields={[
+                { key: "title", label: "Titre" },
+                { key: "content", label: "Texte", type: "textarea", rows: 5 },
+              ]}
+              values={{ title: section.title || "", content: section.content }}
+              onSave={async (next) => {
+                const ok = await save("page", {
+                  key: section.key,
+                  title: next.title,
+                  content: next.content,
+                });
+                if (ok) await loadContent({ silent: true });
+              }}
+              onDelete={async () => {
+                const ok = await save("page-delete", { key: section.key });
+                if (ok) await loadContent({ silent: true });
+              }}
+            >
+              {node}
+            </EditableRegion>
+          )}
+          wrapCatalog={(node) => (
+            <EditableRegion
+              label="Catalogue formation"
+              disabled={saving}
+              fields={[
+                { key: "benefitsTitle", label: "Titre des bénéfices" },
+                { key: "benefits", label: "Bénéfices (un par ligne)", type: "textarea", rows: 8 },
+                { key: "catalogTitle", label: "Titre du catalogue" },
+                { key: "emptyLabel", label: "Message si vide" },
+              ]}
+              values={{
+                benefitsTitle: resolveCopy(labels, "formation_benefits_title"),
+                benefits: resolveCopy(labels, "formation_benefits"),
+                catalogTitle: tabLabel("formations"),
+                emptyLabel: resolveCopy(labels, "formation_empty"),
+              }}
+              onSave={async (next) => {
+                await saveLabels({
+                  formation_benefits_title: next.benefitsTitle,
+                  formation_benefits: next.benefits,
+                  formation_empty: next.emptyLabel,
+                });
+                await saveLabel("formations", next.catalogTitle);
+              }}
+            >
+              {node}
+            </EditableRegion>
+          )}
+          wrapEnroll={(node) => (
+            <EditableRegion
+              label="Inscription"
+              disabled={saving}
+              fields={[{ key: "title", label: "Titre" }]}
+              values={{ title: resolveCopy(labels, "formation_enroll_title") }}
+              onSave={(next) => saveLabels({ formation_enroll_title: next.title })}
+              onDelete={() => saveLabels({ formation_enroll_title: "" })}
+            >
+              {node}
+            </EditableRegion>
+          )}
         />
       )}
 
@@ -735,6 +1017,169 @@ export default function ContentPage() {
           packs={productPacks}
           ged={ged}
           extraSections={pages.filter((page) => page.key.startsWith("ged:"))}
+          packsBadge={resolveCopy(labels, "products_packs_badge")}
+          packsSubtitle={resolveCopy(labels, "products_packs_subtitle")}
+          gedBadge={resolveCopy(labels, "products_ged_badge")}
+          gedSubtitle={resolveCopy(labels, "products_ged_subtitle")}
+          gedFallback={resolveCopy(labels, "products_ged_fallback")}
+          emptyLabel={resolveCopy(labels, "products_empty")}
+          wrapPacksHeader={(node) => (
+            <EditableRegion
+              label="En-tête packs"
+              disabled={saving}
+              fields={[
+                { key: "badge", label: "Badge" },
+                { key: "title", label: "Titre" },
+                { key: "subtitle", label: "Sous-titre", type: "textarea", rows: 2 },
+              ]}
+              values={{
+                badge: resolveCopy(labels, "products_packs_badge"),
+                title: tabLabel("packs"),
+                subtitle: resolveCopy(labels, "products_packs_subtitle"),
+              }}
+              onSave={async (next) => {
+                await saveLabels({
+                  products_packs_badge: next.badge,
+                  products_packs_subtitle: next.subtitle,
+                });
+                await saveLabel("packs", next.title);
+              }}
+            >
+              {node}
+            </EditableRegion>
+          )}
+          wrapPack={(pack, node) => (
+            <EditableRegion
+              label={pack.name}
+              disabled={saving}
+              fields={[
+                { key: "name", label: "Nom" },
+                { key: "description", label: "Description", type: "textarea", rows: 4 },
+              ]}
+              values={{ name: pack.name, description: pack.description }}
+              onSave={async (next) => {
+                const res = await fetch("/api/admin/packs", {
+                  method: "PUT",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    id: pack.id,
+                    name: next.name,
+                    description: next.description,
+                  }),
+                });
+                if (!res.ok) {
+                  toast.error("Impossible d'enregistrer le pack");
+                  return;
+                }
+                toast.success("Enregistré");
+                setProductPacks((prev) =>
+                  prev.map((item) =>
+                    item.id === pack.id
+                      ? { ...item, name: next.name, description: next.description }
+                      : item
+                  )
+                );
+              }}
+              onDelete={async () => {
+                const res = await fetch("/api/admin/packs", {
+                  method: "DELETE",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ id: pack.id }),
+                });
+                if (!res.ok) {
+                  toast.error("Impossible de supprimer le pack");
+                  return;
+                }
+                toast.success("Pack supprimé");
+                setProductPacks((prev) => prev.filter((item) => item.id !== pack.id));
+              }}
+            >
+              {node}
+            </EditableRegion>
+          )}
+          wrapGedHeader={(node) => (
+            <EditableRegion
+              label="En-tête GED"
+              disabled={saving}
+              fields={[
+                { key: "badge", label: "Badge" },
+                { key: "title", label: "Titre" },
+                { key: "subtitle", label: "Sous-titre", type: "textarea", rows: 2 },
+              ]}
+              values={{
+                badge: resolveCopy(labels, "products_ged_badge"),
+                title: tabLabel("ged"),
+                subtitle: resolveCopy(labels, "products_ged_subtitle"),
+              }}
+              onSave={async (next) => {
+                await saveLabels({
+                  products_ged_badge: next.badge,
+                  products_ged_subtitle: next.subtitle,
+                });
+                await saveLabel("ged", next.title);
+              }}
+            >
+              {node}
+            </EditableRegion>
+          )}
+          wrapGed={(node) => (
+            <EditableRegion
+              label="GED"
+              disabled={saving}
+              fields={[
+                { key: "title", label: "Titre" },
+                { key: "description", label: "Description", type: "textarea", rows: 6 },
+                { key: "fallback", label: "Texte de secours" },
+              ]}
+              values={{
+                title: ged.title,
+                description: ged.description,
+                fallback: resolveCopy(labels, "products_ged_fallback"),
+              }}
+              onSave={async (next) => {
+                const ok = await save("ged", {
+                  ...ged,
+                  title: next.title,
+                  description: next.description,
+                });
+                if (ok) {
+                  setGed((prev) => ({
+                    ...prev,
+                    title: next.title,
+                    description: next.description,
+                  }));
+                }
+                await saveLabels({ products_ged_fallback: next.fallback });
+              }}
+            >
+              {node}
+            </EditableRegion>
+          )}
+          wrapExtra={(section, node) => (
+            <EditableRegion
+              label="Section GED"
+              disabled={saving}
+              fields={[
+                { key: "title", label: "Titre" },
+                { key: "content", label: "Texte", type: "textarea", rows: 5 },
+              ]}
+              values={{ title: section.title || "", content: section.content }}
+              onSave={async (next) => {
+                const ok = await save("page", {
+                  key: section.key,
+                  title: next.title,
+                  content: next.content,
+                });
+                if (ok) await loadContent({ silent: true });
+              }}
+              onDelete={async () => {
+                const ok = await save("page-delete", { key: section.key });
+                if (ok) await loadContent({ silent: true });
+              }}
+            >
+              {node}
+            </EditableRegion>
+          )}
         />
       )}
 
@@ -761,7 +1206,45 @@ export default function ContentPage() {
         </div>
       )}
 
-      {activeTab === "services" && <ServicesPageBody services={serviceLinks} />}
+      {activeTab === "services" && (
+        <ServicesPageBody
+          services={serviceLinks}
+          ctaLabel={resolveCopy(labels, "service_cta")}
+          wrapService={(service, node) => (
+            <EditableRegion
+              label={service.title}
+              disabled={saving}
+              fields={[
+                { key: "title", label: "Titre" },
+                { key: "description", label: "Description", type: "textarea", rows: 4 },
+                { key: "cta", label: "Lien « Accéder »" },
+              ]}
+              values={{
+                title: service.title,
+                description: service.description,
+                cta: resolveCopy(labels, "service_cta"),
+              }}
+              onSave={async (next) => {
+                const titleId =
+                  service.href.includes("accompagnement")
+                    ? "accompagnement"
+                    : service.href.includes("audit")
+                      ? "audit"
+                      : service.href.includes("produits")
+                        ? "products"
+                        : "formation";
+                await saveLabels({
+                  [titleId]: next.title,
+                  [serviceDescKey(service.href)]: next.description,
+                  service_cta: next.cta,
+                });
+              }}
+            >
+              {node}
+            </EditableRegion>
+          )}
+        />
+      )}
 
       {activeTab === "team" && (
         <div className="border-t border-primary-50 bg-surface-muted/30 px-6 py-6">
@@ -802,7 +1285,47 @@ export default function ContentPage() {
 
       {activeTab === "sectors" && (
         <>
-          <SectorsPageBody sectors={sectors} />
+          <SectorsPageBody
+            sectors={sectors}
+            discoverLabel={resolveCopy(labels, "sectors_discover")}
+            emptyDescription={resolveCopy(labels, "sectors_empty_desc")}
+            wrapSector={(sector, node) => (
+              <EditableRegion
+                label={sector.name}
+                disabled={saving}
+                fields={[
+                  { key: "name", label: "Nom" },
+                  { key: "description", label: "Description", type: "textarea", rows: 5 },
+                  { key: "discover", label: "Lien « Découvrir »" },
+                ]}
+                values={{
+                  name: sector.name,
+                  description: sector.description,
+                  discover: resolveCopy(labels, "sectors_discover"),
+                }}
+                onSave={async (next) => {
+                  const match = sectors.find((item) => item.slug === sector.slug);
+                  if (match) {
+                    const ok = await save("sector", {
+                      ...match,
+                      name: next.name,
+                      description: next.description,
+                    });
+                    if (ok) await loadContent({ silent: true });
+                  }
+                  await saveLabels({ sectors_discover: next.discover });
+                }}
+                onDelete={async () => {
+                  const match = sectors.find((item) => item.slug === sector.slug);
+                  if (!match) return;
+                  const ok = await save("sector-delete", { id: match.id });
+                  if (ok) await loadContent({ silent: true });
+                }}
+              >
+                {node}
+              </EditableRegion>
+            )}
+          />
           <div className="border-t border-primary-50 bg-surface-muted/30 px-6 py-6">
             {sectors.map((sector) => (
               <SectorEditor
@@ -846,6 +1369,69 @@ export default function ContentPage() {
           email={careers.email}
           phone={careers.phone}
           extraSections={pages.filter((page) => page.key.startsWith("careers:"))}
+          emailLabel={resolveCopy(labels, "careers_email_label")}
+          phoneLabel={resolveCopy(labels, "careers_phone_label")}
+          wrapIntro={(node) => (
+            <EditableRegion
+              label="Carrières"
+              disabled={saving}
+              fields={[
+                { key: "content", label: "Texte", type: "textarea", rows: 6 },
+                { key: "email", label: "Email" },
+                { key: "phone", label: "Téléphone" },
+                { key: "emailLabel", label: "Libellé email" },
+                { key: "phoneLabel", label: "Libellé téléphone" },
+              ]}
+              values={{
+                content: careers.content,
+                email: careers.email,
+                phone: careers.phone,
+                emailLabel: resolveCopy(labels, "careers_email_label"),
+                phoneLabel: resolveCopy(labels, "careers_phone_label"),
+              }}
+              onSave={async (next) => {
+                const nextCareers = {
+                  ...careers,
+                  content: next.content,
+                  email: next.email,
+                  phone: next.phone,
+                };
+                const ok = await save("careers", nextCareers);
+                if (ok) setCareers(nextCareers);
+                await saveLabels({
+                  careers_email_label: next.emailLabel,
+                  careers_phone_label: next.phoneLabel,
+                });
+              }}
+            >
+              {node}
+            </EditableRegion>
+          )}
+          wrapExtra={(section, node) => (
+            <EditableRegion
+              label="Section carrières"
+              disabled={saving}
+              fields={[
+                { key: "title", label: "Titre" },
+                { key: "content", label: "Texte", type: "textarea", rows: 5 },
+              ]}
+              values={{ title: section.title || "", content: section.content }}
+              onSave={async (next) => {
+                const ok = await save("page", {
+                  key: section.key,
+                  title: next.title,
+                  content: next.content,
+                });
+                if (ok) await loadContent({ silent: true });
+              }}
+              onDelete={async () => {
+                const ok = await save("page-delete", { key: section.key });
+                if (ok) await loadContent({ silent: true });
+              }}
+            >
+              {node}
+            </EditableRegion>
+          )}
         />
       )}
 
@@ -1007,10 +1593,12 @@ function CustomPageEditor({
   saving,
   navLinks,
   footer,
+  footerCopy,
   whatsappNumber,
   onSave,
   onDelete,
   onSelectNav,
+  onSaveFooterCopy,
 }: {
   page: CustomPageItem;
   saving: boolean;
@@ -1021,10 +1609,27 @@ function CustomPageEditor({
     address: string;
     serviceLinks: { href: string; title: string }[];
   };
+  footerCopy?: {
+    tagline: string;
+    navTitle: string;
+    servicesTitle: string;
+    contactTitle: string;
+    copyright: string;
+  };
   whatsappNumber?: string;
   onSave: (data: CustomPageItem) => Promise<void>;
   onDelete: () => Promise<void>;
   onSelectNav?: (link: { id?: string; href: string; label: string }) => void;
+  onSaveFooterCopy?: (values: {
+    tagline: string;
+    navTitle: string;
+    servicesTitle: string;
+    contactTitle: string;
+    copyright: string;
+    email: string;
+    phone: string;
+    address: string;
+  }) => Promise<void> | void;
 }) {
   const [title, setTitle] = useState(page.title);
   const [slug, setSlug] = useState(page.slug);
@@ -1060,7 +1665,9 @@ function CustomPageEditor({
       showInNav={showInNav}
       saving={saving}
       footer={footer}
+      footerCopy={footerCopy}
       whatsappNumber={whatsappNumber}
+      onSaveFooterCopy={onSaveFooterCopy}
       onRename={async (nextTitle) => {
         setTitle(nextTitle);
         await onSave(snapshot({ title: nextTitle }));

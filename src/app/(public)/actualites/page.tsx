@@ -6,6 +6,7 @@ import { ArticleCard } from "@/components/news/ArticleCard";
 
 import { PageBlockList } from "@/components/content/PageBlockList";
 import { getContentLabels, getPublishedArticles, getTabLayoutBlocks, labelOf } from "@/lib/content";
+import { resolveCopy } from "@/lib/site-copy";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -28,7 +29,7 @@ export default async function ActualitesPage() {
 
         title={labelOf(labels, "news", "Actualités")}
 
-        subtitle="Restez informé des dernières avancées en qualité, formation et réglementation."
+        subtitle={resolveCopy(labels, "subtitle_news")}
 
       />
 
@@ -40,7 +41,7 @@ export default async function ActualitesPage() {
 
           <div className="rounded-2xl border border-dashed border-primary-200 bg-white p-12 text-center">
 
-            <p className="text-text-muted">Aucun article publié pour le moment.</p>
+            <p className="text-text-muted">{resolveCopy(labels, "news_empty")}</p>
 
           </div>
 

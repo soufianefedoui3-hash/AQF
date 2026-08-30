@@ -1,6 +1,8 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { Building2, GraduationCap, ClipboardCheck, Package, ArrowRight } from "lucide-react";
 import { PageSection } from "@/components/ui/PageSection";
+import { SITE_COPY_DEFAULTS } from "@/lib/site-copy";
 
 const ICONS: Record<string, typeof Package> = {
   "/services/accompagnement": Building2,
@@ -11,17 +13,23 @@ const ICONS: Record<string, typeof Package> = {
 
 export function ServicesPageBody({
   services,
+  ctaLabel = SITE_COPY_DEFAULTS.service_cta,
+  wrapService,
 }: {
   services: readonly { href: string; title: string; description: string }[];
+  ctaLabel?: string;
+  wrapService?: (
+    service: { href: string; title: string; description: string },
+    node: ReactNode
+  ) => ReactNode;
 }) {
   return (
     <PageSection>
       <div className="grid gap-6 md:grid-cols-2 md:gap-8">
         {services.map((service) => {
           const Icon = ICONS[service.href] || Package;
-          return (
+          const card = (
             <Link
-              key={service.href}
               href={service.href}
               className="group relative overflow-hidden rounded-2xl border border-primary-100 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-accent-200 hover:shadow-xl hover:shadow-accent-400/10 sm:p-8"
             >
@@ -37,13 +45,18 @@ export function ServicesPageBody({
                   <p className="mt-2 text-sm leading-relaxed text-text-muted">
                     {service.description}
                   </p>
-                  <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-accent-600">
-                    Accéder
-                    <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
-                  </span>
+                  {ctaLabel.trim() ? (
+                    <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-accent-600">
+                      {ctaLabel}
+                      <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+                    </span>
+                  ) : null}
                 </div>
               </div>
             </Link>
+          );
+          return (
+            <div key={service.href}>{wrapService ? wrapService(service, card) : card}</div>
           );
         })}
       </div>

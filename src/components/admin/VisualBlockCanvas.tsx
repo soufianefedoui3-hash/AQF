@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
 import { BlockFields } from "@/components/admin/PageBlockBuilder";
+import { BlockEditModal } from "@/components/admin/BlockEditModal";
 import { VisualItemChrome } from "@/components/admin/VisualItemChrome";
 import { PageBlockView } from "@/components/content/PageBlockView";
 import { Button } from "@/components/ui/Button";
@@ -102,6 +103,30 @@ export function VisualBlockCanvas({
       {insertAt !== null ? (
         <BlockTypePicker onPick={pickType} onClose={() => setInsertAt(null)} />
       ) : null}
+      {editingId ? (
+        <BlockEditModal
+          isOpen
+          title={`Modifier — ${PAGE_BLOCK_LABELS[blocks.find((item) => item.id === editingId)?.type || "heading"]}`}
+          saving={saving}
+          onClose={() => setEditingId(null)}
+          onSave={async () => {
+            await onPersist?.(blocks);
+            setEditingId(null);
+          }}
+        >
+          {blocks
+            .filter((item) => item.id === editingId)
+            .map((block) => (
+              <BlockFields
+                key={block.id}
+                block={block}
+                onChange={(nextBlock) =>
+                  onChange(blocks.map((item) => (item.id === block.id ? nextBlock : item)))
+                }
+              />
+            ))}
+        </BlockEditModal>
+      ) : null}
 
       {blocks.length === 0 ? (
         <div className="pointer-events-none absolute inset-x-0 top-4 z-20 flex justify-center">
@@ -127,10 +152,6 @@ export function VisualBlockCanvas({
             editing={editing}
             disabled={saving}
             onEdit={() => setEditingId(block.id)}
-            onDone={() => {
-              setEditingId(null);
-              void onPersist?.(blocks);
-            }}
             onAdd={() => setInsertAt(index + 1)}
             onDelete={() => {
               if (!confirm("Supprimer cet élément ?")) return;
@@ -139,40 +160,11 @@ export function VisualBlockCanvas({
               void commit(next);
             }}
           >
-            {editing ? (
-              <div className="bg-surface-muted/40 px-4 py-8 sm:px-8">
-                <div className="mx-auto max-w-3xl rounded-2xl border border-accent-200 bg-white p-5 shadow-sm sm:p-6">
-                  <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-accent-700">
-                    Édition — {PAGE_BLOCK_LABELS[block.type]}
-                  </p>
-                  <BlockFields
-                    block={block}
-                    onChange={(nextBlock) =>
-                      onChange(blocks.map((item) => (item.id === block.id ? nextBlock : item)))
-                    }
-                  />
-                  <div className="mt-4">
-                    <Button
-                      type="button"
-                      size="sm"
-                      disabled={saving}
-                      onClick={() => {
-                        setEditingId(null);
-                        void onPersist?.(blocks);
-                      }}
-                    >
-                      Enregistrer ce bloc
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <PageBlockView
-                block={block}
-                muted={index % 2 === 1}
-                showPlaceholders
-              />
-            )}
+            <PageBlockView
+              block={block}
+              muted={index % 2 === 1}
+              showPlaceholders
+            />
           </VisualItemChrome>
         );
       })}

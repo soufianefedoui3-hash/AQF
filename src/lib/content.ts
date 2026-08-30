@@ -26,6 +26,7 @@ import {
   listTeamMembers,
 } from "@/lib/cms/store";
 import { DEFAULT_CONTENT_LABELS } from "@/lib/seed-data";
+import { serviceDescKey } from "@/lib/site-copy";
 import { NAV_LINKS, SERVICE_LINKS } from "@/lib/constants";
 
 export const SECTOR_FALLBACK_IMAGE = PLACEHOLDER_GENERIC;
@@ -375,8 +376,7 @@ export async function getContentLabels(): Promise<Record<string, string>> {
   try {
     const rows = await listLabels();
     for (const row of rows) {
-      const text = row.label.trim();
-      if (text) labels[row.id] = text;
+      labels[row.id] = row.label ?? "";
     }
   } catch {
     /* keep fallbacks */
@@ -465,6 +465,7 @@ export async function getServiceLinks() {
   return SERVICE_LINKS.map((link) => ({
     ...link,
     title: labelOf(labels, byHref[link.href] || "", link.title),
+    description: labels[serviceDescKey(link.href)] ?? link.description,
   }));
 }
 

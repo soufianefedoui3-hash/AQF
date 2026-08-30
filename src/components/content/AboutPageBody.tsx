@@ -74,12 +74,14 @@ export function AboutPageBody({
   teamTitle,
   wrapSection,
   wrapMember,
+  wrapTeamTitle,
 }: {
   sections: AboutSectionItem[];
   team: AboutTeamMember[];
   teamTitle: string;
   wrapSection?: (section: AboutSectionItem, index: number, node: ReactNode) => ReactNode;
   wrapMember?: (member: AboutTeamMember, node: ReactNode) => ReactNode;
+  wrapTeamTitle?: (node: ReactNode) => ReactNode;
 }) {
   return (
     <PageSection>
@@ -95,12 +97,17 @@ export function AboutPageBody({
       </div>
 
       <div>
-        <div className="mb-8 flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent-100">
-            <Users className="h-5 w-5 text-accent-700" />
-          </div>
-          <h2 className="text-2xl font-bold text-primary-900">{teamTitle}</h2>
-        </div>
+        {(() => {
+          const heading = (
+            <div className="mb-8 flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent-100">
+                <Users className="h-5 w-5 text-accent-700" />
+              </div>
+              <h2 className="text-2xl font-bold text-primary-900">{teamTitle}</h2>
+            </div>
+          );
+          return wrapTeamTitle ? wrapTeamTitle(heading) : heading;
+        })()}
 
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {team.map((member) => {

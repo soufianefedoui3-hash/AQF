@@ -167,6 +167,30 @@ export async function PUT(request: NextRequest) {
           label: data.label == null ? "" : String(data.label),
         });
         break;
+      case "labels": {
+        const items = Array.isArray(data.items) ? data.items : [];
+        const saved: Array<{ id: string; label: string }> = [];
+        let batchError: { ok: false; error: string } | null = null;
+        for (const item of items) {
+          if (!item || typeof item !== "object") continue;
+          const row = item as Record<string, unknown>;
+          if (!row.id) continue;
+          const upserted = await upsertLabel({
+            id: String(row.id),
+            label: row.label == null ? "" : String(row.label),
+          });
+          if (!upserted.ok) {
+            batchError = upserted;
+            break;
+          }
+          saved.push({
+            id: String(row.id),
+            label: row.label == null ? "" : String(row.label),
+          });
+        }
+        result = batchError ?? { ok: true as const, data: saved };
+        break;
+      }
       case "ged":
         result = await upsertGed({
           title: data.title == null ? undefined : String(data.title),

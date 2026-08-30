@@ -1,5 +1,6 @@
 import { execute, newId, query, queryOne, readyDb } from "@/lib/db";
 import { DEFAULT_CONTENT_LABELS, DEFAULT_SITE_PAGES } from "@/lib/seed-data";
+import { SITE_COPY_DEFAULTS } from "@/lib/site-copy";
 import { toLocalImageUrl } from "@/lib/placeholder-images";
 import {
   customPageIdFromTab,
@@ -520,7 +521,9 @@ export async function upsertLabel(data: {
       throw new Error("Libellé inconnu");
     }
     const fallback = DEFAULT_CONTENT_LABELS[id] || id;
-    const label = asString(data.label).trim() || fallback;
+    const raw = asString(data.label);
+    const isCopy = Object.prototype.hasOwnProperty.call(SITE_COPY_DEFAULTS, id);
+    const label = isCopy ? raw : raw.trim() || fallback;
     const updatedAt = nowIso();
     const existing = queryOne(`SELECT "id" FROM "ContentLabel" WHERE "id" = ?`, [id]);
     if (existing) {
@@ -858,7 +861,7 @@ export async function loadAdminContent() {
     ]);
   const labels = { ...DEFAULT_CONTENT_LABELS };
   for (const row of labelRows) {
-    if (row.label.trim()) labels[row.id] = row.label.trim();
+    labels[row.id] = row.label ?? "";
   }
   for (const page of sitePages) {
     if (page.label.trim()) labels[page.id] = page.label.trim();

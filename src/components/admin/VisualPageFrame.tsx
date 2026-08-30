@@ -8,6 +8,8 @@ import { WhatsAppWidget } from "@/components/layout/WhatsAppWidget";
 import { HomepageHero } from "@/components/content/HomepageHero";
 import { PageHero } from "@/components/ui/PageHero";
 import { Button } from "@/components/ui/Button";
+import { EditableRegion } from "@/components/admin/EditableRegion";
+import { SITE_COPY_DEFAULTS } from "@/lib/site-copy";
 
 export type PreviewNavLink = { id?: string; href: string; label: string };
 
@@ -23,11 +25,16 @@ export function VisualPageFrame({
   showInNav,
   saving,
   footer,
+  footerCopy,
+  heroTagline,
   whatsappNumber,
   onRename,
   onToggleNav,
   onDelete,
   onSelectNav,
+  onSaveSubtitle,
+  onSaveHeroTagline,
+  onSaveFooterCopy,
   children,
 }: {
   title: string;
@@ -46,11 +53,31 @@ export function VisualPageFrame({
     address: string;
     serviceLinks: FooterServiceLink[];
   };
+  footerCopy?: {
+    tagline: string;
+    navTitle: string;
+    servicesTitle: string;
+    contactTitle: string;
+    copyright: string;
+  };
+  heroTagline?: string;
   whatsappNumber?: string;
   onRename?: (title: string) => Promise<void> | void;
   onToggleNav?: (show: boolean) => Promise<void> | void;
   onDelete?: () => void;
   onSelectNav?: (link: PreviewNavLink) => void;
+  onSaveSubtitle?: (subtitle: string) => Promise<unknown> | void;
+  onSaveHeroTagline?: (tagline: string) => Promise<unknown> | void;
+  onSaveFooterCopy?: (values: {
+    tagline: string;
+    navTitle: string;
+    servicesTitle: string;
+    contactTitle: string;
+    copyright: string;
+    email: string;
+    phone: string;
+    address: string;
+  }) => Promise<void> | void;
   children: React.ReactNode;
 }) {
   const [draft, setDraft] = useState(title);
@@ -153,7 +180,39 @@ export function VisualPageFrame({
         />
         <main className="flex-1">
           {hero === "homepage" ? (
-            <HomepageHero />
+            onSaveHeroTagline ? (
+              <EditableRegion
+                label="Hero"
+                disabled={saving}
+                fields={[{ key: "tagline", label: "Accroche", type: "textarea", rows: 3 }]}
+                values={{ tagline: heroTagline || "" }}
+                onSave={(next) => onSaveHeroTagline(next.tagline)}
+                onDelete={() => onSaveHeroTagline("")}
+              >
+                <HomepageHero tagline={heroTagline} />
+              </EditableRegion>
+            ) : (
+              <HomepageHero tagline={heroTagline} />
+            )
+          ) : onSaveSubtitle ? (
+            <EditableRegion
+              label="En-tête de page"
+              disabled={saving}
+              fields={[
+                { key: "subtitle", label: "Sous-titre", type: "textarea", rows: 3 },
+              ]}
+              values={{ subtitle: subtitle || "" }}
+              onSave={(next) => onSaveSubtitle(next.subtitle)}
+              onDelete={() => onSaveSubtitle("")}
+            >
+              <PageHero
+                title={title}
+                subtitle={subtitle}
+                backHref={backHref}
+                backLabel={backLabel}
+                titleNode={titleNode}
+              />
+            </EditableRegion>
           ) : (
             <PageHero
               title={title}
@@ -165,13 +224,70 @@ export function VisualPageFrame({
           )}
           {children}
         </main>
-        <SiteFooter
-          navLinks={navLinks}
-          serviceLinks={footer.serviceLinks}
-          email={footer.email}
-          phone={footer.phone}
-          address={footer.address}
-        />
+        {onSaveFooterCopy ? (
+          <EditableRegion
+            label="Pied de page"
+            disabled={saving}
+            fields={[
+              { key: "tagline", label: "Accroche", type: "textarea", rows: 3 },
+              { key: "navTitle", label: "Titre navigation" },
+              { key: "servicesTitle", label: "Titre services" },
+              { key: "contactTitle", label: "Titre contact" },
+              { key: "copyright", label: "Copyright" },
+              { key: "email", label: "Email" },
+              { key: "phone", label: "Téléphone" },
+              { key: "address", label: "Adresse" },
+            ]}
+            values={{
+              tagline: footerCopy?.tagline || SITE_COPY_DEFAULTS.footer_tagline,
+              navTitle: footerCopy?.navTitle || SITE_COPY_DEFAULTS.footer_nav,
+              servicesTitle: footerCopy?.servicesTitle || SITE_COPY_DEFAULTS.footer_services,
+              contactTitle: footerCopy?.contactTitle || SITE_COPY_DEFAULTS.footer_contact,
+              copyright: footerCopy?.copyright || SITE_COPY_DEFAULTS.footer_copyright,
+              email: footer.email,
+              phone: footer.phone,
+              address: footer.address,
+            }}
+            onSave={(next) =>
+              onSaveFooterCopy({
+                tagline: next.tagline,
+                navTitle: next.navTitle,
+                servicesTitle: next.servicesTitle,
+                contactTitle: next.contactTitle,
+                copyright: next.copyright,
+                email: next.email,
+                phone: next.phone,
+                address: next.address,
+              })
+            }
+          >
+            <SiteFooter
+              navLinks={navLinks}
+              serviceLinks={footer.serviceLinks}
+              email={footer.email}
+              phone={footer.phone}
+              address={footer.address}
+              tagline={footerCopy?.tagline}
+              navTitle={footerCopy?.navTitle}
+              servicesTitle={footerCopy?.servicesTitle}
+              contactTitle={footerCopy?.contactTitle}
+              copyright={footerCopy?.copyright}
+            />
+          </EditableRegion>
+        ) : (
+          <SiteFooter
+            navLinks={navLinks}
+            serviceLinks={footer.serviceLinks}
+            email={footer.email}
+            phone={footer.phone}
+            address={footer.address}
+            tagline={footerCopy?.tagline}
+            navTitle={footerCopy?.navTitle}
+            servicesTitle={footerCopy?.servicesTitle}
+            contactTitle={footerCopy?.contactTitle}
+            copyright={footerCopy?.copyright}
+          />
+        )}
         <WhatsAppWidget embedded phone={whatsappNumber} />
       </div>
     </div>

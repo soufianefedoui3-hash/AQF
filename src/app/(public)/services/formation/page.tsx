@@ -3,6 +3,7 @@ import { FormationPageBody } from "@/components/content/FormationPageBody";
 import { PageBlockList } from "@/components/content/PageBlockList";
 import { getContentLabels, getFormationSections, getTabLayoutBlocks, labelOf } from "@/lib/content";
 import { getFormationTypes } from "@/lib/formations";
+import { formationBenefitsFromLabels, resolveCopy } from "@/lib/site-copy";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -21,9 +22,9 @@ export default async function FormationPage() {
     <>
       <PageHero
         title={intro.title?.trim() || labelOf(labels, "formation", "Formation Qualité")}
-        subtitle="Des formations adaptées aux étudiants et aux professionnels de santé et du corporate."
+        subtitle={resolveCopy(labels, "subtitle_formation")}
         backHref="/services"
-        backLabel="Retour aux services"
+        backLabel={resolveCopy(labels, "back_to_services")}
       />
 
       <FormationPageBody
@@ -31,6 +32,10 @@ export default async function FormationPage() {
         extraSections={extraSections}
         catalogTitle={labelOf(labels, "formations", "Formations disponibles")}
         formations={formations}
+        benefitsTitle={resolveCopy(labels, "formation_benefits_title")}
+        benefits={formationBenefitsFromLabels(labels)}
+        enrollTitle={resolveCopy(labels, "formation_enroll_title")}
+        emptyLabel={resolveCopy(labels, "formation_empty")}
       />
       <PageBlockList blocks={formationBlocks} showEmpty={false} />
       <PageBlockList blocks={catalogBlocks} showEmpty={false} />

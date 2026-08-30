@@ -1,6 +1,11 @@
 import { Logo } from "@/components/brand/Logo";
+import { SITE_COPY_DEFAULTS } from "@/lib/site-copy";
 
-export function HomepageHero() {
+export function HomepageHero({
+  tagline = SITE_COPY_DEFAULTS.hero_tagline,
+}: {
+  tagline?: string;
+}) {
   return (
     <section className="relative overflow-hidden bg-brand-gradient pb-20 pt-12 md:pb-24 md:pt-14">
       <div
@@ -12,9 +17,9 @@ export function HomepageHero() {
 
       <div className="relative z-10 mx-auto flex max-w-7xl flex-col items-center px-4 text-center sm:px-6 lg:px-8">
         <Logo variant="hero" href={null} priority className="mx-auto" />
-        <p className="mx-auto mt-8 max-w-xl text-base text-accent-100 sm:text-lg">
-          Votre partenaire d&apos;excellence en Qualité, Formation et Audit
-        </p>
+        {tagline.trim() ? (
+          <p className="mx-auto mt-8 max-w-xl text-base text-accent-100 sm:text-lg">{tagline}</p>
+        ) : null}
       </div>
     </section>
   );

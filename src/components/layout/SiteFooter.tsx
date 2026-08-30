@@ -11,12 +11,22 @@ export function SiteFooter({
   email,
   phone,
   address,
+  tagline = "Excellence en qualité, formation et audit pour les secteurs les plus exigeants.",
+  navTitle = "Navigation",
+  servicesTitle = "Services",
+  contactTitle = "Contact",
+  copyright = "Tous droits réservés.",
 }: {
   navLinks: readonly FooterNavLink[];
   serviceLinks: readonly FooterServiceLink[];
   email: string;
   phone: string;
   address: string;
+  tagline?: string;
+  navTitle?: string;
+  servicesTitle?: string;
+  contactTitle?: string;
+  copyright?: string;
 }) {
   const socials = SOCIAL_LINKS.filter(
     (social) =>
@@ -29,13 +39,13 @@ export function SiteFooter({
         <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-4">
           <div>
             <Logo variant="footer" href="/" />
-            <p className="mt-4 text-sm leading-relaxed text-primary-100">
-              Excellence en qualité, formation et audit pour les secteurs les plus exigeants.
-            </p>
+            {tagline.trim() ? (
+              <p className="mt-4 text-sm leading-relaxed text-primary-100">{tagline}</p>
+            ) : null}
           </div>
 
           <div>
-            <h3 className="mb-4 font-semibold text-white">Navigation</h3>
+            <h3 className="mb-4 font-semibold text-white">{navTitle}</h3>
             <ul className="space-y-2">
               {navLinks.map((link) => (
                 <li key={link.href}>
@@ -48,7 +58,7 @@ export function SiteFooter({
           </div>
 
           <div>
-            <h3 className="mb-4 font-semibold text-white">Services</h3>
+            <h3 className="mb-4 font-semibold text-white">{servicesTitle}</h3>
             <ul className="space-y-2">
               {serviceLinks.map((link) => (
                 <li key={link.href}>
@@ -61,7 +71,7 @@ export function SiteFooter({
           </div>
 
           <div>
-            <h3 className="mb-4 font-semibold text-white">Contact</h3>
+            <h3 className="mb-4 font-semibold text-white">{contactTitle}</h3>
             <ul className="space-y-2 text-sm">
               <li>
                 <a href={`mailto:${email}`} className="hover:text-accent-300">
@@ -95,7 +105,7 @@ export function SiteFooter({
 
         <div className="mt-12 border-t border-primary-700/50 pt-8 text-center text-sm text-primary-200">
           <p>
-            &copy; {new Date().getFullYear()} {BRAND.fullName}. Tous droits réservés.
+            &copy; {new Date().getFullYear()} {BRAND.fullName}. {copyright}
           </p>
         </div>
       </div>

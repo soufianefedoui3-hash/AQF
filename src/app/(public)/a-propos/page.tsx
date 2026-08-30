@@ -2,6 +2,7 @@ import { PageHero } from "@/components/ui/PageHero";
 import { PageBlockList } from "@/components/content/PageBlockList";
 import { AboutPageBody } from "@/components/content/AboutPageBody";
 import { getAboutData, getContentLabels, getTabLayoutBlocks, labelOf } from "@/lib/content";
+import { resolveCopy } from "@/lib/site-copy";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -18,7 +19,7 @@ export default async function AboutPage() {
     <>
       <PageHero
         title={labelOf(labels, "about", "À propos")}
-        subtitle="Notre mission, notre équipe et notre méthode d'accompagnement."
+        subtitle={resolveCopy(labels, "subtitle_about")}
       />
 
       <AboutPageBody

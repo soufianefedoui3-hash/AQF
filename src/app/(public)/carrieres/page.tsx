@@ -8,6 +8,7 @@ import {
   getTabLayoutBlocks,
   labelOf,
 } from "@/lib/content";
+import { resolveCopy } from "@/lib/site-copy";
 
 export const dynamic = "force-dynamic";
 
@@ -37,13 +38,15 @@ export default async function CarrieresPage() {
           String(settings.title || "").trim() ||
           labelOf(labels, "careers", "Votre expertise, notre force")
         }
-        subtitle="Rejoignez AQF et contribuez à l'excellence qualité."
+        subtitle={resolveCopy(labels, "subtitle_careers")}
       />
       <CareersPageBody
         content={String(settings.content || "")}
         email={String(settings.email || "").trim()}
         phone={String(settings.phone || "").trim()}
         extraSections={extraSections}
+        emailLabel={resolveCopy(labels, "careers_email_label")}
+        phoneLabel={resolveCopy(labels, "careers_phone_label")}
       />
       <PageBlockList blocks={extraBlocks} showEmpty={false} />
     </>

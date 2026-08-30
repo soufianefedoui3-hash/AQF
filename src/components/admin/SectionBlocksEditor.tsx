@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { Plus } from "lucide-react";
-import { VisualItemChrome } from "@/components/admin/VisualItemChrome";
+import { EditableRegion } from "@/components/admin/EditableRegion";
 import {
   AboutPageBody,
   AboutSectionCard,
@@ -18,66 +18,6 @@ export type ContentBlock = {
   content: string;
 };
 
-function EditableFields({
-  title,
-  content,
-  saving,
-  onTitle,
-  onContent,
-  onPersist,
-}: {
-  title: string;
-  content: string;
-  saving: boolean;
-  onTitle: (value: string) => void;
-  onContent: (value: string) => void;
-  onPersist: () => void;
-}) {
-  return (
-    <div className="rounded-2xl border border-accent-200 bg-white p-6 shadow-sm">
-      <input
-        value={title}
-        onChange={(e) => onTitle(e.target.value)}
-        placeholder="Titre"
-        className="mb-3 w-full border-b border-dashed border-accent-300 bg-transparent text-lg font-semibold text-primary-900 outline-none"
-      />
-      <textarea
-        value={content}
-        onChange={(e) => onContent(e.target.value)}
-        placeholder="Texte de la section"
-        rows={5}
-        className="w-full resize-y bg-transparent text-sm leading-relaxed text-text-muted outline-none"
-      />
-      <div className="mt-4">
-        <Button size="sm" loading={saving} onClick={onPersist}>
-          Enregistrer
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function useSectionDraft(
-  block: ContentBlock,
-  onSave: (data: ContentBlock) => Promise<void>
-) {
-  const [title, setTitle] = useState(block.title || "");
-  const [content, setContent] = useState(block.content || "");
-  const [editing, setEditing] = useState(false);
-
-  useEffect(() => {
-    setTitle(block.title || "");
-    setContent(block.content || "");
-  }, [block.key, block.title, block.content]);
-
-  async function persist() {
-    await onSave({ key: block.key, title, content });
-    setEditing(false);
-  }
-
-  return { title, content, editing, setTitle, setContent, setEditing, persist };
-}
-
 function wrapWithChrome(
   block: ContentBlock,
   saving: boolean,
@@ -87,56 +27,20 @@ function wrapWithChrome(
   view: ReactNode
 ) {
   return (
-    <SectionChrome
-      block={block}
-      saving={saving}
-      onSave={onSave}
-      onDelete={onDelete}
-      onAdd={onAdd}
-      view={view}
-    />
-  );
-}
-
-function SectionChrome({
-  block,
-  saving,
-  onSave,
-  onDelete,
-  onAdd,
-  view,
-}: {
-  block: ContentBlock;
-  saving: boolean;
-  onSave: (data: ContentBlock) => Promise<void>;
-  onDelete: () => Promise<void>;
-  onAdd: () => Promise<void>;
-  view: ReactNode;
-}) {
-  const draft = useSectionDraft(block, onSave);
-  return (
-    <VisualItemChrome
+    <EditableRegion
       label="Section"
-      editing={draft.editing}
       disabled={saving}
-      onEdit={() => draft.setEditing(true)}
-      onDone={() => void draft.persist()}
+      fields={[
+        { key: "title", label: "Titre" },
+        { key: "content", label: "Texte", type: "textarea", rows: 6, placeholder: "Contenu de la section" },
+      ]}
+      values={{ title: block.title || "", content: block.content || "" }}
+      onSave={(next) => onSave({ key: block.key, title: next.title, content: next.content })}
+      onDelete={onDelete}
       onAdd={() => void onAdd()}
-      onDelete={() => void onDelete()}
     >
-      {draft.editing ? (
-        <EditableFields
-          title={draft.title}
-          content={draft.content}
-          saving={saving}
-          onTitle={draft.setTitle}
-          onContent={draft.setContent}
-          onPersist={() => void draft.persist()}
-        />
-      ) : (
-        view
-      )}
-    </VisualItemChrome>
+      {view}
+    </EditableRegion>
   );
 }
 
@@ -151,6 +55,8 @@ export function SectionBlocksEditor({
   variant = "default",
   team,
   teamTitle,
+  wrapMember,
+  wrapTeamTitle,
 }: {
   blocks: ContentBlock[];
   saving: boolean;
@@ -162,6 +68,8 @@ export function SectionBlocksEditor({
   variant?: "default" | "about" | "homepage";
   team?: AboutTeamMember[];
   teamTitle?: string;
+  wrapMember?: (member: AboutTeamMember, node: ReactNode) => ReactNode;
+  wrapTeamTitle?: (node: ReactNode) => ReactNode;
 }) {
   function chrome(block: ContentBlock, view: ReactNode) {
     return wrapWithChrome(
@@ -187,6 +95,8 @@ export function SectionBlocksEditor({
           wrapSection={(section: AboutSectionItem, index, node) =>
             chrome(section, node ?? <AboutSectionCard section={section} index={index} />)
           }
+          wrapMember={wrapMember}
+          wrapTeamTitle={wrapTeamTitle}
         />
         <div className="pointer-events-none relative z-20 -mt-8 mb-8 flex justify-center">
           <Button

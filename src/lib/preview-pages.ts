@@ -1,16 +1,16 @@
+import { SITE_COPY_DEFAULTS } from "@/lib/site-copy";
+
 export const LIVE_PAGE_SUBTITLES: Record<string, string> = {
-  about: "Notre mission, notre équipe et notre méthode d'accompagnement.",
-  team: "Notre mission, notre équipe et notre méthode d'accompagnement.",
-  formation:
-    "Des formations adaptées aux étudiants et aux professionnels de santé et du corporate.",
-  formations:
-    "Des formations adaptées aux étudiants et aux professionnels de santé et du corporate.",
-  packs: "Packs d'implémentation prêts à l'emploi et solutions web sur mesure.",
-  ged: "Packs d'implémentation prêts à l'emploi et solutions web sur mesure.",
-  services: "Des solutions complètes pour votre excellence en qualité, formation et audit.",
-  sectors: "Une expertise sectorielle reconnue pour les domaines les plus exigeants.",
-  news: "Restez informé des dernières avancées en qualité, formation et réglementation.",
-  careers: "Rejoignez AQF et contribuez à l'excellence qualité.",
+  about: SITE_COPY_DEFAULTS.subtitle_about,
+  team: SITE_COPY_DEFAULTS.subtitle_team,
+  formation: SITE_COPY_DEFAULTS.subtitle_formation,
+  formations: SITE_COPY_DEFAULTS.subtitle_formations,
+  packs: SITE_COPY_DEFAULTS.subtitle_packs,
+  ged: SITE_COPY_DEFAULTS.subtitle_ged,
+  services: SITE_COPY_DEFAULTS.subtitle_services,
+  sectors: SITE_COPY_DEFAULTS.subtitle_sectors,
+  news: SITE_COPY_DEFAULTS.subtitle_news,
+  careers: SITE_COPY_DEFAULTS.subtitle_careers,
 };
 
 export function livePageHref(tabId: string, fallback?: string): string | undefined {
