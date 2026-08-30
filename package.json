@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node scripts/publish-css.mjs pre && next build && node scripts/publish-css.mjs post",
     "start": "node --require ./scripts/safe-http-close.cjs ./node_modules/next/dist/bin/next start -H 0.0.0.0",
     "lint": "next lint",
     "clean": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true}); try{require('fs').rmSync('node_modules/.cache',{recursive:true,force:true})}catch(e){}\"",

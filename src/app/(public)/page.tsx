@@ -5,6 +5,9 @@ import { NavCard } from "@/components/layout/NavCard";
 import { Button } from "@/components/ui/Button";
 import { Logo } from "@/components/brand/Logo";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function HomePage() {
   const presentation = await getHomepagePresentation();
 

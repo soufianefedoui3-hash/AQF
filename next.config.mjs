@@ -3,16 +3,25 @@
 const NO_STORE = [
   { key: "Cache-Control", value: "private, no-store, no-cache, must-revalidate, max-age=0" },
   { key: "CDN-Cache-Control", value: "no-store" },
+  { key: "Surrogate-Control", value: "no-store" },
+  { key: "Pragma", value: "no-cache" },
 ];
 
 const IMMUTABLE_STATIC = [
   { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+  { key: "CDN-Cache-Control", value: "public, max-age=31536000, immutable" },
+];
+
+const SHORT_CSS = [
+  { key: "Cache-Control", value: "public, max-age=60, must-revalidate" },
+  { key: "CDN-Cache-Control", value: "public, max-age=60, must-revalidate" },
 ];
 
 const nextConfig = {
   // Standard Next.js — no standalone, no basePath, no assetPrefix, no custom server.
   // Hostinger: bind via `next start -H 0.0.0.0` (see package.json).
   poweredByHeader: false,
+  compress: true,
   trailingSlash: false,
 
   serverExternalPackages: ["better-sqlite3", "node:sqlite"],
@@ -28,6 +37,24 @@ const nextConfig = {
 
   eslint: {
     ignoreDuringBuilds: true,
+  },
+
+  experimental: {
+    staleTimes: {
+      dynamic: 0,
+      static: 0,
+    },
+  },
+
+  async rewrites() {
+    return {
+      fallback: [
+        {
+          source: "/_next/static/css/:file",
+          destination: "/api/assets/css",
+        },
+      ],
+    };
   },
 
   images: {
@@ -54,6 +81,10 @@ const nextConfig = {
         headers: IMMUTABLE_STATIC,
       },
       {
+        source: "/styles/:path*",
+        headers: SHORT_CSS,
+      },
+      {
         source: "/api/:path*",
         headers: NO_STORE,
       },
@@ -62,7 +93,7 @@ const nextConfig = {
         headers: NO_STORE,
       },
       {
-        source: "/:path((?!_next/static|_next/image|brand|placeholders|uploads).*)",
+        source: "/:path((?!_next/static|_next/image|brand|placeholders|uploads|styles).*)",
         headers: NO_STORE,
       },
     ];
