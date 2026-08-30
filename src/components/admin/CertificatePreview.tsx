@@ -189,6 +189,13 @@ export const CertificatePreview = forwardRef<HTMLDivElement, { data: Certificate
                 d&apos;une durée totale de <strong>{hours} heures</strong>
               </p>
 
+              {data.trainerName.trim() ? (
+                <p style={{ margin: "12px 0 0", color: MUTED, fontSize: 14 }}>
+                  sous la responsabilité pédagogique de{" "}
+                  <strong style={{ color: INK }}>{data.trainerName.trim()}</strong>
+                </p>
+              ) : null}
+
               <p style={{ margin: "16px 0 0", color: MUTED, fontSize: 14 }}>
                 Fait à <strong style={{ color: INK }}>{place}</strong>, le{" "}
                 <strong style={{ color: INK }}>{issued}</strong>
@@ -200,39 +207,28 @@ export const CertificatePreview = forwardRef<HTMLDivElement, { data: Certificate
                   display: "grid",
                   width: "100%",
                   gridTemplateColumns: "1fr 118px 1fr",
-                  alignItems: "end",
+                  alignItems: "start",
                   gap: 24,
-                  paddingTop: 18,
+                  paddingTop: 22,
                 }}
               >
                 <div style={{ textAlign: "center" }}>
                   <p
                     style={{
                       margin: 0,
-                      color: MUTED,
-                      fontSize: 11,
-                      letterSpacing: "0.16em",
+                      color: TEAL,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      letterSpacing: "0.14em",
                       textTransform: "uppercase",
                     }}
                   >
-                    Formateur / Responsable
+                    Le Responsable Pédagogique
                   </p>
-                  <p
-                    style={{
-                      margin: "10px 0 12px",
-                      minHeight: 22,
-                      color: TEAL,
-                      fontSize: 14,
-                      fontWeight: 700,
-                    }}
-                  >
-                    {data.trainerName.trim() || "Nom du formateur"}
-                  </p>
-                  <div style={{ margin: "0 auto", width: 210, borderTop: `1px solid ${TEAL}` }} />
-                  <p style={{ margin: "6px 0 0", color: MUTED, fontSize: 11 }}>Signature</p>
+                  <div style={{ height: 118 }} />
                 </div>
 
-                <div style={{ display: "flex", justifyContent: "center" }}>
+                <div style={{ display: "flex", justifyContent: "center", paddingTop: 4 }}>
                   <Seal />
                 </div>
 
@@ -240,27 +236,16 @@ export const CertificatePreview = forwardRef<HTMLDivElement, { data: Certificate
                   <p
                     style={{
                       margin: 0,
-                      color: MUTED,
-                      fontSize: 11,
-                      letterSpacing: "0.16em",
+                      color: TEAL,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      letterSpacing: "0.14em",
                       textTransform: "uppercase",
                     }}
                   >
-                    Direction AQF
+                    Le Directeur Académique
                   </p>
-                  <p
-                    style={{
-                      margin: "10px 0 12px",
-                      minHeight: 22,
-                      color: TEAL,
-                      fontSize: 14,
-                      fontWeight: 700,
-                    }}
-                  >
-                    {BRAND.name}
-                  </p>
-                  <div style={{ margin: "0 auto", width: 210, borderTop: `1px solid ${TEAL}` }} />
-                  <p style={{ margin: "6px 0 0", color: MUTED, fontSize: 11 }}>Signature et cachet</p>
+                  <div style={{ height: 118 }} />
                 </div>
               </div>
             </div>

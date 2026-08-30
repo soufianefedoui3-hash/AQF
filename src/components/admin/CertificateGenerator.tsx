@@ -179,7 +179,7 @@ export function CertificateGenerator() {
               onChange={(e) => update("hours", e.target.value)}
             />
             <Input
-              label="Formateur / Responsable"
+              label="Responsable pédagogique"
               value={data.trainerName}
               onChange={(e) => update("trainerName", e.target.value)}
               placeholder="Nom du formateur"
