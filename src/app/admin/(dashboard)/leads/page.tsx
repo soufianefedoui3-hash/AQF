@@ -4,22 +4,8 @@ import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { formatDate } from "@/lib/utils";
 import { adminFetch } from "@/lib/admin-fetch";
-
-interface Lead {
-  id: string;
-  type: string;
-  status: string;
-  createdAt: string;
-  [key: string]: unknown;
-}
-
-const TYPE_LABELS: Record<string, string> = {
-  consultation: "Consultation",
-  accompagnement: "Accompagnement",
-  formation: "Formation",
-  audit: "Audit",
-  "web-service": "Service Web",
-};
+import { AdminEmptyState, AdminPageHeader } from "@/components/ui/PageSection";
+import { LeadCard, type LeadRecord } from "@/components/admin/LeadCard";
 
 const STATUS_OPTIONS = [
   { value: "new", label: "Nouveau" },
@@ -29,16 +15,15 @@ const STATUS_OPTIONS = [
 ];
 
 export default function LeadsPage() {
-  const [leads, setLeads] = useState<Lead[]>([]);
+  const [leads, setLeads] = useState<LeadRecord[]>([]);
   const [filter, setFilter] = useState("all");
   const [loading, setLoading] = useState(true);
-  const [expanded, setExpanded] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   async function loadLeads(type: string) {
     setLoading(true);
     try {
-      const result = await adminFetch<Lead[]>(`/api/admin/leads?type=${type}`);
+      const result = await adminFetch<LeadRecord[]>(`/api/admin/leads?type=${type}`);
       if (!result.ok) {
         setLeads([]);
         toast.error(result.error);
@@ -88,7 +73,7 @@ export default function LeadsPage() {
 
   return (
     <div>
-      <h2 className="mb-6 text-2xl font-bold text-primary-900">Leads & Demandes</h2>
+      <AdminPageHeader title="Leads & Demandes" />
 
       <div className="mb-6 flex flex-wrap gap-2">
         {[
@@ -119,64 +104,30 @@ export default function LeadsPage() {
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-accent-400 border-t-transparent" />
         </div>
       ) : leads.length === 0 ? (
-        <p className="rounded-2xl bg-white p-8 text-center text-text-muted">
-          Aucune demande trouvée.
-        </p>
+        <AdminEmptyState>Aucune demande trouvée.</AdminEmptyState>
       ) : (
         <div className="space-y-4">
           {leads.map((lead) => (
-            <div
+            <LeadCard
               key={`${lead.type}-${lead.id}`}
-              className="rounded-2xl border border-primary-100 bg-white shadow-sm"
-            >
-              <div
-                className="flex cursor-pointer items-center justify-between px-6 py-4"
-                onClick={() =>
-                  setExpanded(expanded === `${lead.type}-${lead.id}` ? null : `${lead.type}-${lead.id}`)
-                }
-              >
-                <div>
-                  <span className="mr-2 rounded-full bg-primary-100 px-2 py-0.5 text-xs font-medium text-primary-700">
-                    {TYPE_LABELS[lead.type] || lead.type}
-                  </span>
-                  <span className="font-medium text-primary-900">
-                    {(lead.contactName as string) ||
-                      (lead.name as string) ||
-                      (lead.responsableName as string) ||
-                      "—"}
-                  </span>
-                </div>
-                <div className="flex items-center gap-4">
-                  <select
-                    value={lead.status}
-                    disabled={updatingId === lead.id}
-                    onChange={(e) => {
-                      e.stopPropagation();
-                      updateStatus(lead.id, lead.type, e.target.value);
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                    className="rounded-lg border border-primary-100 px-3 py-1 text-sm"
-                  >
-                    {STATUS_OPTIONS.map((s) => (
-                      <option key={s.value} value={s.value}>
-                        {s.label}
-                      </option>
-                    ))}
-                  </select>
-                  <span className="text-sm text-text-muted">
-                    {formatDate(lead.createdAt)}
-                  </span>
-                </div>
-              </div>
-
-              {expanded === `${lead.type}-${lead.id}` && (
-                <div className="border-t border-primary-100 px-6 py-4">
-                  <pre className="overflow-x-auto rounded-lg bg-accent-50/50 p-4 text-xs text-primary-800">
-                    {JSON.stringify(lead, null, 2)}
-                  </pre>
-                </div>
-              )}
-            </div>
+              lead={lead}
+              createdLabel={formatDate(lead.createdAt)}
+              statusControl={
+                <select
+                  value={lead.status}
+                  disabled={updatingId === lead.id}
+                  onChange={(e) => updateStatus(lead.id, lead.type, e.target.value)}
+                  className="rounded-lg border border-primary-100 px-3 py-2 text-sm"
+                  aria-label="Statut de la demande"
+                >
+                  {STATUS_OPTIONS.map((s) => (
+                    <option key={s.value} value={s.value}>
+                      {s.label}
+                    </option>
+                  ))}
+                </select>
+              }
+            />
           ))}
         </div>
       )}
