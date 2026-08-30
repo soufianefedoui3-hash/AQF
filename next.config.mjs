@@ -11,6 +11,7 @@ const IMMUTABLE_STATIC = [
 
 const nextConfig = {
   // Standard Next.js — no standalone, no basePath, no assetPrefix, no custom server.
+  // Hostinger: bind via `next start -H 0.0.0.0` (see package.json).
   poweredByHeader: false,
   trailingSlash: false,
 
