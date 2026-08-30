@@ -180,6 +180,17 @@ export const SQLITE_SCHEMA_SQL = [
     "updatedAt" TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
 
+  `CREATE TABLE IF NOT EXISTS "CustomPage" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "slug" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "showInNav" INTEGER NOT NULL DEFAULT 1,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "blocks" TEXT NOT NULL DEFAULT '[]',
+    "updatedAt" TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "CustomPage_slug_key" ON "CustomPage"("slug")`,
+
   `CREATE TABLE IF NOT EXISTS "JobApplication" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "positionName" TEXT NOT NULL,

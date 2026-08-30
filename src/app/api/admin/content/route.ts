@@ -4,12 +4,14 @@ import { DEFAULT_ADMIN_CONTENT } from "@/lib/seed-data";
 import { revalidateCms } from "@/lib/revalidate-cms";
 import {
   deleteAbout,
+  deleteCustomPage,
   deletePage,
   deleteSector,
   deleteTeam,
   loadAdminContent,
   upsertAbout,
   upsertCareers,
+  upsertCustomPage,
   upsertGed,
   upsertPage,
   upsertSector,
@@ -41,6 +43,7 @@ export async function GET(request: NextRequest) {
       pages: data.pages.length > 0 ? data.pages : DEFAULT_ADMIN_CONTENT.pages,
       ged: data.ged || DEFAULT_ADMIN_CONTENT.ged,
       labels: { ...DEFAULT_ADMIN_CONTENT.labels, ...data.labels },
+      customPages: Array.isArray(data.customPages) ? data.customPages : [],
     });
   } catch (error) {
     console.error("[cms] admin GET failed:", error);
@@ -164,6 +167,22 @@ export async function PUT(request: NextRequest) {
           imageUrl: data.imageUrl,
         });
         break;
+      case "custom-page":
+        result = await upsertCustomPage({
+          id: data.id ? String(data.id) : undefined,
+          slug: data.slug == null ? undefined : String(data.slug),
+          title: data.title == null ? undefined : String(data.title),
+          showInNav:
+            data.showInNav === undefined ? undefined : Boolean(data.showInNav),
+          sortOrder:
+            typeof data.sortOrder === "number" ? data.sortOrder : undefined,
+          blocks: data.blocks,
+        });
+        break;
+      case "custom-page-delete":
+        if (!data.id) return jsonError("ID requis", 400);
+        result = await deleteCustomPage(String(data.id));
+        break;
       default:
         return jsonError("Section invalide", 400);
     }
@@ -172,7 +191,20 @@ export async function PUT(request: NextRequest) {
       return jsonError(result.error, 503);
     }
 
-    revalidateCms();
+    const extraPaths: string[] = [];
+    if (
+      (section === "custom-page" || section === "custom-page-delete") &&
+      result.data &&
+      typeof result.data === "object" &&
+      "slug" in result.data &&
+      typeof (result.data as { slug?: unknown }).slug === "string"
+    ) {
+      extraPaths.push(`/${(result.data as { slug: string }).slug}`);
+    }
+    if (section === "custom-page" && typeof data.slug === "string" && data.slug.trim()) {
+      extraPaths.push(`/${data.slug.trim()}`);
+    }
+    revalidateCms(extraPaths);
     return NextResponse.json({ success: true, data: result.data });
   } catch (error) {
     console.error("[cms] admin PUT failed:", error);

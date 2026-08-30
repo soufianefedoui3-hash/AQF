@@ -8,12 +8,14 @@ import {
 } from "@/lib/placeholder-images";
 import {
   getCareersRow,
+  getCustomPageRow,
   getGedRow,
   getNewsBySlug,
   getPageRow,
   getSectorRow,
   getSettingsRow,
   listAboutSections,
+  listCustomPages,
   listLabels,
   listNews,
   listPacks,
@@ -389,9 +391,30 @@ export function labelOf(
   return value || fallback || DEFAULT_CONTENT_LABELS[id] || id;
 }
 
+export async function getCustomPages() {
+  try {
+    return await listCustomPages();
+  } catch {
+    return [];
+  }
+}
+
+export async function getCustomPageBySlug(slug: string) {
+  const normalized = slug?.trim();
+  if (!normalized) return null;
+  try {
+    return await getCustomPageRow(normalized);
+  } catch {
+    return null;
+  }
+}
+
 export async function getNavLinks() {
-  const labels = await getContentLabels();
-  return NAV_LINKS.map((link) => {
+  const [labels, customPages] = await Promise.all([
+    getContentLabels(),
+    getCustomPages(),
+  ]);
+  const core = NAV_LINKS.map((link) => {
     const id =
       link.href === "/"
         ? "homepage"
@@ -411,6 +434,13 @@ export async function getNavLinks() {
       label: id ? labelOf(labels, id, link.label) : link.label,
     };
   });
+  const extras = customPages
+    .filter((page) => page.showInNav && page.slug.trim() && page.title.trim())
+    .map((page) => ({
+      href: `/${page.slug.trim()}`,
+      label: page.title.trim(),
+    }));
+  return [...core, ...extras];
 }
 
 export async function getServiceLinks() {

@@ -249,4 +249,13 @@ export const DEFAULT_ADMIN_CONTENT = {
     updatedAt: new Date(0),
   },
   labels: { ...DEFAULT_CONTENT_LABELS },
+  customPages: [] as Array<{
+    id: string;
+    slug: string;
+    title: string;
+    showInNav: boolean;
+    sortOrder: number;
+    blocks: unknown[];
+    updatedAt: Date;
+  }>,
 };

@@ -19,8 +19,9 @@ export const CMS_PUBLIC_PATHS = [
  * Always revalidates every public CMS route (page + layout) so admin
  * edits appear immediately on the website.
  */
-export function revalidateCms() {
-  for (const path of CMS_PUBLIC_PATHS) {
+export function revalidateCms(extraPaths: string[] = []) {
+  const paths = [...CMS_PUBLIC_PATHS, ...extraPaths.filter(Boolean)];
+  for (const path of paths) {
     try {
       revalidatePath(path);
     } catch (error) {
@@ -44,6 +45,7 @@ export function revalidateCms() {
     revalidatePath("/actualites", "layout");
     revalidatePath("/services", "layout");
     revalidatePath("/admin", "layout");
+    revalidatePath("/[slug]", "page");
   } catch {
     /* ignore */
   }

@@ -1,6 +1,13 @@
 import { execute, newId, query, queryOne, readyDb } from "@/lib/db";
 import { DEFAULT_CONTENT_LABELS } from "@/lib/seed-data";
 import { toLocalImageUrl } from "@/lib/placeholder-images";
+import {
+  isReservedPageSlug,
+  normalizePageSlug,
+  parsePageBlocks,
+  serializePageBlocks,
+  type PageBlock,
+} from "@/lib/page-blocks";
 
 export type CmsOk<T> = { ok: true; data: T };
 export type CmsFail = { ok: false; error: string };
@@ -132,6 +139,16 @@ export type LabelRow = {
   updatedAt: Date;
 };
 
+export type CustomPageRow = {
+  id: string;
+  slug: string;
+  title: string;
+  showInNav: boolean;
+  sortOrder: number;
+  blocks: PageBlock[];
+  updatedAt: Date;
+};
+
 export type PackRow = {
   id: string;
   name: string;
@@ -243,6 +260,18 @@ function mapLabel(row: Record<string, unknown>): LabelRow {
   return {
     id: asString(row.id),
     label: asString(row.label),
+    updatedAt: asDate(row.updatedAt),
+  };
+}
+
+function mapCustomPage(row: Record<string, unknown>): CustomPageRow {
+  return {
+    id: asString(row.id),
+    slug: asString(row.slug),
+    title: asString(row.title),
+    showInNav: asBool(row.showInNav),
+    sortOrder: asNumber(row.sortOrder),
+    blocks: parsePageBlocks(row.blocks),
     updatedAt: asDate(row.updatedAt),
   };
 }
@@ -431,22 +460,132 @@ export async function upsertLabel(data: {
   }, "Impossible d'enregistrer le libellé");
 }
 
+export async function listCustomPages(): Promise<CustomPageRow[]> {
+  await readyDb();
+  return query(
+    `SELECT * FROM "CustomPage" ORDER BY "sortOrder" ASC, "title" ASC`
+  ).rows.map(mapCustomPage);
+}
+
+export async function getCustomPageRow(slug: string): Promise<CustomPageRow | null> {
+  await readyDb();
+  const row = queryOne(`SELECT * FROM "CustomPage" WHERE "slug" = ?`, [slug]);
+  return row ? mapCustomPage(row) : null;
+}
+
+export async function upsertCustomPage(data: {
+  id?: string;
+  slug?: string;
+  title?: string;
+  showInNav?: boolean;
+  sortOrder?: number;
+  blocks?: unknown;
+}): Promise<CmsResult<CustomPageRow>> {
+  return withDb(async () => {
+    const title = asString(data.title).trim();
+    if (!title) throw new Error("Le nom de la page est requis");
+
+    const slug = normalizePageSlug(asString(data.slug), title);
+    if (!slug) throw new Error("Slug de page invalide");
+    if (isReservedPageSlug(slug)) {
+      throw new Error("Ce slug est réservé par le site");
+    }
+
+    const existingById = data.id
+      ? queryOne(`SELECT * FROM "CustomPage" WHERE "id" = ?`, [data.id.trim()])
+      : null;
+    const id = existingById ? asString(existingById.id) : newId();
+
+    const taken = queryOne(
+      `SELECT "id" FROM "CustomPage" WHERE "slug" = ? AND "id" != ?`,
+      [slug, id]
+    );
+    if (taken) throw new Error("Ce slug est déjà utilisé");
+
+    const showInNav =
+      data.showInNav === undefined
+        ? existingById
+          ? asBool(existingById.showInNav)
+          : true
+        : Boolean(data.showInNav);
+
+    let sortOrder = asNumber(data.sortOrder, Number.NaN);
+    if (!Number.isFinite(sortOrder)) {
+      sortOrder = existingById
+        ? asNumber(existingById.sortOrder)
+        : asNumber(
+            queryOne<{ maxOrder: number }>(
+              `SELECT COALESCE(MAX("sortOrder"), -1) + 1 AS maxOrder FROM "CustomPage"`
+            )?.maxOrder,
+            0
+          );
+    }
+
+    const blocksJson =
+      data.blocks === undefined
+        ? existingById
+          ? asString(existingById.blocks, "[]")
+          : "[]"
+        : serializePageBlocks(parsePageBlocks(data.blocks));
+
+    const updatedAt = nowIso();
+    if (existingById) {
+      execute(
+        `UPDATE "CustomPage"
+         SET "slug" = ?, "title" = ?, "showInNav" = ?, "sortOrder" = ?, "blocks" = ?, "updatedAt" = ?
+         WHERE "id" = ?`,
+        [slug, title, showInNav ? 1 : 0, sortOrder, blocksJson, updatedAt, id]
+      );
+    } else {
+      execute(
+        `INSERT INTO "CustomPage"
+          ("id", "slug", "title", "showInNav", "sortOrder", "blocks", "updatedAt")
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [id, slug, title, showInNav ? 1 : 0, sortOrder, blocksJson, updatedAt]
+      );
+    }
+    return mapCustomPage({
+      id,
+      slug,
+      title,
+      showInNav: showInNav ? 1 : 0,
+      sortOrder,
+      blocks: blocksJson,
+      updatedAt,
+    });
+  }, "Impossible d'enregistrer la page");
+}
+
+export async function deleteCustomPage(
+  id: string
+): Promise<CmsResult<CustomPageRow | true>> {
+  return withDb(async () => {
+    const key = id.trim();
+    if (!key) throw new Error("Identifiant de page requis");
+    const existing = queryOne(`SELECT * FROM "CustomPage" WHERE "id" = ?`, [key]);
+    execute(`DELETE FROM "CustomPage" WHERE "id" = ?`, [key]);
+    return existing ? mapCustomPage(existing) : (true as const);
+  }, "Impossible de supprimer la page");
+}
+
 export async function loadAdminContent() {
-  const [about, team, sectors, careers, settings, pages, ged, labelRows] = await Promise.all([
-    listAboutSections(),
-    listTeamMembers(),
-    listSectors(),
-    getCareersRow(),
-    getSettingsRow(),
-    listPages(),
-    getGedRow(),
-    listLabels(),
-  ]);
+  const [about, team, sectors, careers, settings, pages, ged, labelRows, customPages] =
+    await Promise.all([
+      listAboutSections(),
+      listTeamMembers(),
+      listSectors(),
+      getCareersRow(),
+      getSettingsRow(),
+      listPages(),
+      getGedRow(),
+      listLabels(),
+      listCustomPages(),
+    ]);
   const labels = { ...DEFAULT_CONTENT_LABELS };
   for (const row of labelRows) {
     if (row.label.trim()) labels[row.id] = row.label.trim();
   }
-  return { about, team, sectors, careers, settings, pages, ged, labels };
+  return { about, team, sectors, careers, settings, pages, ged, labels, customPages };
 }
 
 export async function upsertAbout(data: {

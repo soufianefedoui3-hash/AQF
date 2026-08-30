@@ -2,10 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
+import { Plus } from "lucide-react";
 import { Input, Textarea } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
 import { FormationsManager } from "@/components/admin/FormationsManager";
 import { PacksManager } from "@/components/admin/PacksManager";
+import { PageBlockBuilder } from "@/components/admin/PageBlockBuilder";
 import {
   pageBlocks,
   SectionBlocksEditor,
@@ -19,6 +22,13 @@ import {
   DEFAULT_CONTENT_LABELS,
   PUBLIC_NAV_LABEL_IDS,
 } from "@/lib/seed-data";
+import {
+  customPageIdFromTab,
+  customPageTabId,
+  normalizePageSlug,
+  parsePageBlocks,
+  type PageBlock,
+} from "@/lib/page-blocks";
 
 interface TeamMember {
   id: string;
@@ -64,6 +74,15 @@ interface GedService {
   imageUrl: string | null;
 }
 
+interface CustomPageItem {
+  id: string;
+  slug: string;
+  title: string;
+  showInNav: boolean;
+  sortOrder: number;
+  blocks: PageBlock[];
+}
+
 const DEFAULT_CAREERS: CareersSettings = {
   title: "Rejoignez une équipe passionnée par la qualité",
   content: "",
@@ -105,9 +124,15 @@ export default function ContentPage() {
   const [labels, setLabels] = useState<Record<string, string>>({
     ...DEFAULT_CONTENT_LABELS,
   });
+  const [customPages, setCustomPages] = useState<CustomPageItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("about");
   const [saving, setSaving] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newSlug, setNewSlug] = useState("");
+  const [newShowInNav, setNewShowInNav] = useState(true);
+  const [newSlugTouched, setNewSlugTouched] = useState(false);
 
   const loadContent = useCallback(async () => {
     setLoading(true);
@@ -132,6 +157,18 @@ export default function ContentPage() {
           ? (data.labels as Record<string, string>)
           : {}),
       });
+      setCustomPages(
+        Array.isArray(data.customPages)
+          ? (data.customPages as CustomPageItem[]).map((page) => ({
+              id: String(page.id),
+              slug: String(page.slug || ""),
+              title: String(page.title || ""),
+              showInNav: Boolean(page.showInNav),
+              sortOrder: Number(page.sortOrder) || 0,
+              blocks: parsePageBlocks(page.blocks),
+            }))
+          : []
+      );
     } catch {
       toast.error("Erreur de connexion");
     } finally {
@@ -143,7 +180,7 @@ export default function ContentPage() {
     loadContent();
   }, [loadContent]);
 
-  async function save(section: string, data: object): Promise<boolean> {
+  async function save(section: string, data: object): Promise<false | unknown> {
     setSaving(true);
     try {
       const res = await fetch("/api/admin/content", {
@@ -158,7 +195,12 @@ export default function ContentPage() {
       }
 
       toast.success("Enregistré");
-      return true;
+      try {
+        const json = (await res.json()) as { data?: unknown };
+        return json?.data ?? true;
+      } catch {
+        return true;
+      }
     } catch {
       toast.error("Erreur de connexion");
       return false;
@@ -206,17 +248,48 @@ export default function ContentPage() {
 
   async function saveLabel(id: string, label: string): Promise<boolean> {
     const next = label.trim() || DEFAULT_CONTENT_LABELS[id] || id;
-    const ok = await save("label", { id, label: next });
+    const ok = Boolean(await save("label", { id, label: next }));
     if (ok) {
       setLabels((prev) => ({ ...prev, [id]: next }));
     }
     return ok;
   }
 
-  const tabs = ADMIN_CONTENT_TAB_IDS.map((id) => ({
-    id,
-    label: tabLabel(id),
-  }));
+  const tabs = [
+    ...ADMIN_CONTENT_TAB_IDS.map((id) => ({
+      id,
+      label: tabLabel(id),
+    })),
+    ...customPages.map((page) => ({
+      id: customPageTabId(page.id),
+      label: page.title.trim() || page.slug || "Nouvelle page",
+    })),
+  ];
+
+  const activeCustomId = customPageIdFromTab(activeTab);
+  const activeCustom = customPages.find((page) => page.id === activeCustomId);
+
+  async function createCustomPage() {
+    const title = newTitle.trim();
+    if (!title) {
+      toast.error("Saisissez le nom de la page");
+      return;
+    }
+    const created = await save("custom-page", {
+      title,
+      slug: normalizePageSlug(newSlug, title),
+      showInNav: newShowInNav,
+      blocks: [],
+    });
+    if (!created || typeof created !== "object" || !("id" in created)) return;
+    setCreateOpen(false);
+    setNewTitle("");
+    setNewSlug("");
+    setNewShowInNav(true);
+    setNewSlugTouched(false);
+    await loadContent();
+    setActiveTab(customPageTabId(String((created as { id: string }).id)));
+  }
 
   return (
     <div>
@@ -237,15 +310,100 @@ export default function ContentPage() {
             {tab.label}
           </button>
         ))}
+        <button
+          type="button"
+          onClick={() => {
+            setNewTitle("");
+            setNewSlug("");
+            setNewShowInNav(true);
+            setNewSlugTouched(false);
+            setCreateOpen(true);
+          }}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-accent-400 bg-accent-50 px-4 py-2 text-sm font-medium text-primary-800 transition hover:bg-accent-100"
+        >
+          <Plus className="h-4 w-4" />
+          Ajouter une nouvelle page
+        </button>
       </div>
 
-      <TabLabelEditor
-        tabId={activeTab}
-        value={tabLabel(activeTab)}
-        fallback={DEFAULT_CONTENT_LABELS[activeTab] || activeTab}
-        saving={saving}
-        onSave={(label) => saveLabel(activeTab, label)}
-      />
+      <Modal
+        isOpen={createOpen}
+        onClose={() => setCreateOpen(false)}
+        title="Nouvelle page"
+        size="md"
+      >
+        <div className="space-y-4">
+          <Input
+            label="Nom de la page"
+            value={newTitle}
+            required
+            placeholder="Ex: Notre méthode"
+            onChange={(e) => {
+              const next = e.target.value;
+              setNewTitle(next);
+              if (!newSlugTouched) setNewSlug(normalizePageSlug(next));
+            }}
+          />
+          <Input
+            label="Slug (URL)"
+            value={newSlug}
+            placeholder="notre-methode"
+            onChange={(e) => {
+              setNewSlugTouched(true);
+              setNewSlug(normalizePageSlug(e.target.value));
+            }}
+          />
+          <label className="flex items-center gap-2 text-sm text-primary-900">
+            <input
+              type="checkbox"
+              checked={newShowInNav}
+              onChange={(e) => setNewShowInNav(e.target.checked)}
+              className="h-4 w-4 rounded border-primary-200"
+            />
+            Afficher dans le menu du site
+          </label>
+          <p className="text-xs text-text-muted">
+            Adresse publique : /{normalizePageSlug(newSlug, newTitle) || "…"}
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="ghost" onClick={() => setCreateOpen(false)}>
+              Annuler
+            </Button>
+            <Button loading={saving} onClick={createCustomPage}>
+              Créer la page
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {!activeCustom && (
+        <TabLabelEditor
+          tabId={activeTab}
+          value={tabLabel(activeTab)}
+          fallback={DEFAULT_CONTENT_LABELS[activeTab] || activeTab}
+          saving={saving}
+          onSave={(label) => saveLabel(activeTab, label)}
+        />
+      )}
+
+      {activeCustom && (
+        <CustomPageEditor
+          page={activeCustom}
+          saving={saving}
+          onSave={async (data) => {
+            const result = await save("custom-page", data);
+            if (result) await loadContent();
+          }}
+          onDelete={async () => {
+            if (!confirm("Supprimer définitivement cette page ?")) return;
+            const ok = await save("custom-page-delete", { id: activeCustom.id });
+            if (ok) {
+              setActiveTab("about");
+              await loadContent();
+            }
+          }}
+        />
+      )}
 
       {activeTab === "about" && (
         <SectionBlocksEditor
@@ -509,6 +667,87 @@ export default function ContentPage() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function CustomPageEditor({
+  page,
+  saving,
+  onSave,
+  onDelete,
+}: {
+  page: CustomPageItem;
+  saving: boolean;
+  onSave: (data: CustomPageItem) => Promise<void>;
+  onDelete: () => Promise<void>;
+}) {
+  const [title, setTitle] = useState(page.title);
+  const [slug, setSlug] = useState(page.slug);
+  const [showInNav, setShowInNav] = useState(page.showInNav);
+  const [blocks, setBlocks] = useState<PageBlock[]>(page.blocks);
+
+  useEffect(() => {
+    setTitle(page.title);
+    setSlug(page.slug);
+    setShowInNav(page.showInNav);
+    setBlocks(page.blocks);
+  }, [page.id, page.title, page.slug, page.showInNav, page.blocks]);
+
+  const publicPath = `/${normalizePageSlug(slug, title) || page.slug}`;
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-2xl border border-primary-100 bg-white p-5 sm:p-6">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Input
+            label="Nom de la page"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+          <Input
+            label="Slug (URL)"
+            value={slug}
+            onChange={(e) => setSlug(normalizePageSlug(e.target.value))}
+          />
+        </div>
+        <label className="mt-4 flex items-center gap-2 text-sm text-primary-900">
+          <input
+            type="checkbox"
+            checked={showInNav}
+            onChange={(e) => setShowInNav(e.target.checked)}
+            className="h-4 w-4 rounded border-primary-200"
+          />
+          Afficher dans le menu du site
+        </label>
+        <p className="mt-2 text-xs text-text-muted">
+          Page publique :{" "}
+          <a href={publicPath} className="text-accent-700 underline" target="_blank" rel="noreferrer">
+            {publicPath}
+          </a>
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Button
+            loading={saving}
+            onClick={() =>
+              onSave({
+                ...page,
+                title: title.trim() || page.title,
+                slug: normalizePageSlug(slug, title) || page.slug,
+                showInNav,
+                blocks,
+              })
+            }
+          >
+            Enregistrer la page
+          </Button>
+          <Button type="button" variant="danger" loading={saving} onClick={onDelete}>
+            Supprimer la page
+          </Button>
+        </div>
+      </div>
+
+      <PageBlockBuilder blocks={blocks} saving={saving} onChange={setBlocks} />
     </div>
   );
 }
