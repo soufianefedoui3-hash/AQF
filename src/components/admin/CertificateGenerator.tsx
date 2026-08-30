@@ -13,24 +13,17 @@ import {
   CERTIFICATE_STORAGE_KEY,
   certificateFileName,
   parseCertificateDraft,
-  todayIsoDate,
   type CertificateData,
   type CertificateFormat,
 } from "@/lib/certificate";
 
 function loadDraft(): CertificateData {
-  const fallback = {
-    ...CERTIFICATE_DEFAULTS,
-    startDate: todayIsoDate(),
-    endDate: todayIsoDate(),
-    issueDate: todayIsoDate(),
-  };
   try {
     const raw = localStorage.getItem(CERTIFICATE_STORAGE_KEY);
-    if (!raw) return fallback;
-    return parseCertificateDraft(JSON.parse(raw)) ?? fallback;
+    if (!raw) return { ...CERTIFICATE_DEFAULTS };
+    return parseCertificateDraft(JSON.parse(raw)) ?? { ...CERTIFICATE_DEFAULTS };
   } catch {
-    return fallback;
+    return { ...CERTIFICATE_DEFAULTS };
   }
 }
 
@@ -90,7 +83,7 @@ export function CertificateGenerator() {
       const canvas = await html2canvas(node, {
         scale: 3,
         useCORS: true,
-        backgroundColor: "#004d5a",
+        backgroundColor: "#0c7f88",
         width: CERTIFICATE_WIDTH,
         height: CERTIFICATE_HEIGHT,
         windowWidth: CERTIFICATE_WIDTH,
@@ -127,6 +120,27 @@ export function CertificateGenerator() {
 
   return (
     <div>
+      <style>{`
+        @media print {
+          @page { size: ${format} landscape; margin: 0; }
+          html, body { margin: 0 !important; background: #fff !important; }
+          body * { visibility: hidden !important; }
+          [data-certificate-root],
+          [data-certificate-root] * { visibility: visible !important; }
+          [data-certificate-print] {
+            position: fixed !important;
+            inset: 0 !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+          }
+          [data-certificate-print] [data-certificate-root] {
+            width: 100vw !important;
+            height: 100vh !important;
+          }
+        }
+      `}</style>
       <AdminPageHeader title="Générateur d'Attestations">
         <Button onClick={() => setFormatOpen(true)}>
           <FileDown className="h-4 w-4" />
@@ -146,27 +160,27 @@ export function CertificateGenerator() {
           </div>
           <div className="space-y-4">
             <Input
-              label="Prénom NOM"
+              label="[Prénom NOM]"
               value={data.studentName}
               onChange={(e) => update("studentName", e.target.value)}
               placeholder="Prénom NOM"
             />
             <Input
-              label="Intitulé de la formation / accompagnement"
+              label="[INTITULÉ DE LA FORMATION/ACCOMPAGNEMENT]"
               value={data.trainingTitle}
               onChange={(e) => update("trainingTitle", e.target.value)}
-              placeholder="ISO 15189 — Laboratoire"
+              placeholder="Intitulé de la formation / accompagnement"
             />
             <div className="grid gap-4 sm:grid-cols-2">
               <Input
                 type="date"
-                label="Date de début"
+                label="[DATE DE DÉBUT]"
                 value={data.startDate}
                 onChange={(e) => update("startDate", e.target.value)}
               />
               <Input
                 type="date"
-                label="Date de fin"
+                label="[DATE DE FIN]"
                 value={data.endDate}
                 onChange={(e) => update("endDate", e.target.value)}
               />
@@ -174,26 +188,26 @@ export function CertificateGenerator() {
             <Input
               type="number"
               min={1}
-              label="Nombre d'heures"
+              label="[NOMBRE] heures"
               value={data.hours}
               onChange={(e) => update("hours", e.target.value)}
             />
             <Input
-              label="Responsable pédagogique"
+              label="[NOM DU FORMATEUR/RESPONSABLE]"
               value={data.trainerName}
               onChange={(e) => update("trainerName", e.target.value)}
-              placeholder="Nom du formateur"
+              placeholder="Nom du formateur / responsable"
             />
             <div className="grid gap-4 sm:grid-cols-2">
               <Input
-                label="Lieu de délivrance"
+                label="[LIEU DE DÉLIVRANCE]"
                 value={data.issuePlace}
                 onChange={(e) => update("issuePlace", e.target.value)}
-                placeholder="Casablanca"
+                placeholder="Lieu de délivrance"
               />
               <Input
                 type="date"
-                label="Date de délivrance"
+                label="[DATE DE DÉLIVRANCE]"
                 value={data.issueDate}
                 onChange={(e) => update("issueDate", e.target.value)}
               />
@@ -226,6 +240,7 @@ export function CertificateGenerator() {
       </div>
 
       <div
+        data-certificate-print
         aria-hidden
         className="pointer-events-none fixed left-[-200vw] top-0"
       >
