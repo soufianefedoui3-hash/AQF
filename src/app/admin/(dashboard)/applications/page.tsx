@@ -6,6 +6,7 @@ import { Download, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { formatDate } from "@/lib/utils";
 import { AdminPageHeader, AdminEmptyState, AdminCard } from "@/components/ui/PageSection";
+import { adminFetch } from "@/lib/admin-fetch";
 
 interface Application {
   id: string;
@@ -27,20 +28,13 @@ export default function ApplicationsPage() {
   async function loadApplications() {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/applications");
-      const data = await res.json();
-
-      if (!res.ok) {
+      const result = await adminFetch<Application[]>("/api/admin/applications");
+      if (!result.ok) {
         setApplications([]);
-        toast.error(
-          typeof data?.error === "string"
-            ? data.error
-            : "Impossible de charger les candidatures"
-        );
+        toast.error(result.error);
         return;
       }
-
-      setApplications(Array.isArray(data) ? data : []);
+      setApplications(Array.isArray(result.data) ? result.data : []);
     } catch {
       setApplications([]);
       toast.error("Erreur de connexion");

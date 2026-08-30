@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import { Plus, Trash2, Edit } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { adminFetch } from "@/lib/admin-fetch";
 
 interface FormationType {
   id: string;
@@ -23,16 +24,13 @@ export function FormationsManager() {
   async function loadFormations() {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/formations");
-      const data = await res.json();
-      if (!res.ok) {
+      const result = await adminFetch<FormationType[]>("/api/admin/formations");
+      if (!result.ok) {
         setFormations([]);
-        toast.error(
-          typeof data?.error === "string" ? data.error : "Erreur de chargement"
-        );
+        toast.error(result.error);
         return;
       }
-      setFormations(Array.isArray(data) ? data : []);
+      setFormations(Array.isArray(result.data) ? result.data : []);
     } catch {
       setFormations([]);
       toast.error("Erreur de chargement");

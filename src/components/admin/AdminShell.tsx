@@ -31,7 +31,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   async function handleLogout() {
-    await fetch("/api/admin/auth", { method: "DELETE" });
+    await fetch("/api/admin/auth", { method: "DELETE", credentials: "include", cache: "no-store" });
     router.push("/admin/login");
     router.refresh();
   }

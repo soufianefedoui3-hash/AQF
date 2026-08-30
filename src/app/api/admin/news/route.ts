@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminSession } from "@/lib/auth";
+import { sessionFromRequest } from "@/lib/auth";
 import { slugify } from "@/lib/utils";
 import { saveUploadedFile, validateFile } from "@/lib/upload";
 import { serializeNewsArticle } from "@/lib/news";
@@ -35,9 +35,9 @@ function parseArticleForm(formData: FormData) {
   return { title, content, excerpt, published };
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const session = await getAdminSession();
+    const session = sessionFromRequest(request);
     if (!session) return jsonError("Non autorisé", 401);
     const articles = await listNews(false);
     return NextResponse.json(articles.map(serializeNewsArticle));
@@ -49,7 +49,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getAdminSession();
+    const session = sessionFromRequest(request);
     if (!session) return jsonError("Non autorisé", 401);
 
     const formData = await request.formData();
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const session = await getAdminSession();
+    const session = sessionFromRequest(request);
     if (!session) return jsonError("Non autorisé", 401);
 
     const formData = await request.formData();
@@ -132,7 +132,7 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await getAdminSession();
+    const session = sessionFromRequest(request);
     if (!session) return jsonError("Non autorisé", 401);
 
     const body = await request.json().catch(() => null);

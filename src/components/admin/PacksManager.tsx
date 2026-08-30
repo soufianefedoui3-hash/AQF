@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import { Plus, Trash2, Edit } from "lucide-react";
 import { Input, Textarea } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { adminFetch } from "@/lib/admin-fetch";
 
 interface ProductPack {
   id: string;
@@ -26,16 +27,13 @@ export function PacksManager() {
   async function loadPacks() {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/packs");
-      const data = await res.json();
-      if (!res.ok) {
+      const result = await adminFetch<ProductPack[]>("/api/admin/packs");
+      if (!result.ok) {
         setPacks([]);
-        toast.error(
-          typeof data?.error === "string" ? data.error : "Erreur de chargement"
-        );
+        toast.error(result.error);
         return;
       }
-      setPacks(Array.isArray(data) ? data : []);
+      setPacks(Array.isArray(result.data) ? result.data : []);
     } catch {
       setPacks([]);
       toast.error("Erreur de chargement");

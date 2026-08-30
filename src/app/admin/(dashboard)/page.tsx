@@ -1,143 +1,35 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import toast from "react-hot-toast";
+import { getLeadStats } from "@/lib/leads/store";
 import {
-  Users,
-  ClipboardList,
-  GraduationCap,
-  Search,
-  Globe,
-  Inbox,
-} from "lucide-react";
-import { formatDate } from "@/lib/utils";
-import { Button } from "@/components/ui/Button";
+  DashboardClient,
+  type DashboardPayload,
+} from "@/components/admin/DashboardClient";
 
-interface Stats {
-  totalLeads: number;
-  consultations: number;
-  accompagnements: number;
-  formations: number;
-  audits: number;
-  webServices: number;
-  applications: number;
-}
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
-interface RecentLead {
-  id: string;
-  name: string;
-  email: string;
-  createdAt: string;
-}
+const EMPTY: DashboardPayload = {
+  stats: {
+    totalLeads: 0,
+    consultations: 0,
+    accompagnements: 0,
+    formations: 0,
+    audits: 0,
+    webServices: 0,
+    applications: 0,
+  },
+  recent: [],
+};
 
-export default function AdminDashboardPage() {
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [recent, setRecent] = useState<RecentLead[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export default async function AdminDashboardPage() {
+  let initial = EMPTY;
+  let initialError: string | null = null;
 
-  async function loadStats() {
-    setLoading(true);
-    setError(null);
-    try {
-      const r = await fetch("/api/admin/stats");
-      const data = await r.json();
-      if (!r.ok) {
-        setStats(null);
-        setRecent([]);
-        setError(
-          typeof data?.error === "string"
-            ? data.error
-            : "Impossible de charger les statistiques"
-        );
-        return;
-      }
-      setStats(data.stats || null);
-      setRecent(Array.isArray(data.recent) ? data.recent : []);
-    } catch {
-      setStats(null);
-      setRecent([]);
-      setError("Erreur de connexion");
-      toast.error("Erreur de connexion");
-    } finally {
-      setLoading(false);
-    }
+  try {
+    initial = await getLeadStats();
+  } catch (error) {
+    console.error("[admin] dashboard stats failed:", error);
+    initialError = "Impossible de charger les statistiques";
   }
 
-  useEffect(() => {
-    loadStats();
-  }, []);
-
-  const cards = stats
-    ? [
-        { label: "Total Leads", value: stats.totalLeads, icon: Inbox, color: "bg-primary-100 text-primary-800" },
-        { label: "Consultations", value: stats.consultations, icon: Users, color: "bg-secondary-100 text-secondary-800" },
-        { label: "Accompagnements", value: stats.accompagnements, icon: ClipboardList, color: "bg-accent-100 text-accent-800" },
-        { label: "Formations", value: stats.formations, icon: GraduationCap, color: "bg-secondary-200 text-secondary-900" },
-        { label: "Audits", value: stats.audits, icon: Search, color: "bg-primary-200 text-primary-900" },
-        { label: "Services Web", value: stats.webServices, icon: Globe, color: "bg-accent-200 text-accent-900" },
-        { label: "Candidatures", value: stats.applications, icon: Users, color: "bg-secondary-100 text-secondary-700" },
-      ]
-    : [];
-
-  if (loading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-accent-400 border-t-transparent" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="rounded-2xl border border-red-100 bg-red-50 p-8 text-center">
-        <p className="text-red-700">{error}</p>
-        <Button className="mt-4" variant="outline" onClick={loadStats}>
-          Réessayer
-        </Button>
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      <h2 className="mb-6 text-2xl font-bold text-primary-900">Tableau de bord</h2>
-
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {cards.map((card) => (
-          <div
-            key={card.label}
-            className="rounded-2xl border border-primary-100 bg-white p-5 shadow-sm"
-          >
-            <div className="mb-3 flex items-center justify-between">
-              <p className="text-sm text-text-muted">{card.label}</p>
-              <div className={`rounded-lg p-2 ${card.color}`}>
-                <card.icon className="h-4 w-4" />
-              </div>
-            </div>
-            <p className="text-3xl font-bold text-primary-900">{card.value}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-8 rounded-2xl border border-primary-100 bg-white p-6 shadow-sm">
-        <h3 className="mb-4 font-semibold text-primary-900">Consultations récentes</h3>
-        {recent.length === 0 ? (
-          <p className="text-sm text-text-muted">Aucune consultation pour le moment.</p>
-        ) : (
-          <ul className="divide-y divide-primary-50">
-            {recent.map((lead) => (
-              <li key={lead.id} className="flex items-center justify-between py-3">
-                <div>
-                  <p className="font-medium text-primary-900">{lead.name}</p>
-                  <p className="text-sm text-text-muted">{lead.email}</p>
-                </div>
-                <span className="text-xs text-text-muted">{formatDate(lead.createdAt)}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </div>
-  );
+  return <DashboardClient initial={initial} initialError={initialError} />;
 }

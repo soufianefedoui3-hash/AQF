@@ -6,6 +6,7 @@ export {
   clearAdminCookieOnResponse,
   createAdminToken,
   getAdminSession,
+  sessionFromRequest,
   setAdminCookie,
   verifyAdminToken,
   type AdminSession,

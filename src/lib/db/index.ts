@@ -26,11 +26,23 @@ export {
  * Call from server pages / route handlers that need a ready database.
  * Safe to invoke on every request — schema and seed run once per process.
  */
-export async function readyDb(): Promise<boolean> {
+async function readyDbInner(): Promise<boolean> {
+  const schemaOk = ensureSchema();
+  if (!schemaOk) return false;
+  return await ensureSeeded();
+}
+
+export async function readyDb(timeoutMs = 8000): Promise<boolean> {
   try {
-    const schemaOk = ensureSchema();
-    if (!schemaOk) return false;
-    return await ensureSeeded();
+    return await Promise.race([
+      readyDbInner(),
+      new Promise<boolean>((resolve) => {
+        setTimeout(() => {
+          console.error("[db] readyDb timed out after", timeoutMs, "ms");
+          resolve(false);
+        }, timeoutMs);
+      }),
+    ]);
   } catch (error) {
     console.error(
       "[db] readyDb failed:",

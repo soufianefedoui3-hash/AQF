@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminSession } from "@/lib/auth";
+import { sessionFromRequest } from "@/lib/auth";
 import { saveUploadedFile, validateFile } from "@/lib/upload";
 
 export async function POST(request: NextRequest) {
-  const session = await getAdminSession();
+  const session = sessionFromRequest(request);
   if (!session) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }

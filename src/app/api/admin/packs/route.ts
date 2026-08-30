@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminSession } from "@/lib/auth";
+import { sessionFromRequest } from "@/lib/auth";
 import { revalidateCms } from "@/lib/revalidate-cms";
 import {
   createPack,
@@ -24,9 +24,9 @@ function readPackBody(body: Record<string, unknown>) {
   return { name, description, order, active };
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const session = await getAdminSession();
+    const session = sessionFromRequest(request);
     if (!session) return jsonError("Non autorisé", 401);
     return NextResponse.json(await listPacks(false));
   } catch {
@@ -36,7 +36,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getAdminSession();
+    const session = sessionFromRequest(request);
     if (!session) return jsonError("Non autorisé", 401);
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
     const data = readPackBody(body);
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const session = await getAdminSession();
+    const session = sessionFromRequest(request);
     if (!session) return jsonError("Non autorisé", 401);
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
     const id = body.id ? String(body.id) : "";
@@ -82,7 +82,7 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await getAdminSession();
+    const session = sessionFromRequest(request);
     if (!session) return jsonError("Non autorisé", 401);
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
     const id = body.id ? String(body.id) : "";

@@ -1,14 +1,14 @@
-import { NextResponse } from "next/server";
-import { getAdminSession } from "@/lib/auth";
+import { NextRequest, NextResponse } from "next/server";
+import { sessionFromRequest } from "@/lib/auth";
 import { jsonError } from "@/lib/form-api";
 import { getLeadStats } from "@/lib/leads/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const session = await getAdminSession();
+    const session = sessionFromRequest(request);
     if (!session) return jsonError("Non autorisé", 401);
     return NextResponse.json(await getLeadStats());
   } catch (error) {

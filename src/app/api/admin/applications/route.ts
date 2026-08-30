@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminSession } from "@/lib/auth";
+import { sessionFromRequest } from "@/lib/auth";
 import { jsonError } from "@/lib/form-api";
 import {
   deleteApplication,
@@ -10,9 +10,9 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const session = await getAdminSession();
+    const session = sessionFromRequest(request);
     if (!session) return jsonError("Non autorisé", 401);
     return NextResponse.json(await listApplications());
   } catch (error) {
@@ -23,7 +23,7 @@ export async function GET() {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const session = await getAdminSession();
+    const session = sessionFromRequest(request);
     if (!session) return jsonError("Non autorisé", 401);
 
     const body = (await request.json().catch(() => null)) as Record<
@@ -48,7 +48,7 @@ export async function PATCH(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await getAdminSession();
+    const session = sessionFromRequest(request);
     if (!session) return jsonError("Non autorisé", 401);
 
     const body = (await request.json().catch(() => null)) as Record<

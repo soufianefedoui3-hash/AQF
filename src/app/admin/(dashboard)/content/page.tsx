@@ -6,6 +6,7 @@ import { Input, Textarea } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { FormationsManager } from "@/components/admin/FormationsManager";
 import { PacksManager } from "@/components/admin/PacksManager";
+import { adminFetch } from "@/lib/admin-fetch";
 
 interface AboutSection {
   key: string;
@@ -102,23 +103,20 @@ export default function ContentPage() {
   const loadContent = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/content");
-      const data = await res.json();
-
-      if (!res.ok) {
-        toast.error(
-          typeof data?.error === "string" ? data.error : "Impossible de charger le contenu"
-        );
+      const result = await adminFetch<Record<string, unknown>>("/api/admin/content");
+      if (!result.ok) {
+        toast.error(result.error);
         return;
       }
+      const data = result.data;
 
       setAbout(Array.isArray(data.about) ? data.about : []);
       setTeam(Array.isArray(data.team) ? data.team : []);
       setSectors(Array.isArray(data.sectors) ? data.sectors : []);
-      setCareers(data.careers || DEFAULT_CAREERS);
-      setSettings(data.settings || DEFAULT_SETTINGS);
+      setCareers((data.careers as CareersSettings) || DEFAULT_CAREERS);
+      setSettings((data.settings as SiteSettings) || DEFAULT_SETTINGS);
       setPages(Array.isArray(data.pages) ? data.pages : []);
-      setGed(data.ged || DEFAULT_GED);
+      setGed((data.ged as GedService) || DEFAULT_GED);
     } catch {
       toast.error("Erreur de connexion");
     } finally {

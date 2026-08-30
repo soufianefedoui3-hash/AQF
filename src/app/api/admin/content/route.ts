@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminSession } from "@/lib/auth";
+import { sessionFromRequest } from "@/lib/auth";
 import { DEFAULT_ADMIN_CONTENT } from "@/lib/seed-data";
 import { revalidateCms } from "@/lib/revalidate-cms";
 import {
@@ -21,9 +21,9 @@ function jsonError(error: string, status: number) {
   return NextResponse.json({ error }, { status });
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const session = await getAdminSession();
+    const session = sessionFromRequest(request);
     if (!session) return jsonError("Non autorisé", 401);
 
     const data = await loadAdminContent();
@@ -45,7 +45,7 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
-    const session = await getAdminSession();
+    const session = sessionFromRequest(request);
     if (!session) return jsonError("Non autorisé", 401);
 
     let body: unknown;

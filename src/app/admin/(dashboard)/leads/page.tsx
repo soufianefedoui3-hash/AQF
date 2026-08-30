@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { formatDate } from "@/lib/utils";
+import { adminFetch } from "@/lib/admin-fetch";
 
 interface Lead {
   id: string;
@@ -37,18 +38,13 @@ export default function LeadsPage() {
   async function loadLeads(type: string) {
     setLoading(true);
     try {
-      const res = await fetch(`/api/admin/leads?type=${type}`);
-      const data = await res.json();
-
-      if (!res.ok) {
+      const result = await adminFetch<Lead[]>(`/api/admin/leads?type=${type}`);
+      if (!result.ok) {
         setLeads([]);
-        toast.error(
-          typeof data?.error === "string" ? data.error : "Impossible de charger les demandes"
-        );
+        toast.error(result.error);
         return;
       }
-
-      setLeads(Array.isArray(data) ? data : []);
+      setLeads(Array.isArray(result.data) ? result.data : []);
     } catch {
       setLeads([]);
       toast.error("Erreur de connexion");

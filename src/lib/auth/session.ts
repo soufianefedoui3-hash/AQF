@@ -148,6 +148,17 @@ export function clearAdminCookieOnResponse(
   }
 }
 
+export function sessionFromRequest(request: NextRequest): AdminSession | null {
+  try {
+    const token = request.cookies.get(COOKIE_NAME)?.value;
+    if (!token) return null;
+    return verifyAdminToken(token);
+  } catch (error) {
+    console.error("[auth] sessionFromRequest failed:", error);
+    return null;
+  }
+}
+
 export async function getAdminSession(): Promise<AdminSession | null> {
   try {
     const cookieStore = await cookies();
@@ -165,7 +176,7 @@ export async function setAdminCookie(token: string): Promise<void> {
     const cookieStore = await cookies();
     cookieStore.set(COOKIE_NAME, token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: shouldUseSecureCookie(),
       sameSite: "lax",
       path: "/",
       maxAge: SESSION_MAX_AGE_SECONDS,

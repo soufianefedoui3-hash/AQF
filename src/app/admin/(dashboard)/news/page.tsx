@@ -15,6 +15,7 @@ import {
   normalizeImageUrl,
   type NewsArticleDTO,
 } from "@/lib/news";
+import { adminFetch } from "@/lib/admin-fetch";
 
 export default function NewsAdminPage() {
   const [articles, setArticles] = useState<NewsArticleDTO[]>([]);
@@ -28,22 +29,14 @@ export default function NewsAdminPage() {
     setError(null);
 
     try {
-      const res = await fetch("/api/admin/news");
-      const data: unknown = await res.json();
-
-      if (!res.ok) {
-        const message =
-          typeof data === "object" && data !== null && "error" in data
-            ? String((data as { error: string }).error)
-            : "Impossible de charger les articles";
-        throw new Error(message);
+      const result = await adminFetch<unknown>("/api/admin/news");
+      if (!result.ok) {
+        throw new Error(result.error);
       }
-
-      if (!isNewsArticleArray(data)) {
+      if (!isNewsArticleArray(result.data)) {
         throw new Error("Format de données invalide");
       }
-
-      setArticles(data);
+      setArticles(result.data);
     } catch (err) {
       setArticles([]);
       setError(err instanceof Error ? err.message : "Erreur de chargement");

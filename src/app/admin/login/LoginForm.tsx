@@ -28,6 +28,7 @@ export default function LoginForm() {
       const init: RequestInit = {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: payload,
       };
 
