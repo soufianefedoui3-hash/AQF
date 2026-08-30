@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PageBlockBuilder } from "@/components/admin/PageBlockBuilder";
+import { VisualBlockCanvas } from "@/components/admin/VisualBlockCanvas";
 import { Button } from "@/components/ui/Button";
 import type { PageBlock } from "@/lib/page-blocks";
 
@@ -26,18 +26,25 @@ export function TabExtraBlocksEditor({
   }, [tabId, signature]);
 
   return (
-    <div className="mt-8 space-y-4 border-t border-primary-100 pt-8">
-      <div>
-        <h3 className="text-lg font-semibold text-primary-900">Blocs modulaires</h3>
-        <p className="mt-1 text-sm text-text-muted">
-          Ajoutez titres, alertes, citations, grilles, FAQ, vidéos, statistiques et plus.
-          Ils apparaissent sur la page publique correspondante.
+    <div>
+      <div className="border-t border-primary-50 bg-surface-muted/40 px-6 py-4">
+        <h3 className="text-sm font-semibold text-primary-900">Blocs modulaires</h3>
+        <p className="mt-1 text-xs text-text-muted">
+          Titres, alertes, citations, grilles, FAQ, vidéos, statistiques et plus — insérés
+          n’importe où sur la page publique.
         </p>
       </div>
-      <PageBlockBuilder blocks={blocks} saving={saving} onChange={setBlocks} />
-      <Button loading={saving} onClick={() => onSave(blocks)}>
-        Enregistrer les blocs
-      </Button>
+      <VisualBlockCanvas
+        blocks={blocks}
+        saving={saving}
+        onChange={setBlocks}
+        onPersist={onSave}
+      />
+      <div className="border-t border-primary-50 bg-white px-6 py-4 text-center">
+        <Button loading={saving} onClick={() => onSave(blocks)}>
+          Enregistrer les blocs
+        </Button>
+      </div>
     </div>
   );
 }

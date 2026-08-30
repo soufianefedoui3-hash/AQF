@@ -28,7 +28,7 @@ function moveBlock(blocks: PageBlock[], id: string, direction: -1 | 1): PageBloc
   return next;
 }
 
-function BlockFields({
+export function BlockFields({
   block,
   onChange,
 }: {

@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { FormationsManager } from "@/components/admin/FormationsManager";
 import { PacksManager } from "@/components/admin/PacksManager";
-import { PageBlockBuilder } from "@/components/admin/PageBlockBuilder";
 import { TabExtraBlocksEditor } from "@/components/admin/TabExtraBlocksEditor";
+import { VisualBlockCanvas } from "@/components/admin/VisualBlockCanvas";
+import { VisualPageFrame } from "@/components/admin/VisualPageFrame";
 import {
   pageBlocks,
   SectionBlocksEditor,
@@ -383,6 +384,9 @@ export default function ContentPage() {
   return (
     <div>
       <h2 className="mb-6 text-2xl font-bold text-primary-900">Contenu & Pages</h2>
+      <p className="mb-4 text-sm text-text-muted">
+        Éditeur visuel live — les changements sont enregistrés dans SQLite.
+      </p>
 
       <div className="mb-6 flex flex-wrap gap-2">
         {tabs.map((tab) => {
@@ -486,61 +490,58 @@ export default function ContentPage() {
         </div>
       </Modal>
 
-      {!activeCustom && activeTab && (
-        <>
-          <TabLabelEditor
-            tabId={activeTab}
-            value={tabLabel(activeTab)}
-            fallback={DEFAULT_CONTENT_LABELS[activeTab] || activeTab}
-            saving={saving}
-            onSave={(label) => saveLabel(activeTab, label)}
-          />
-          <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary-100 bg-white p-4">
-            <label className="flex items-center gap-2 text-sm text-primary-900">
-              <input
-                type="checkbox"
-                checked={Boolean(sitePages.find((page) => page.id === activeTab)?.showInNav)}
-                onChange={async (e) => {
-                  const showInNav = e.target.checked;
-                  const ok = await save("site-page", { id: activeTab, showInNav });
-                  if (ok) {
-                    setSitePages((prev) =>
-                      prev.map((page) =>
-                        page.id === activeTab ? { ...page, showInNav } : page
-                      )
-                    );
-                  }
-                }}
-                className="h-4 w-4 rounded border-primary-200"
-              />
-              Afficher dans le menu du site
-            </label>
-            <Button
-              type="button"
-              variant="danger"
-              size="sm"
-              loading={saving}
-              onClick={() => removeTab(activeTab)}
-            >
-              <Trash2 className="h-4 w-4" />
-              Supprimer cette page
-            </Button>
-          </div>
-        </>
-      )}
-
       {activeCustom && (
         <CustomPageEditor
           page={activeCustom}
           saving={saving}
+          navLinks={sitePages
+            .filter((page) => page.showInNav && page.href)
+            .map((page) => ({
+              id: page.id,
+              href: page.href,
+              label: page.label.trim() || tabLabel(page.id),
+            }))}
           onSave={async (data) => {
             const result = await save("custom-page", data);
             if (result) await loadContent();
           }}
           onDelete={() => removeTab(customPageTabId(activeCustom.id))}
+          onSelectNav={(link) => {
+            if (link.id) setActiveTab(link.id);
+          }}
         />
       )}
 
+      {!activeCustom && activeTab && activeTab !== "settings" ? (
+      <VisualPageFrame
+        title={tabLabel(activeTab)}
+        href={sitePages.find((page) => page.id === activeTab)?.href || undefined}
+        navLinks={sitePages
+          .filter((page) => page.showInNav && page.href)
+          .map((page) => ({
+            id: page.id,
+            href: page.href,
+            label: page.label.trim() || tabLabel(page.id),
+          }))}
+        activeHref={sitePages.find((page) => page.id === activeTab)?.href}
+        showInNav={Boolean(sitePages.find((page) => page.id === activeTab)?.showInNav)}
+        saving={saving}
+        onRename={async (label) => {
+          await saveLabel(activeTab, label);
+        }}
+        onToggleNav={async (showInNav) => {
+          const ok = await save("site-page", { id: activeTab, showInNav });
+          if (ok) {
+            setSitePages((prev) =>
+              prev.map((page) => (page.id === activeTab ? { ...page, showInNav } : page))
+            );
+          }
+        }}
+        onDelete={() => removeTab(activeTab)}
+        onSelectNav={(link) => {
+          if (link.id) setActiveTab(link.id);
+        }}
+      >
       {activeTab === "about" && (
         <SectionBlocksEditor
           blocks={sortAboutBlocks(about)}
@@ -613,13 +614,19 @@ export default function ContentPage() {
       )}
 
       {activeTab === "formations" && (
-        <FormationsManager heading={tabLabel("formations")} />
+        <div className="px-6 py-6">
+          <FormationsManager heading={tabLabel("formations")} />
+        </div>
       )}
 
-      {activeTab === "packs" && <PacksManager heading={tabLabel("packs")} />}
+      {activeTab === "packs" && (
+        <div className="px-6 py-6">
+          <PacksManager heading={tabLabel("packs")} />
+        </div>
+      )}
 
       {activeTab === "ged" && (
-        <div className="space-y-6">
+        <div className="space-y-6 px-6 py-6">
           <GedEditor
             ged={ged}
             saving={saving}
@@ -657,7 +664,7 @@ export default function ContentPage() {
       )}
 
       {activeTab === "team" && (
-        <div className="space-y-4">
+        <div className="space-y-4 px-6 py-6">
           {team.map((member) => (
             <TeamEditor
               key={member.id}
@@ -693,7 +700,7 @@ export default function ContentPage() {
       )}
 
       {activeTab === "sectors" && (
-        <div className="space-y-4">
+        <div className="space-y-4 px-6 py-6">
           {sectors.length === 0 ? (
             <p className="rounded-2xl bg-white p-8 text-center text-text-muted">
               Aucun secteur disponible.
@@ -735,7 +742,7 @@ export default function ContentPage() {
       )}
 
       {activeTab === "careers" && (
-        <div className="space-y-6">
+        <div className="space-y-6 px-6 py-6">
           <CareersEditor
             settings={careers}
             saving={saving}
@@ -771,6 +778,20 @@ export default function ContentPage() {
         </div>
       )}
 
+      <TabExtraBlocksEditor
+        tabId={activeTab}
+        initialBlocks={layouts[activeTab] ?? EMPTY_PAGE_BLOCKS}
+        saving={saving}
+        onSave={async (blocks) => {
+          const ok = await save("layout", { tabId: activeTab, blocks });
+          if (ok) {
+            setLayouts((prev) => ({ ...prev, [activeTab]: blocks }));
+          }
+        }}
+      />
+      </VisualPageFrame>
+      ) : null}
+
       {activeTab === "settings" && (
         <div className="space-y-6">
           <SettingsEditor
@@ -801,22 +822,19 @@ export default function ContentPage() {
               ))}
             </div>
           </div>
+          <TabExtraBlocksEditor
+            tabId={activeTab}
+            initialBlocks={layouts[activeTab] ?? EMPTY_PAGE_BLOCKS}
+            saving={saving}
+            onSave={async (blocks) => {
+              const ok = await save("layout", { tabId: activeTab, blocks });
+              if (ok) {
+                setLayouts((prev) => ({ ...prev, [activeTab]: blocks }));
+              }
+            }}
+          />
         </div>
       )}
-
-      {!activeCustom && activeTab ? (
-        <TabExtraBlocksEditor
-          tabId={activeTab}
-          initialBlocks={layouts[activeTab] ?? EMPTY_PAGE_BLOCKS}
-          saving={saving}
-          onSave={async (blocks) => {
-            const ok = await save("layout", { tabId: activeTab, blocks });
-            if (ok) {
-              setLayouts((prev) => ({ ...prev, [activeTab]: blocks }));
-            }
-          }}
-        />
-      ) : null}
     </div>
   );
 }
@@ -824,13 +842,17 @@ export default function ContentPage() {
 function CustomPageEditor({
   page,
   saving,
+  navLinks,
   onSave,
   onDelete,
+  onSelectNav,
 }: {
   page: CustomPageItem;
   saving: boolean;
+  navLinks: { id?: string; href: string; label: string }[];
   onSave: (data: CustomPageItem) => Promise<void>;
   onDelete: () => Promise<void>;
+  onSelectNav?: (link: { id?: string; href: string; label: string }) => void;
 }) {
   const [title, setTitle] = useState(page.title);
   const [slug, setSlug] = useState(page.slug);
@@ -846,63 +868,59 @@ function CustomPageEditor({
 
   const publicPath = `/${normalizePageSlug(slug, title) || page.slug}`;
 
-  return (
-    <div className="space-y-6">
-      <div className="rounded-2xl border border-primary-100 bg-white p-5 sm:p-6">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h3 className="font-semibold text-primary-900">Paramètres de la page</h3>
-          <Button type="button" variant="danger" size="sm" loading={saving} onClick={onDelete}>
-            <Trash2 className="h-4 w-4" />
-            Supprimer cette page
-          </Button>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Input
-            label="Nom de la page"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-          <Input
-            label="Slug (URL)"
-            value={slug}
-            onChange={(e) => setSlug(normalizePageSlug(e.target.value))}
-          />
-        </div>
-        <label className="mt-4 flex items-center gap-2 text-sm text-primary-900">
-          <input
-            type="checkbox"
-            checked={showInNav}
-            onChange={(e) => setShowInNav(e.target.checked)}
-            className="h-4 w-4 rounded border-primary-200"
-          />
-          Afficher dans le menu du site
-        </label>
-        <p className="mt-2 text-xs text-text-muted">
-          Page publique :{" "}
-          <a href={publicPath} className="text-accent-700 underline" target="_blank" rel="noreferrer">
-            {publicPath}
-          </a>
-        </p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Button
-            loading={saving}
-            onClick={() =>
-              onSave({
-                ...page,
-                title: title.trim() || page.title,
-                slug: normalizePageSlug(slug, title) || page.slug,
-                showInNav,
-                blocks,
-              })
-            }
-          >
-            Enregistrer la page
-          </Button>
-        </div>
-      </div>
+  function snapshot(next?: Partial<CustomPageItem>): CustomPageItem {
+    return {
+      ...page,
+      title: title.trim() || page.title,
+      slug: normalizePageSlug(slug, title) || page.slug,
+      showInNav,
+      blocks,
+      ...next,
+    };
+  }
 
-      <PageBlockBuilder blocks={blocks} saving={saving} onChange={setBlocks} />
-    </div>
+  return (
+    <VisualPageFrame
+      title={title}
+      href={publicPath}
+      navLinks={navLinks}
+      activeHref={publicPath}
+      showInNav={showInNav}
+      saving={saving}
+      onRename={async (nextTitle) => {
+        setTitle(nextTitle);
+        await onSave(snapshot({ title: nextTitle }));
+      }}
+      onToggleNav={async (next) => {
+        setShowInNav(next);
+        await onSave(snapshot({ showInNav: next }));
+      }}
+      onDelete={onDelete}
+      onSelectNav={onSelectNav}
+    >
+      <div className="border-b border-primary-50 bg-white px-6 py-4">
+        <Input
+          label="Slug (URL)"
+          value={slug}
+          onChange={(e) => setSlug(normalizePageSlug(e.target.value))}
+          onBlur={() => void onSave(snapshot())}
+        />
+      </div>
+      <VisualBlockCanvas
+        blocks={blocks}
+        saving={saving}
+        onChange={setBlocks}
+        onPersist={async (next) => {
+          setBlocks(next);
+          await onSave(snapshot({ blocks: next }));
+        }}
+      />
+      <div className="border-t border-primary-50 bg-white px-6 py-4 text-center">
+        <Button loading={saving} onClick={() => onSave(snapshot())}>
+          Enregistrer la page
+        </Button>
+      </div>
+    </VisualPageFrame>
   );
 }
 

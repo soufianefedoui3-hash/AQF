@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
-import { Input, Textarea } from "@/components/ui/Input";
+import { Plus } from "lucide-react";
+import { VisualItemChrome } from "@/components/admin/VisualItemChrome";
+import { ContentCard, PageSection } from "@/components/ui/PageSection";
 import { Button } from "@/components/ui/Button";
 
 export type ContentBlock = {
@@ -13,51 +14,77 @@ export type ContentBlock = {
 
 function SectionCard({
   block,
+  muted,
   saving,
   onSave,
   onDelete,
+  onAdd,
 }: {
   block: ContentBlock;
+  muted: boolean;
   saving: boolean;
   onSave: (data: ContentBlock) => Promise<void>;
   onDelete: () => Promise<void>;
+  onAdd: () => Promise<void>;
 }) {
   const [title, setTitle] = useState(block.title || "");
   const [content, setContent] = useState(block.content || "");
+  const [editing, setEditing] = useState(false);
 
   useEffect(() => {
     setTitle(block.title || "");
     setContent(block.content || "");
   }, [block.key, block.title, block.content]);
 
+  async function persist() {
+    await onSave({ key: block.key, title, content });
+    setEditing(false);
+  }
+
   return (
-    <div className="rounded-2xl border border-primary-100 bg-white p-6">
-      <Input label="Titre" value={title} onChange={(e) => setTitle(e.target.value)} />
-      <div className="mt-4">
-        <Textarea
-          label="Contenu"
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-        />
-      </div>
-      <div className="mt-4 flex flex-wrap gap-2">
-        <Button
-          loading={saving}
-          onClick={() => onSave({ key: block.key, title, content })}
-        >
-          Enregistrer
-        </Button>
-        <Button
-          type="button"
-          variant="danger"
-          loading={saving}
-          onClick={onDelete}
-        >
-          <Trash2 className="h-4 w-4" />
-          Supprimer
-        </Button>
-      </div>
-    </div>
+    <VisualItemChrome
+      label="Section"
+      editing={editing}
+      disabled={saving}
+      onEdit={() => setEditing(true)}
+      onDone={() => void persist()}
+      onAdd={() => void onAdd()}
+      onDelete={() => void onDelete()}
+    >
+      <PageSection container="3xl" muted={muted} className="py-10 md:py-12">
+        {editing ? (
+          <ContentCard>
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Titre"
+              className="mb-3 w-full border-b border-dashed border-accent-300 bg-transparent text-lg font-semibold text-primary-900 outline-none"
+            />
+            <textarea
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="Texte de la section"
+              rows={5}
+              className="w-full resize-y bg-transparent text-sm leading-relaxed text-text-muted outline-none"
+            />
+            <div className="mt-4">
+              <Button size="sm" loading={saving} onClick={() => void persist()}>
+                Enregistrer
+              </Button>
+            </div>
+          </ContentCard>
+        ) : (
+          <ContentCard>
+            <h2 className="mb-3 text-lg font-semibold text-primary-900">
+              {title || "Nouvelle section"}
+            </h2>
+            <p className="whitespace-pre-line text-sm leading-relaxed text-text-muted">
+              {content || "Cliquez sur Modifier pour rédiger cette section."}
+            </p>
+          </ContentCard>
+        )}
+      </PageSection>
+    </VisualItemChrome>
   );
 }
 
@@ -79,18 +106,20 @@ export function SectionBlocksEditor({
   emptyLabel?: string;
 }) {
   return (
-    <div className="space-y-4">
+    <div>
       {blocks.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-primary-100 bg-white p-8 text-center text-text-muted">
-          {emptyLabel}
-        </p>
+        <PageSection container="3xl" className="py-12">
+          <p className="text-center text-text-muted">{emptyLabel}</p>
+        </PageSection>
       ) : (
-        blocks.map((block) => (
+        blocks.map((block, index) => (
           <SectionCard
             key={block.key}
             block={block}
+            muted={index % 2 === 1}
             saving={saving}
             onSave={onSave}
+            onAdd={onAdd}
             onDelete={async () => {
               if (!confirm("Supprimer cette section ?")) return;
               await onDelete(block.key);
@@ -98,10 +127,12 @@ export function SectionBlocksEditor({
           />
         ))
       )}
-      <Button type="button" variant="outline" loading={saving} onClick={onAdd}>
-        <Plus className="h-4 w-4" />
-        {addLabel}
-      </Button>
+      <div className="px-6 pb-8 text-center">
+        <Button type="button" variant="outline" loading={saving} onClick={onAdd}>
+          <Plus className="h-4 w-4" />
+          {addLabel}
+        </Button>
+      </div>
     </div>
   );
 }
