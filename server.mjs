@@ -1,18 +1,37 @@
 /**
- * Hostinger production server.
- * Not standalone. Listens on PORT and serves Next.js, with a CSS
- * fallback so stale CDN HTML that requests old /_next/static/css hashes
- * still receives the current Tailwind bundle instead of a 404.
+ * Hostinger production entry — one HTTP server, no Next-managed listen/close.
+ * Do not pass hostname/port into next(): that makes Next close a server it
+ * never bound and throws "Server is not running" on Hostinger startup probes.
  */
 import { createReadStream, existsSync, readdirSync, statSync } from "node:fs";
-import { createServer } from "node:http";
+import { createServer, Server } from "node:http";
 import { extname, join } from "node:path";
 import { parse } from "node:url";
 import next from "next";
 
+if (!process.env.NODE_ENV) {
+  process.env.NODE_ENV = "production";
+}
+
+const nativeClose = Server.prototype.close;
+Server.prototype.close = function safeClose(callback) {
+  if (!this.listening) {
+    if (typeof callback === "function") {
+      queueMicrotask(() => callback.call(this));
+    }
+    return this;
+  }
+  return nativeClose.call(this, callback);
+};
+
 const port = Number(process.env.PORT || 3000);
 const hostname = "0.0.0.0";
-const app = next({ dev: false, hostname, port });
+
+const app = next({
+  dev: false,
+  dir: process.cwd(),
+  customServer: true,
+});
 const handle = app.getRequestHandler();
 
 function fileIfExists(path) {
@@ -68,13 +87,16 @@ function sendFile(res, file, exact) {
     "Cache-Control",
     exact ? "public, max-age=31536000, immutable" : "public, max-age=60"
   );
-  res.setHeader("CDN-Cache-Control", exact ? "public, max-age=31536000, immutable" : "no-store");
+  res.setHeader(
+    "CDN-Cache-Control",
+    exact ? "public, max-age=31536000, immutable" : "no-store"
+  );
   createReadStream(file).pipe(res);
 }
 
 await app.prepare();
 
-createServer((req, res) => {
+const httpServer = createServer((req, res) => {
   try {
     const url = req.url || "/";
     const pathOnly = url.split("?")[0];
@@ -97,6 +119,17 @@ createServer((req, res) => {
       res.end("Internal Server Error");
     }
   }
-}).listen(port, hostname, () => {
-  console.log(`[server] AQF ready on http://${hostname}:${port}`);
+});
+
+httpServer.keepAliveTimeout = 65_000;
+httpServer.headersTimeout = 66_000;
+httpServer.requestTimeout = 0;
+httpServer.timeout = 0;
+
+httpServer.listen(port, hostname, () => {
+  console.log(`[server] Listening on http://${hostname}:${port}`);
+});
+
+httpServer.on("error", (error) => {
+  console.error("[server] listen error:", error);
 });
