@@ -9,6 +9,7 @@ import { Modal } from "@/components/ui/Modal";
 import { FormationsManager } from "@/components/admin/FormationsManager";
 import { PacksManager } from "@/components/admin/PacksManager";
 import { PageBlockBuilder } from "@/components/admin/PageBlockBuilder";
+import { TabExtraBlocksEditor } from "@/components/admin/TabExtraBlocksEditor";
 import {
   pageBlocks,
   SectionBlocksEditor,
@@ -25,6 +26,7 @@ import {
 import {
   customPageIdFromTab,
   customPageTabId,
+  EMPTY_PAGE_BLOCKS,
   isProtectedContentTab,
   normalizePageSlug,
   parsePageBlocks,
@@ -126,6 +128,7 @@ export default function ContentPage() {
     ...DEFAULT_CONTENT_LABELS,
   });
   const [customPages, setCustomPages] = useState<CustomPageItem[]>([]);
+  const [layouts, setLayouts] = useState<Record<string, PageBlock[]>>({});
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("about");
   const [saving, setSaving] = useState(false);
@@ -170,6 +173,15 @@ export default function ContentPage() {
             }))
           : []
       );
+      const nextLayouts: Record<string, PageBlock[]> = {};
+      if (data.layouts && typeof data.layouts === "object") {
+        for (const [key, value] of Object.entries(
+          data.layouts as Record<string, unknown>
+        )) {
+          nextLayouts[key] = parsePageBlocks(value);
+        }
+      }
+      setLayouts(nextLayouts);
     } catch {
       toast.error("Erreur de connexion");
     } finally {
@@ -443,13 +455,20 @@ export default function ContentPage() {
       </Modal>
 
       {!activeCustom && (
-        <TabLabelEditor
-          tabId={activeTab}
-          value={tabLabel(activeTab)}
-          fallback={DEFAULT_CONTENT_LABELS[activeTab] || activeTab}
-          saving={saving}
-          onSave={(label) => saveLabel(activeTab, label)}
-        />
+        <>
+          <TabLabelEditor
+            tabId={activeTab}
+            value={tabLabel(activeTab)}
+            fallback={DEFAULT_CONTENT_LABELS[activeTab] || activeTab}
+            saving={saving}
+            onSave={(label) => saveLabel(activeTab, label)}
+          />
+          <p className="mb-6 rounded-xl border border-primary-100 bg-white px-4 py-3 text-xs text-text-muted">
+            Page système protégée : cet onglet ne peut pas être supprimé, pour ne pas casser
+            la navigation. Vous pouvez ajouter, modifier ou supprimer des blocs et sections
+            ci-dessous.
+          </p>
+        </>
       )}
 
       {activeCustom && (
@@ -725,6 +744,20 @@ export default function ContentPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {!activeCustom && (
+        <TabExtraBlocksEditor
+          tabId={activeTab}
+          initialBlocks={layouts[activeTab] ?? EMPTY_PAGE_BLOCKS}
+          saving={saving}
+          onSave={async (blocks) => {
+            const ok = await save("layout", { tabId: activeTab, blocks });
+            if (ok) {
+              setLayouts((prev) => ({ ...prev, [activeTab]: blocks }));
+            }
+          }}
+        />
       )}
     </div>
   );

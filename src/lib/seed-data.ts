@@ -249,6 +249,7 @@ export const DEFAULT_ADMIN_CONTENT = {
     updatedAt: new Date(0),
   },
   labels: { ...DEFAULT_CONTENT_LABELS },
+  layouts: {} as Record<string, unknown[]>,
   customPages: [] as Array<{
     id: string;
     slug: string;

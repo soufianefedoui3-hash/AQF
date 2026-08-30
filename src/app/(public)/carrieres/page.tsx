@@ -6,8 +6,10 @@ import {
   getCareersExtraSections,
   getCareersSettings,
   getContentLabels,
+  getTabLayoutBlocks,
   labelOf,
 } from "@/lib/content";
+import { PageBlockList } from "@/components/content/PageBlockList";
 
 export const dynamic = "force-dynamic";
 
@@ -24,9 +26,10 @@ export default async function CarrieresPage() {
       phone: "+212 600 000 000",
     };
   }
-  const [extraSections, labels] = await Promise.all([
+  const [extraSections, labels, extraBlocks] = await Promise.all([
     getCareersExtraSections(),
     getContentLabels(),
+    getTabLayoutBlocks("careers"),
   ]);
 
   const phone = String(settings.phone || "").trim();
@@ -98,6 +101,7 @@ export default async function CarrieresPage() {
           </div>
         ) : null}
       </PageSection>
+      <PageBlockList blocks={extraBlocks} showEmpty={false} />
     </>
   );
 }

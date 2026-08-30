@@ -3,17 +3,20 @@ import { PageHero } from "@/components/ui/PageHero";
 import { PageSection } from "@/components/ui/PageSection";
 import { FormationRegistrationForm } from "@/components/forms/FormationRegistrationForm";
 import { FORMATION_BENEFITS } from "@/lib/constants";
-import { getContentLabels, getFormationSections, labelOf } from "@/lib/content";
+import { PageBlockList } from "@/components/content/PageBlockList";
+import { getContentLabels, getFormationSections, getTabLayoutBlocks, labelOf } from "@/lib/content";
 import { getFormationTypes } from "@/lib/formations";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function FormationPage() {
-  const [sections, formations, labels] = await Promise.all([
+  const [sections, formations, labels, formationBlocks, catalogBlocks] = await Promise.all([
     getFormationSections(),
     getFormationTypes(),
     getContentLabels(),
+    getTabLayoutBlocks("formation"),
+    getTabLayoutBlocks("formations"),
   ]);
   const [intro, ...extraSections] = sections;
 
@@ -93,6 +96,8 @@ export default async function FormationPage() {
           <FormationRegistrationForm formations={formations} />
         </div>
       </PageSection>
+      <PageBlockList blocks={formationBlocks} showEmpty={false} />
+      <PageBlockList blocks={catalogBlocks} showEmpty={false} />
     </>
   );
 }

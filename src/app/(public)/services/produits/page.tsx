@@ -9,18 +9,22 @@ import {
   getGedExtraSections,
   getGedService,
   getProductPacks,
+  getTabLayoutBlocks,
   labelOf,
 } from "@/lib/content";
+import { PageBlockList } from "@/components/content/PageBlockList";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function ProduitsPage() {
-  const [ged, packs, extraSections, labels] = await Promise.all([
+  const [ged, packs, extraSections, labels, packBlocks, gedBlocks] = await Promise.all([
     getGedService(),
     getProductPacks(),
     getGedExtraSections(),
     getContentLabels(),
+    getTabLayoutBlocks("packs"),
+    getTabLayoutBlocks("ged"),
   ]);
 
   return (
@@ -118,6 +122,8 @@ export default async function ProduitsPage() {
           </div>
         ) : null}
       </PageSection>
+      <PageBlockList blocks={packBlocks} showEmpty={false} />
+      <PageBlockList blocks={gedBlocks} showEmpty={false} />
     </>
   );
 }

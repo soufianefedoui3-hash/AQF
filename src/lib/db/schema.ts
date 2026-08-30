@@ -191,6 +191,12 @@ export const SQLITE_SCHEMA_SQL = [
   )`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "CustomPage_slug_key" ON "CustomPage"("slug")`,
 
+  `CREATE TABLE IF NOT EXISTS "PageLayout" (
+    "tabId" TEXT NOT NULL PRIMARY KEY,
+    "blocks" TEXT NOT NULL DEFAULT '[]',
+    "updatedAt" TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+
   `CREATE TABLE IF NOT EXISTS "JobApplication" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "positionName" TEXT NOT NULL,

@@ -24,7 +24,8 @@ import { PageSection } from "@/components/ui/PageSection";
 
 import { SectorImage } from "@/components/sectors/SectorImage";
 
-import { getContentLabels, getSectors, labelOf } from "@/lib/content";
+import { PageBlockList } from "@/components/content/PageBlockList";
+import { getContentLabels, getSectors, getTabLayoutBlocks, labelOf } from "@/lib/content";
 
 
 
@@ -46,7 +47,11 @@ const ICON_MAP: Record<string, LucideIcon> = {
 
 export default async function SecteursPage() {
 
-  const [sectors, labels] = await Promise.all([getSectors(), getContentLabels()]);
+  const [sectors, labels, extraBlocks] = await Promise.all([
+    getSectors(),
+    getContentLabels(),
+    getTabLayoutBlocks("sectors"),
+  ]);
 
 
 
@@ -135,6 +140,7 @@ export default async function SecteursPage() {
         </div>
 
       </PageSection>
+      <PageBlockList blocks={extraBlocks} showEmpty={false} />
 
     </>
 

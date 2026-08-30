@@ -1,16 +1,19 @@
 import { Users, FileText, ListChecks } from "lucide-react";
 import { PageHero } from "@/components/ui/PageHero";
 import { PageSection, ContentCard } from "@/components/ui/PageSection";
-import { getAboutData, getContentLabels, labelOf } from "@/lib/content";
+import { PageBlockList } from "@/components/content/PageBlockList";
+import { getAboutData, getContentLabels, getTabLayoutBlocks, labelOf } from "@/lib/content";
 import { normalizeImageUrl } from "@/lib/news";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function AboutPage() {
-  const [{ sections, team }, labels] = await Promise.all([
+  const [{ sections, team }, labels, aboutBlocks, teamBlocks] = await Promise.all([
     getAboutData(),
     getContentLabels(),
+    getTabLayoutBlocks("about"),
+    getTabLayoutBlocks("team"),
   ]);
 
   return (
@@ -83,6 +86,8 @@ export default async function AboutPage() {
           </div>
         </div>
       </PageSection>
+      <PageBlockList blocks={aboutBlocks} showEmpty={false} />
+      <PageBlockList blocks={teamBlocks} showEmpty={false} />
     </>
   );
 }

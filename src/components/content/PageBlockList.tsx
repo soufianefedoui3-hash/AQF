@@ -15,8 +15,15 @@ function isSafeHref(href: string): boolean {
   }
 }
 
-export function PageBlockList({ blocks }: { blocks: PageBlock[] }) {
+export function PageBlockList({
+  blocks,
+  showEmpty = true,
+}: {
+  blocks: PageBlock[];
+  showEmpty?: boolean;
+}) {
   if (blocks.length === 0) {
+    if (!showEmpty) return null;
     return (
       <PageSection container="3xl">
         <p className="text-center text-text-muted">Contenu à venir.</p>
@@ -28,6 +35,18 @@ export function PageBlockList({ blocks }: { blocks: PageBlock[] }) {
     <div>
       {blocks.map((block, index) => {
         const muted = index % 2 === 1;
+        if (block.type === "paragraph") {
+          const content = block.content.trim();
+          if (!content) return null;
+          return (
+            <PageSection key={block.id} container="3xl" muted={muted}>
+              <p className="whitespace-pre-line text-base leading-relaxed text-text-muted">
+                {content}
+              </p>
+            </PageSection>
+          );
+        }
+
         if (block.type === "heading") {
           const title = block.title.trim();
           const content = block.content.trim();

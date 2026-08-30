@@ -17,6 +17,7 @@ import {
   upsertPage,
   upsertSector,
   upsertLabel,
+  upsertPageLayout,
   upsertSettings,
   upsertTeam,
 } from "@/lib/cms/store";
@@ -45,6 +46,8 @@ export async function GET(request: NextRequest) {
       ged: data.ged || DEFAULT_ADMIN_CONTENT.ged,
       labels: { ...DEFAULT_ADMIN_CONTENT.labels, ...data.labels },
       customPages: Array.isArray(data.customPages) ? data.customPages : [],
+      layouts:
+        data.layouts && typeof data.layouts === "object" ? data.layouts : {},
     });
   } catch (error) {
     console.error("[cms] admin GET failed:", error);
@@ -189,6 +192,13 @@ export async function PUT(request: NextRequest) {
         result = await deleteCustomPage(id);
         break;
       }
+      case "layout":
+        if (!data.tabId) return jsonError("Onglet requis", 400);
+        result = await upsertPageLayout({
+          tabId: String(data.tabId),
+          blocks: data.blocks,
+        });
+        break;
       default:
         return jsonError("Section invalide", 400);
     }

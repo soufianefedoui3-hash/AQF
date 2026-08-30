@@ -10,6 +10,7 @@ import {
   getCareersRow,
   getCustomPageRow,
   getGedRow,
+  getPageLayoutBlocks,
   getNewsBySlug,
   getPageRow,
   getSectorRow,
@@ -389,6 +390,14 @@ export function labelOf(
 ): string {
   const value = labels[id]?.trim();
   return value || fallback || DEFAULT_CONTENT_LABELS[id] || id;
+}
+
+export async function getTabLayoutBlocks(tabId: string) {
+  try {
+    return await getPageLayoutBlocks(tabId);
+  } catch {
+    return [];
+  }
 }
 
 export async function getCustomPages() {

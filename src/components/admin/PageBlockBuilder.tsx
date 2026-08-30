@@ -50,6 +50,16 @@ function BlockFields({
     );
   }
 
+  if (block.type === "paragraph") {
+    return (
+      <Textarea
+        label="Paragraphe"
+        value={block.content}
+        onChange={(e) => onChange({ ...block, content: e.target.value })}
+      />
+    );
+  }
+
   if (block.type === "list") {
     return (
       <div className="space-y-4">
@@ -105,30 +115,32 @@ export function PageBlockBuilder({
     onAdd?.(type);
   }
 
+  const addBar = (
+    <div className="rounded-2xl border border-dashed border-primary-200 bg-white p-4 sm:p-5">
+      <p className="mb-3 text-sm font-semibold text-primary-900">Ajouter un bloc</p>
+      <div className="flex flex-wrap gap-2">
+        {PAGE_BLOCK_TYPES.map((type) => (
+          <Button
+            key={type}
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={saving}
+            onClick={() => add(type)}
+          >
+            <Plus className="h-4 w-4" />
+            {PAGE_BLOCK_LABELS[type]}
+          </Button>
+        ))}
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-dashed border-primary-200 bg-white p-4">
-        <p className="mb-3 text-sm font-medium text-primary-900">Ajouter un bloc</p>
-        <div className="flex flex-wrap gap-2">
-          {PAGE_BLOCK_TYPES.map((type) => (
-            <Button
-              key={type}
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={saving}
-              onClick={() => add(type)}
-            >
-              <Plus className="h-4 w-4" />
-              {PAGE_BLOCK_LABELS[type]}
-            </Button>
-          ))}
-        </div>
-      </div>
-
       {blocks.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-primary-100 bg-white p-8 text-center text-text-muted">
-          Aucun bloc pour l&apos;instant. Choisissez un type ci-dessus pour construire la page.
+          Aucun bloc pour l&apos;instant. Utilisez « Ajouter un bloc » ci-dessous.
         </p>
       ) : (
         blocks.map((block, index) => (
@@ -183,6 +195,7 @@ export function PageBlockBuilder({
           </div>
         ))
       )}
+      {addBar}
     </div>
   );
 }

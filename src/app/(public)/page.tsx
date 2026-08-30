@@ -1,6 +1,7 @@
 import { ArrowRight } from "lucide-react";
 import { HOMEPAGE_STATS } from "@/lib/constants";
-import { getHomepageSections, getNavLinks } from "@/lib/content";
+import { getHomepageSections, getNavLinks, getTabLayoutBlocks } from "@/lib/content";
+import { PageBlockList } from "@/components/content/PageBlockList";
 import { NavCard } from "@/components/layout/NavCard";
 import { Button } from "@/components/ui/Button";
 import { Logo } from "@/components/brand/Logo";
@@ -9,9 +10,10 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function HomePage() {
-  const [sections, navLinks] = await Promise.all([
+  const [sections, navLinks, extraBlocks] = await Promise.all([
     getHomepageSections(),
     getNavLinks(),
+    getTabLayoutBlocks("homepage"),
   ]);
   const [presentation, ...extraSections] = sections;
 
@@ -107,6 +109,7 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+      <PageBlockList blocks={extraBlocks} showEmpty={false} />
     </>
   );
 }

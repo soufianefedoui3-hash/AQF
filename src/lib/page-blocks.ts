@@ -1,13 +1,25 @@
 import { slugify } from "@/lib/utils";
 import { ADMIN_CONTENT_TAB_IDS } from "@/lib/seed-data";
 
-export const PAGE_BLOCK_TYPES = ["heading", "card", "list", "cta"] as const;
+export const PAGE_BLOCK_TYPES = [
+  "heading",
+  "paragraph",
+  "card",
+  "list",
+  "cta",
+] as const;
 export type PageBlockType = (typeof PAGE_BLOCK_TYPES)[number];
 
 export type HeadingBlock = {
   id: string;
   type: "heading";
   title: string;
+  content: string;
+};
+
+export type ParagraphBlock = {
+  id: string;
+  type: "paragraph";
   content: string;
 };
 
@@ -32,10 +44,16 @@ export type CtaBlock = {
   href: string;
 };
 
-export type PageBlock = HeadingBlock | CardBlock | ListBlock | CtaBlock;
+export type PageBlock =
+  | HeadingBlock
+  | ParagraphBlock
+  | CardBlock
+  | ListBlock
+  | CtaBlock;
 
 export const PAGE_BLOCK_LABELS: Record<PageBlockType, string> = {
   heading: "Titre & Texte",
+  paragraph: "Paragraphe",
   card: "Carte / Box en vedette",
   list: "Liste à puces / Points clés",
   cta: "Bouton d'action (CTA)",
@@ -74,6 +92,8 @@ export function createEmptyBlock(type: PageBlockType): PageBlock {
   switch (type) {
     case "heading":
       return { id, type, title: "Nouveau titre", content: "" };
+    case "paragraph":
+      return { id, type, content: "" };
     case "card":
       return { id, type, title: "Carte en vedette", content: "" };
     case "list":
@@ -98,6 +118,9 @@ function normalizeBlock(value: unknown): PageBlock | null {
 
   if (type === "heading") {
     return { id, type, title: asText(rec.title), content: asText(rec.content) };
+  }
+  if (type === "paragraph") {
+    return { id, type, content: asText(rec.content) };
   }
   if (type === "card") {
     return { id, type, title: asText(rec.title), content: asText(rec.content) };
@@ -135,6 +158,8 @@ export function serializePageBlocks(blocks: PageBlock[]): string {
   return JSON.stringify(parsePageBlocks(blocks));
 }
 
+export const EMPTY_PAGE_BLOCKS: PageBlock[] = [];
+
 export function customPageTabId(id: string): string {
   return `custom:${id}`;
 }
@@ -145,4 +170,8 @@ export function customPageIdFromTab(tabId: string): string | null {
 
 export function isProtectedContentTab(id: string): boolean {
   return (ADMIN_CONTENT_TAB_IDS as readonly string[]).includes(id);
+}
+
+export function isValidLayoutTabId(id: string): boolean {
+  return isProtectedContentTab(id) || id.startsWith("custom:");
 }

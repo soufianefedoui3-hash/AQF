@@ -2,8 +2,10 @@ import { execute, newId, query, queryOne, readyDb } from "@/lib/db";
 import { DEFAULT_CONTENT_LABELS } from "@/lib/seed-data";
 import { toLocalImageUrl } from "@/lib/placeholder-images";
 import {
+  customPageTabId,
   isProtectedContentTab,
   isReservedPageSlug,
+  isValidLayoutTabId,
   normalizePageSlug,
   parsePageBlocks,
   serializePageBlocks,
@@ -570,12 +572,61 @@ export async function deleteCustomPage(
     if (!existing) throw new Error("Page introuvable");
     const result = execute(`DELETE FROM "CustomPage" WHERE "id" = ?`, [key]);
     if (!result.ok) throw new Error(result.error || "Suppression impossible");
+    execute(`DELETE FROM "PageLayout" WHERE "tabId" = ?`, [customPageTabId(key)]);
     return mapCustomPage(existing);
   }, "Impossible de supprimer la page");
 }
 
+export async function listPageLayouts(): Promise<Record<string, PageBlock[]>> {
+  await readyDb();
+  const layouts: Record<string, PageBlock[]> = {};
+  for (const row of query(`SELECT * FROM "PageLayout"`).rows) {
+    const tabId = asString(row.tabId).trim();
+    if (tabId) layouts[tabId] = parsePageBlocks(row.blocks);
+  }
+  return layouts;
+}
+
+export async function getPageLayoutBlocks(tabId: string): Promise<PageBlock[]> {
+  await readyDb();
+  const key = tabId.trim();
+  if (!key) return [];
+  const row = queryOne(`SELECT "blocks" FROM "PageLayout" WHERE "tabId" = ?`, [key]);
+  return row ? parsePageBlocks(row.blocks) : [];
+}
+
+export async function upsertPageLayout(data: {
+  tabId: string;
+  blocks?: unknown;
+}): Promise<CmsResult<{ tabId: string; blocks: PageBlock[] }>> {
+  return withDb(async () => {
+    const tabId = asString(data.tabId).trim();
+    if (!tabId || !isValidLayoutTabId(tabId)) {
+      throw new Error("Onglet invalide");
+    }
+    const blocks = parsePageBlocks(data.blocks);
+    const blocksJson = serializePageBlocks(blocks);
+    const updatedAt = nowIso();
+    const existing = queryOne(`SELECT "tabId" FROM "PageLayout" WHERE "tabId" = ?`, [tabId]);
+    if (existing) {
+      const result = execute(
+        `UPDATE "PageLayout" SET "blocks" = ?, "updatedAt" = ? WHERE "tabId" = ?`,
+        [blocksJson, updatedAt, tabId]
+      );
+      if (!result.ok) throw new Error(result.error || "Enregistrement impossible");
+    } else {
+      const result = execute(
+        `INSERT INTO "PageLayout" ("tabId", "blocks", "updatedAt") VALUES (?, ?, ?)`,
+        [tabId, blocksJson, updatedAt]
+      );
+      if (!result.ok) throw new Error(result.error || "Enregistrement impossible");
+    }
+    return { tabId, blocks };
+  }, "Impossible d'enregistrer les blocs");
+}
+
 export async function loadAdminContent() {
-  const [about, team, sectors, careers, settings, pages, ged, labelRows, customPages] =
+  const [about, team, sectors, careers, settings, pages, ged, labelRows, customPages, layouts] =
     await Promise.all([
       listAboutSections(),
       listTeamMembers(),
@@ -586,12 +637,13 @@ export async function loadAdminContent() {
       getGedRow(),
       listLabels(),
       listCustomPages(),
+      listPageLayouts(),
     ]);
   const labels = { ...DEFAULT_CONTENT_LABELS };
   for (const row of labelRows) {
     if (row.label.trim()) labels[row.id] = row.label.trim();
   }
-  return { about, team, sectors, careers, settings, pages, ged, labels, customPages };
+  return { about, team, sectors, careers, settings, pages, ged, labels, customPages, layouts };
 }
 
 export async function upsertAbout(data: {
