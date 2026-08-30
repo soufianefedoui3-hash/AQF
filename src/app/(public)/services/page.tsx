@@ -2,7 +2,8 @@ import Link from "next/link";
 import { Building2, GraduationCap, ClipboardCheck, Package, ArrowRight } from "lucide-react";
 import { PageHero } from "@/components/ui/PageHero";
 import { PageSection } from "@/components/ui/PageSection";
-import { getContentLabels, getServiceLinks, labelOf } from "@/lib/content";
+import { PageBlockList } from "@/components/content/PageBlockList";
+import { getContentLabels, getServiceLinks, getTabLayoutBlocks, labelOf } from "@/lib/content";
 
 const ICONS: Record<string, typeof Package> = {
   "/services/accompagnement": Building2,
@@ -15,9 +16,10 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function ServicesPage() {
-  const [services, labels] = await Promise.all([
+  const [services, labels, extraBlocks] = await Promise.all([
     getServiceLinks(),
     getContentLabels(),
+    getTabLayoutBlocks("services"),
   ]);
 
   return (
@@ -60,6 +62,7 @@ export default async function ServicesPage() {
           })}
         </div>
       </PageSection>
+      <PageBlockList blocks={extraBlocks} showEmpty={false} />
     </>
   );
 }

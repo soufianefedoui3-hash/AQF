@@ -181,6 +181,23 @@ export const ADMIN_CONTENT_TAB_IDS = [
   "sectors",
   "careers",
   "settings",
+  "services",
+  "news",
+] as const;
+
+export const DEFAULT_SITE_PAGES = [
+  { id: "homepage", label: "Accueil", href: "/", showInNav: true, sortOrder: 0, adminTab: true },
+  { id: "about", label: "À propos", href: "/a-propos", showInNav: true, sortOrder: 1, adminTab: true },
+  { id: "services", label: "Services", href: "/services", showInNav: true, sortOrder: 2, adminTab: true },
+  { id: "sectors", label: "Secteurs", href: "/secteurs", showInNav: true, sortOrder: 3, adminTab: true },
+  { id: "news", label: "Actualités", href: "/actualites", showInNav: true, sortOrder: 4, adminTab: true },
+  { id: "careers", label: "Carrières", href: "/carrieres", showInNav: true, sortOrder: 5, adminTab: true },
+  { id: "formation", label: "Formation (texte)", href: "/services/formation", showInNav: false, sortOrder: 10, adminTab: true },
+  { id: "formations", label: "Formations disponibles", href: "/services/formation", showInNav: false, sortOrder: 11, adminTab: true },
+  { id: "packs", label: "Packs produits", href: "/services/produits", showInNav: false, sortOrder: 12, adminTab: true },
+  { id: "ged", label: "GED", href: "/services/produits", showInNav: false, sortOrder: 13, adminTab: true },
+  { id: "team", label: "Équipe", href: "/a-propos", showInNav: false, sortOrder: 14, adminTab: true },
+  { id: "settings", label: "Paramètres", href: "", showInNav: false, sortOrder: 99, adminTab: true },
 ] as const;
 
 export const PUBLIC_NAV_LABEL_IDS = [
@@ -249,6 +266,16 @@ export const DEFAULT_ADMIN_CONTENT = {
     updatedAt: new Date(0),
   },
   labels: { ...DEFAULT_CONTENT_LABELS },
+  sitePages: DEFAULT_SITE_PAGES.map((page) => ({
+    id: page.id,
+    label: page.label,
+    href: page.href,
+    showInNav: page.showInNav,
+    sortOrder: page.sortOrder,
+    kind: "system" as const,
+    adminTab: page.adminTab,
+    deleted: false,
+  })),
   layouts: {} as Record<string, unknown[]>,
   customPages: [] as Array<{
     id: string;

@@ -4,16 +4,18 @@ import { PageSection } from "@/components/ui/PageSection";
 
 import { ArticleCard } from "@/components/news/ArticleCard";
 
-import { getContentLabels, getPublishedArticles, labelOf } from "@/lib/content";
+import { PageBlockList } from "@/components/content/PageBlockList";
+import { getContentLabels, getPublishedArticles, getTabLayoutBlocks, labelOf } from "@/lib/content";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function ActualitesPage() {
 
-  const [articles, labels] = await Promise.all([
+  const [articles, labels, extraBlocks] = await Promise.all([
     getPublishedArticles(),
     getContentLabels(),
+    getTabLayoutBlocks("news"),
   ]);
 
 
@@ -57,6 +59,7 @@ export default async function ActualitesPage() {
         )}
 
       </PageSection>
+      <PageBlockList blocks={extraBlocks} showEmpty={false} />
 
     </>
 

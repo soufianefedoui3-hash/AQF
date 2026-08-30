@@ -1,5 +1,5 @@
 import { slugify } from "@/lib/utils";
-import { ADMIN_CONTENT_TAB_IDS } from "@/lib/seed-data";
+import { ADMIN_CONTENT_TAB_IDS, DEFAULT_SITE_PAGES } from "@/lib/seed-data";
 
 export const PAGE_BLOCK_TYPES = [
   "heading",
@@ -168,10 +168,15 @@ export function customPageIdFromTab(tabId: string): string | null {
   return tabId.startsWith("custom:") ? tabId.slice("custom:".length) : null;
 }
 
-export function isProtectedContentTab(id: string): boolean {
-  return (ADMIN_CONTENT_TAB_IDS as readonly string[]).includes(id);
+export function isSystemContentTab(id: string): boolean {
+  return (
+    (ADMIN_CONTENT_TAB_IDS as readonly string[]).includes(id) ||
+    DEFAULT_SITE_PAGES.some((page) => page.id === id)
+  );
 }
 
 export function isValidLayoutTabId(id: string): boolean {
-  return isProtectedContentTab(id) || id.startsWith("custom:");
+  const key = id.trim();
+  if (!key) return false;
+  return key.startsWith("custom:") || isSystemContentTab(key);
 }

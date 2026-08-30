@@ -18,6 +18,7 @@ import {
   listAboutSections,
   listCustomPages,
   listLabels,
+  listSitePages,
   listNews,
   listPacks,
   listPages,
@@ -419,11 +420,20 @@ export async function getCustomPageBySlug(slug: string) {
 }
 
 export async function getNavLinks() {
-  const [labels, customPages] = await Promise.all([
-    getContentLabels(),
-    getCustomPages(),
-  ]);
-  const core = NAV_LINKS.map((link) => {
+  try {
+    const pages = await listSitePages({ navOnly: true });
+    const links = pages
+      .filter((page) => page.href.trim())
+      .map((page) => ({
+        href: page.href.trim(),
+        label: page.label.trim() || page.id,
+      }));
+    if (links.length > 0) return links;
+  } catch {
+    /* fall through to static defaults */
+  }
+  const labels = await getContentLabels();
+  return NAV_LINKS.map((link) => {
     const id =
       link.href === "/"
         ? "homepage"
@@ -443,13 +453,6 @@ export async function getNavLinks() {
       label: id ? labelOf(labels, id, link.label) : link.label,
     };
   });
-  const extras = customPages
-    .filter((page) => page.showInNav && page.slug.trim() && page.title.trim())
-    .map((page) => ({
-      href: `/${page.slug.trim()}`,
-      label: page.title.trim(),
-    }));
-  return [...core, ...extras];
 }
 
 export async function getServiceLinks() {

@@ -197,6 +197,18 @@ export const SQLITE_SCHEMA_SQL = [
     "updatedAt" TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
 
+  `CREATE TABLE IF NOT EXISTS "SitePage" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "label" TEXT NOT NULL,
+    "href" TEXT NOT NULL DEFAULT '',
+    "showInNav" INTEGER NOT NULL DEFAULT 1,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "kind" TEXT NOT NULL DEFAULT 'system',
+    "adminTab" INTEGER NOT NULL DEFAULT 1,
+    "deleted" INTEGER NOT NULL DEFAULT 0,
+    "updatedAt" TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+
   `CREATE TABLE IF NOT EXISTS "JobApplication" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "positionName" TEXT NOT NULL,

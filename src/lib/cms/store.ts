@@ -1,9 +1,9 @@
 import { execute, newId, query, queryOne, readyDb } from "@/lib/db";
-import { DEFAULT_CONTENT_LABELS } from "@/lib/seed-data";
+import { DEFAULT_CONTENT_LABELS, DEFAULT_SITE_PAGES } from "@/lib/seed-data";
 import { toLocalImageUrl } from "@/lib/placeholder-images";
 import {
+  customPageIdFromTab,
   customPageTabId,
-  isProtectedContentTab,
   isReservedPageSlug,
   isValidLayoutTabId,
   normalizePageSlug,
@@ -152,6 +152,18 @@ export type CustomPageRow = {
   updatedAt: Date;
 };
 
+export type SitePageRow = {
+  id: string;
+  label: string;
+  href: string;
+  showInNav: boolean;
+  sortOrder: number;
+  kind: "system" | "custom";
+  adminTab: boolean;
+  deleted: boolean;
+  updatedAt: Date;
+};
+
 export type PackRow = {
   id: string;
   name: string;
@@ -277,6 +289,71 @@ function mapCustomPage(row: Record<string, unknown>): CustomPageRow {
     blocks: parsePageBlocks(row.blocks),
     updatedAt: asDate(row.updatedAt),
   };
+}
+
+function mapSitePage(row: Record<string, unknown>): SitePageRow {
+  return {
+    id: asString(row.id),
+    label: asString(row.label),
+    href: asString(row.href),
+    showInNav: asBool(row.showInNav),
+    sortOrder: asNumber(row.sortOrder),
+    kind: asString(row.kind) === "custom" ? "custom" : "system",
+    adminTab: asBool(row.adminTab),
+    deleted: asBool(row.deleted),
+    updatedAt: asDate(row.updatedAt),
+  };
+}
+
+function writeSitePage(data: {
+  id: string;
+  label: string;
+  href: string;
+  showInNav: boolean;
+  sortOrder: number;
+  kind: "system" | "custom";
+  adminTab: boolean;
+  deleted?: boolean;
+}) {
+  const updatedAt = nowIso();
+  const deleted = data.deleted ? 1 : 0;
+  const existing = queryOne(`SELECT "id" FROM "SitePage" WHERE "id" = ?`, [data.id]);
+  if (existing) {
+    execute(
+      `UPDATE "SitePage"
+       SET "label" = ?, "href" = ?, "showInNav" = ?, "sortOrder" = ?, "kind" = ?,
+           "adminTab" = ?, "deleted" = ?, "updatedAt" = ?
+       WHERE "id" = ?`,
+      [
+        data.label,
+        data.href,
+        data.showInNav ? 1 : 0,
+        data.sortOrder,
+        data.kind,
+        data.adminTab ? 1 : 0,
+        deleted,
+        updatedAt,
+        data.id,
+      ]
+    );
+  } else {
+    execute(
+      `INSERT INTO "SitePage"
+        ("id", "label", "href", "showInNav", "sortOrder", "kind", "adminTab", "deleted", "updatedAt")
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        data.id,
+        data.label,
+        data.href,
+        data.showInNav ? 1 : 0,
+        data.sortOrder,
+        data.kind,
+        data.adminTab ? 1 : 0,
+        deleted,
+        updatedAt,
+      ]
+    );
+  }
 }
 
 function mapPack(row: Record<string, unknown>): PackRow {
@@ -459,6 +536,13 @@ export async function upsertLabel(data: {
         updatedAt,
       ]);
     }
+    const site = queryOne(`SELECT * FROM "SitePage" WHERE "id" = ?`, [id]);
+    if (site) {
+      execute(
+        `UPDATE "SitePage" SET "label" = ?, "updatedAt" = ? WHERE "id" = ? AND "deleted" = 0`,
+        [label, updatedAt, id]
+      );
+    }
     return mapLabel({ id, label, updatedAt });
   }, "Impossible d'enregistrer le libellé");
 }
@@ -547,6 +631,16 @@ export async function upsertCustomPage(data: {
         [id, slug, title, showInNav ? 1 : 0, sortOrder, blocksJson, updatedAt]
       );
     }
+    writeSitePage({
+      id: customPageTabId(id),
+      label: title,
+      href: `/${slug}`,
+      showInNav,
+      sortOrder,
+      kind: "custom",
+      adminTab: true,
+      deleted: false,
+    });
     return mapCustomPage({
       id,
       slug,
@@ -565,15 +659,137 @@ export async function deleteCustomPage(
   return withDb(async () => {
     const key = id.trim();
     if (!key) throw new Error("Identifiant de page requis");
-    if (isProtectedContentTab(key)) {
-      throw new Error("Cette page système ne peut pas être supprimée");
-    }
     const existing = queryOne(`SELECT * FROM "CustomPage" WHERE "id" = ?`, [key]);
     if (!existing) throw new Error("Page introuvable");
     const result = execute(`DELETE FROM "CustomPage" WHERE "id" = ?`, [key]);
     if (!result.ok) throw new Error(result.error || "Suppression impossible");
     execute(`DELETE FROM "PageLayout" WHERE "tabId" = ?`, [customPageTabId(key)]);
+    execute(`DELETE FROM "SitePage" WHERE "id" = ?`, [customPageTabId(key)]);
     return mapCustomPage(existing);
+  }, "Impossible de supprimer la page");
+}
+
+export async function ensureDefaultSitePages(): Promise<void> {
+  await readyDb();
+  for (const page of DEFAULT_SITE_PAGES) {
+    const existing = queryOne(`SELECT "id" FROM "SitePage" WHERE "id" = ?`, [page.id]);
+    if (existing) continue;
+    writeSitePage({
+      id: page.id,
+      label: page.label,
+      href: page.href,
+      showInNav: page.showInNav,
+      sortOrder: page.sortOrder,
+      kind: "system",
+      adminTab: page.adminTab,
+      deleted: false,
+    });
+  }
+  for (const page of query(`SELECT * FROM "CustomPage"`).rows.map(mapCustomPage)) {
+    const tabId = customPageTabId(page.id);
+    const existing = queryOne(`SELECT "id" FROM "SitePage" WHERE "id" = ?`, [tabId]);
+    if (existing) continue;
+    writeSitePage({
+      id: tabId,
+      label: page.title.trim() || page.slug,
+      href: `/${page.slug}`,
+      showInNav: page.showInNav,
+      sortOrder: page.sortOrder + 100,
+      kind: "custom",
+      adminTab: true,
+      deleted: false,
+    });
+  }
+}
+
+export async function listSitePages(options?: {
+  includeDeleted?: boolean;
+  navOnly?: boolean;
+  adminOnly?: boolean;
+}): Promise<SitePageRow[]> {
+  await readyDb();
+  await ensureDefaultSitePages();
+  return query(`SELECT * FROM "SitePage" ORDER BY "sortOrder" ASC, "label" ASC`)
+    .rows.map(mapSitePage)
+    .filter((page) => {
+      if (!options?.includeDeleted && page.deleted) return false;
+      if (options?.navOnly && (!page.showInNav || !page.href.trim())) return false;
+      if (options?.adminOnly && !page.adminTab) return false;
+      return true;
+    });
+}
+
+export async function upsertSitePage(data: {
+  id: string;
+  label?: string;
+  href?: string;
+  showInNav?: boolean;
+  sortOrder?: number;
+}): Promise<CmsResult<SitePageRow>> {
+  return withDb(async () => {
+    await ensureDefaultSitePages();
+    const id = data.id.trim();
+    if (!id) throw new Error("Identifiant de page requis");
+    const existing = queryOne(`SELECT * FROM "SitePage" WHERE "id" = ?`, [id]);
+    if (!existing) throw new Error("Page introuvable");
+    const current = mapSitePage(existing);
+    if (current.deleted) throw new Error("Cette page a été supprimée");
+    writeSitePage({
+      id,
+      label: data.label == null ? current.label : asString(data.label).trim() || current.label,
+      href: data.href == null ? current.href : asString(data.href).trim(),
+      showInNav: data.showInNav === undefined ? current.showInNav : Boolean(data.showInNav),
+      sortOrder: data.sortOrder === undefined ? current.sortOrder : asNumber(data.sortOrder),
+      kind: current.kind,
+      adminTab: current.adminTab,
+      deleted: false,
+    });
+    const customId = customPageIdFromTab(id);
+    if (customId && data.label) {
+      execute(`UPDATE "CustomPage" SET "title" = ?, "updatedAt" = ? WHERE "id" = ?`, [
+        asString(data.label).trim() || current.label,
+        nowIso(),
+        customId,
+      ]);
+    }
+    if (customId && data.showInNav !== undefined) {
+      execute(`UPDATE "CustomPage" SET "showInNav" = ?, "updatedAt" = ? WHERE "id" = ?`, [
+        data.showInNav ? 1 : 0,
+        nowIso(),
+        customId,
+      ]);
+    }
+    const row = queryOne(`SELECT * FROM "SitePage" WHERE "id" = ?`, [id]);
+    return row ? mapSitePage(row) : current;
+  }, "Impossible d'enregistrer la page du menu");
+}
+
+export async function deleteSitePage(id: string): Promise<CmsResult<SitePageRow>> {
+  return withDb(async () => {
+    const key = id.trim();
+    if (!key) throw new Error("Identifiant de page requis");
+    const customId = customPageIdFromTab(key);
+    if (customId) {
+      const existingCustom = queryOne(`SELECT * FROM "CustomPage" WHERE "id" = ?`, [customId]);
+      if (existingCustom) {
+        execute(`DELETE FROM "CustomPage" WHERE "id" = ?`, [customId]);
+        execute(`DELETE FROM "PageLayout" WHERE "tabId" = ?`, [key]);
+      }
+      const existingSite = queryOne(`SELECT * FROM "SitePage" WHERE "id" = ?`, [key]);
+      execute(`DELETE FROM "SitePage" WHERE "id" = ?`, [key]);
+      if (existingSite) return mapSitePage({ ...existingSite, deleted: 1, showInNav: 0 });
+      throw new Error("Page introuvable");
+    }
+    const existing = queryOne(`SELECT * FROM "SitePage" WHERE "id" = ?`, [key]);
+    if (!existing) throw new Error("Page introuvable");
+    const updatedAt = nowIso();
+    const result = execute(
+      `UPDATE "SitePage" SET "deleted" = 1, "showInNav" = 0, "updatedAt" = ? WHERE "id" = ?`,
+      [updatedAt, key]
+    );
+    if (!result.ok) throw new Error(result.error || "Suppression impossible");
+    execute(`DELETE FROM "PageLayout" WHERE "tabId" = ?`, [key]);
+    return mapSitePage({ ...existing, deleted: 1, showInNav: 0, updatedAt });
   }, "Impossible de supprimer la page");
 }
 
@@ -626,7 +842,7 @@ export async function upsertPageLayout(data: {
 }
 
 export async function loadAdminContent() {
-  const [about, team, sectors, careers, settings, pages, ged, labelRows, customPages, layouts] =
+  const [about, team, sectors, careers, settings, pages, ged, labelRows, customPages, layouts, sitePages] =
     await Promise.all([
       listAboutSections(),
       listTeamMembers(),
@@ -638,12 +854,28 @@ export async function loadAdminContent() {
       listLabels(),
       listCustomPages(),
       listPageLayouts(),
+      listSitePages({ adminOnly: true }),
     ]);
   const labels = { ...DEFAULT_CONTENT_LABELS };
   for (const row of labelRows) {
     if (row.label.trim()) labels[row.id] = row.label.trim();
   }
-  return { about, team, sectors, careers, settings, pages, ged, labels, customPages, layouts };
+  for (const page of sitePages) {
+    if (page.label.trim()) labels[page.id] = page.label.trim();
+  }
+  return {
+    about,
+    team,
+    sectors,
+    careers,
+    settings,
+    pages,
+    ged,
+    labels,
+    customPages,
+    layouts,
+    sitePages,
+  };
 }
 
 export async function upsertAbout(data: {

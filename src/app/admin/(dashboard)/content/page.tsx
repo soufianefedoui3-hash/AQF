@@ -19,7 +19,6 @@ import {
 import { TabLabelEditor } from "@/components/admin/TabLabelEditor";
 import { adminFetch } from "@/lib/admin-fetch";
 import {
-  ADMIN_CONTENT_TAB_IDS,
   DEFAULT_CONTENT_LABELS,
   PUBLIC_NAV_LABEL_IDS,
 } from "@/lib/seed-data";
@@ -27,7 +26,6 @@ import {
   customPageIdFromTab,
   customPageTabId,
   EMPTY_PAGE_BLOCKS,
-  isProtectedContentTab,
   normalizePageSlug,
   parsePageBlocks,
   type PageBlock,
@@ -86,6 +84,16 @@ interface CustomPageItem {
   blocks: PageBlock[];
 }
 
+interface SitePageItem {
+  id: string;
+  label: string;
+  href: string;
+  showInNav: boolean;
+  sortOrder: number;
+  kind: "system" | "custom";
+  adminTab: boolean;
+}
+
 const DEFAULT_CAREERS: CareersSettings = {
   title: "Rejoignez une équipe passionnée par la qualité",
   content: "",
@@ -128,6 +136,7 @@ export default function ContentPage() {
     ...DEFAULT_CONTENT_LABELS,
   });
   const [customPages, setCustomPages] = useState<CustomPageItem[]>([]);
+  const [sitePages, setSitePages] = useState<SitePageItem[]>([]);
   const [layouts, setLayouts] = useState<Record<string, PageBlock[]>>({});
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("about");
@@ -182,6 +191,25 @@ export default function ContentPage() {
         }
       }
       setLayouts(nextLayouts);
+      const nextSitePages: SitePageItem[] = Array.isArray(data.sitePages)
+        ? (data.sitePages as SitePageItem[])
+            .filter((page) => page && page.id && page.adminTab !== false)
+            .map((page) => ({
+              id: String(page.id),
+              label: String(page.label || ""),
+              href: String(page.href || ""),
+              showInNav: Boolean(page.showInNav),
+              sortOrder: Number(page.sortOrder) || 0,
+              kind: page.kind === "custom" ? "custom" : "system",
+              adminTab: true,
+            }))
+        : [];
+      setSitePages(nextSitePages);
+      setActiveTab((prev) =>
+        nextSitePages.some((page) => page.id === prev)
+          ? prev
+          : nextSitePages[0]?.id || prev
+      );
     } catch {
       toast.error("Erreur de connexion");
     } finally {
@@ -264,20 +292,18 @@ export default function ContentPage() {
     const ok = Boolean(await save("label", { id, label: next }));
     if (ok) {
       setLabels((prev) => ({ ...prev, [id]: next }));
+      setSitePages((prev) =>
+        prev.map((page) => (page.id === id ? { ...page, label: next } : page))
+      );
     }
     return ok;
   }
 
-  const tabs = [
-    ...ADMIN_CONTENT_TAB_IDS.map((id) => ({
-      id,
-      label: tabLabel(id),
-    })),
-    ...customPages.map((page) => ({
-      id: customPageTabId(page.id),
-      label: page.title.trim() || page.slug || "Nouvelle page",
-    })),
-  ];
+  const tabs = sitePages.map((page) => ({
+    id: page.id,
+    label: page.label.trim() || tabLabel(page.id),
+    showInNav: page.showInNav,
+  }));
 
   const activeCustomId = customPageIdFromTab(activeTab);
   const activeCustom = customPages.find((page) => page.id === activeCustomId);
@@ -304,29 +330,40 @@ export default function ContentPage() {
     setActiveTab(customPageTabId(String((created as { id: string }).id)));
   }
 
-  async function removeCustomPage(page: CustomPageItem) {
-    if (isProtectedContentTab(page.id)) {
-      toast.error("Cette page système ne peut pas être supprimée");
-      return;
-    }
-    const label = page.title.trim() || page.slug || "cette page";
-    if (!confirm(`Supprimer définitivement la page « ${label} » et tout son contenu ?`)) {
+  async function removeTab(tabId: string) {
+    const page = sitePages.find((item) => item.id === tabId);
+    const customId = customPageIdFromTab(tabId);
+    const custom = customId
+      ? customPages.find((item) => item.id === customId)
+      : undefined;
+    const label =
+      page?.label.trim() ||
+      custom?.title.trim() ||
+      tabLabel(tabId) ||
+      "cette page";
+    if (!confirm(`Supprimer définitivement « ${label} » du menu et de l'administration ?`)) {
       return;
     }
 
-    const previousPages = customPages;
+    const previousSite = sitePages;
+    const previousCustom = customPages;
     const previousTab = activeTab;
-    setCustomPages((list) => list.filter((item) => item.id !== page.id));
-    setActiveTab("about");
+    const remaining = sitePages.filter((item) => item.id !== tabId);
+    setSitePages(remaining);
+    if (customId) {
+      setCustomPages((list) => list.filter((item) => item.id !== customId));
+    }
+    setActiveTab(remaining[0]?.id || "");
     setSaving(true);
     try {
       const res = await fetch("/api/admin/content", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ section: "custom-page-delete", data: { id: page.id } }),
+        body: JSON.stringify({ section: "site-page-delete", data: { id: tabId } }),
       });
       if (!res.ok) {
-        setCustomPages(previousPages);
+        setSitePages(previousSite);
+        setCustomPages(previousCustom);
         setActiveTab(previousTab);
         toast.error(await readErrorMessage(res));
         return;
@@ -334,7 +371,8 @@ export default function ContentPage() {
       toast.success("Page supprimée");
       await loadContent({ silent: true });
     } catch {
-      setCustomPages(previousPages);
+      setSitePages(previousSite);
+      setCustomPages(previousCustom);
       setActiveTab(previousTab);
       toast.error("Erreur de connexion");
     } finally {
@@ -348,10 +386,6 @@ export default function ContentPage() {
 
       <div className="mb-6 flex flex-wrap gap-2">
         {tabs.map((tab) => {
-          const customId = customPageIdFromTab(tab.id);
-          const customPage = customId
-            ? customPages.find((page) => page.id === customId)
-            : undefined;
           const active = activeTab === tab.id;
           return (
             <div
@@ -369,22 +403,20 @@ export default function ContentPage() {
               >
                 {tab.label}
               </button>
-              {customPage ? (
-                <button
-                  type="button"
-                  disabled={saving}
-                  title="Supprimer cette page"
-                  aria-label={`Supprimer ${tab.label}`}
-                  onClick={() => removeCustomPage(customPage)}
-                  className={`mr-1 rounded-md p-1.5 transition ${
-                    active
-                      ? "text-white/80 hover:bg-white/15 hover:text-white"
-                      : "text-text-muted hover:bg-red-50 hover:text-red-600"
-                  }`}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              ) : null}
+              <button
+                type="button"
+                disabled={saving}
+                title="Supprimer cette page"
+                aria-label={`Supprimer ${tab.label}`}
+                onClick={() => removeTab(tab.id)}
+                className={`mr-1 rounded-md p-1.5 transition ${
+                  active
+                    ? "text-white/80 hover:bg-white/15 hover:text-white"
+                    : "text-text-muted hover:bg-red-50 hover:text-red-600"
+                }`}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
             </div>
           );
         })}
@@ -454,7 +486,7 @@ export default function ContentPage() {
         </div>
       </Modal>
 
-      {!activeCustom && (
+      {!activeCustom && activeTab && (
         <>
           <TabLabelEditor
             tabId={activeTab}
@@ -463,11 +495,37 @@ export default function ContentPage() {
             saving={saving}
             onSave={(label) => saveLabel(activeTab, label)}
           />
-          <p className="mb-6 rounded-xl border border-primary-100 bg-white px-4 py-3 text-xs text-text-muted">
-            Page système protégée : cet onglet ne peut pas être supprimé, pour ne pas casser
-            la navigation. Vous pouvez ajouter, modifier ou supprimer des blocs et sections
-            ci-dessous.
-          </p>
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary-100 bg-white p-4">
+            <label className="flex items-center gap-2 text-sm text-primary-900">
+              <input
+                type="checkbox"
+                checked={Boolean(sitePages.find((page) => page.id === activeTab)?.showInNav)}
+                onChange={async (e) => {
+                  const showInNav = e.target.checked;
+                  const ok = await save("site-page", { id: activeTab, showInNav });
+                  if (ok) {
+                    setSitePages((prev) =>
+                      prev.map((page) =>
+                        page.id === activeTab ? { ...page, showInNav } : page
+                      )
+                    );
+                  }
+                }}
+                className="h-4 w-4 rounded border-primary-200"
+              />
+              Afficher dans le menu du site
+            </label>
+            <Button
+              type="button"
+              variant="danger"
+              size="sm"
+              loading={saving}
+              onClick={() => removeTab(activeTab)}
+            >
+              <Trash2 className="h-4 w-4" />
+              Supprimer cette page
+            </Button>
+          </div>
         </>
       )}
 
@@ -479,7 +537,7 @@ export default function ContentPage() {
             const result = await save("custom-page", data);
             if (result) await loadContent();
           }}
-          onDelete={() => removeCustomPage(activeCustom)}
+          onDelete={() => removeTab(customPageTabId(activeCustom.id))}
         />
       )}
 
@@ -746,7 +804,7 @@ export default function ContentPage() {
         </div>
       )}
 
-      {!activeCustom && (
+      {!activeCustom && activeTab ? (
         <TabExtraBlocksEditor
           tabId={activeTab}
           initialBlocks={layouts[activeTab] ?? EMPTY_PAGE_BLOCKS}
@@ -758,7 +816,7 @@ export default function ContentPage() {
             }
           }}
         />
-      )}
+      ) : null}
     </div>
   );
 }

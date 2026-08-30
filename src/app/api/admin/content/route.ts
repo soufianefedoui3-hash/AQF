@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sessionFromRequest } from "@/lib/auth";
 import { DEFAULT_ADMIN_CONTENT } from "@/lib/seed-data";
-import { isProtectedContentTab } from "@/lib/page-blocks";
 import { revalidateCms } from "@/lib/revalidate-cms";
 import {
   deleteAbout,
   deleteCustomPage,
   deletePage,
   deleteSector,
+  deleteSitePage,
   deleteTeam,
   loadAdminContent,
   upsertAbout,
@@ -19,6 +19,7 @@ import {
   upsertLabel,
   upsertPageLayout,
   upsertSettings,
+  upsertSitePage,
   upsertTeam,
 } from "@/lib/cms/store";
 
@@ -46,6 +47,9 @@ export async function GET(request: NextRequest) {
       ged: data.ged || DEFAULT_ADMIN_CONTENT.ged,
       labels: { ...DEFAULT_ADMIN_CONTENT.labels, ...data.labels },
       customPages: Array.isArray(data.customPages) ? data.customPages : [],
+      sitePages: Array.isArray(data.sitePages)
+        ? data.sitePages
+        : DEFAULT_ADMIN_CONTENT.sitePages,
       layouts:
         data.layouts && typeof data.layouts === "object" ? data.layouts : {},
     });
@@ -186,10 +190,25 @@ export async function PUT(request: NextRequest) {
       case "custom-page-delete": {
         const id = data.id ? String(data.id).trim() : "";
         if (!id) return jsonError("ID requis", 400);
-        if (isProtectedContentTab(id)) {
-          return jsonError("Cette page système ne peut pas être supprimée", 400);
-        }
         result = await deleteCustomPage(id);
+        break;
+      }
+      case "site-page":
+        if (!data.id) return jsonError("Identifiant de page requis", 400);
+        result = await upsertSitePage({
+          id: String(data.id),
+          label: data.label == null ? undefined : String(data.label),
+          href: data.href == null ? undefined : String(data.href),
+          showInNav:
+            data.showInNav === undefined ? undefined : Boolean(data.showInNav),
+          sortOrder:
+            typeof data.sortOrder === "number" ? data.sortOrder : undefined,
+        });
+        break;
+      case "site-page-delete": {
+        const id = data.id ? String(data.id).trim() : "";
+        if (!id) return jsonError("ID requis", 400);
+        result = await deleteSitePage(id);
         break;
       }
       case "layout":
@@ -219,6 +238,16 @@ export async function PUT(request: NextRequest) {
     }
     if (section === "custom-page" && typeof data.slug === "string" && data.slug.trim()) {
       extraPaths.push(`/${data.slug.trim()}`);
+    }
+    if (
+      (section === "site-page" || section === "site-page-delete") &&
+      result.data &&
+      typeof result.data === "object" &&
+      "href" in result.data &&
+      typeof (result.data as { href?: unknown }).href === "string" &&
+      (result.data as { href: string }).href.trim()
+    ) {
+      extraPaths.push((result.data as { href: string }).href.trim());
     }
     revalidateCms(extraPaths);
     return NextResponse.json({ success: true, data: result.data });

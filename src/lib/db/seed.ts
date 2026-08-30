@@ -9,6 +9,7 @@ import {
   DEFAULT_PRODUCT_PACKS,
   DEFAULT_CONTENT_LABELS,
   DEFAULT_SECTORS,
+  DEFAULT_SITE_PAGES,
   DEFAULT_SITE_SETTINGS,
 } from "@/lib/seed-data";
 import { execute, getDb, newId, queryOne } from "./client";
@@ -131,6 +132,26 @@ export async function seedDefaults(): Promise<boolean> {
           [newId(), name, order]
         );
       });
+    });
+
+    seedIfEmpty("SitePage", () => {
+      const now = new Date().toISOString();
+      for (const page of DEFAULT_SITE_PAGES) {
+        execute(
+          `INSERT INTO "SitePage"
+            ("id", "label", "href", "showInNav", "sortOrder", "kind", "adminTab", "deleted", "updatedAt")
+           VALUES (?, ?, ?, ?, ?, 'system', ?, 0, ?)`,
+          [
+            page.id,
+            page.label,
+            page.href,
+            page.showInNav ? 1 : 0,
+            page.sortOrder,
+            page.adminTab ? 1 : 0,
+            now,
+          ]
+        );
+      }
     });
 
     seedIfEmpty("ContentLabel", () => {

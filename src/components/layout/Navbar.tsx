@@ -25,7 +25,7 @@ import { ConsultationModal } from "@/components/forms/ConsultationModal";
 
 
 export function Navbar({ links }: { links?: readonly NavLinkItem[] }) {
-  const navLinks = links && links.length > 0 ? links : NAV_LINKS;
+  const navLinks = links !== undefined ? links : NAV_LINKS;
 
   const pathname = usePathname();
 
