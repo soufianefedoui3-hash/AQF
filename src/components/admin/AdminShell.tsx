@@ -14,6 +14,7 @@ import {
   ExternalLink,
   ChevronsLeft,
   ChevronsRight,
+  Award,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Logo } from "@/components/brand/Logo";
@@ -23,6 +24,7 @@ const NAV_ITEMS = [
   { href: "/admin", label: "Tableau de bord", icon: LayoutDashboard },
   { href: "/admin/leads", label: "Leads & Demandes", icon: Inbox },
   { href: "/admin/content", label: "Contenu & Pages", icon: FileText },
+  { href: "/admin/attestations", label: "Générateur d'Attestations", icon: Award },
   { href: "/admin/news", label: "Actualités", icon: Newspaper },
   { href: "/admin/applications", label: "Recrutement & CVs", icon: Users },
 ];
