@@ -18,7 +18,19 @@ import {
   type ContentBlock,
 } from "@/components/admin/SectionBlocksEditor";
 import { TabLabelEditor } from "@/components/admin/TabLabelEditor";
+import { CareersPageBody } from "@/components/content/CareersPageBody";
+import { FormationPageBody } from "@/components/content/FormationPageBody";
+import { HomepageExplore } from "@/components/content/HomepageExplore";
+import { HomepageStats } from "@/components/content/HomepageStats";
+import { ProductsPageBody } from "@/components/content/ProductsPageBody";
+import { SectorsPageBody } from "@/components/content/SectorsPageBody";
+import { ServicesPageBody } from "@/components/content/ServicesPageBody";
 import { adminFetch } from "@/lib/admin-fetch";
+import { SERVICE_LINKS } from "@/lib/constants";
+import {
+  LIVE_PAGE_SUBTITLES,
+  livePageHref,
+} from "@/lib/preview-pages";
 import {
   DEFAULT_CONTENT_LABELS,
   PUBLIC_NAV_LABEL_IDS,
@@ -147,6 +159,10 @@ export default function ContentPage() {
   const [newSlug, setNewSlug] = useState("");
   const [newShowInNav, setNewShowInNav] = useState(true);
   const [newSlugTouched, setNewSlugTouched] = useState(false);
+  const [formationTypes, setFormationTypes] = useState<string[]>([]);
+  const [productPacks, setProductPacks] = useState<
+    { id: string; name: string; description: string; active?: boolean }[]
+  >([]);
 
   const loadContent = useCallback(async (options?: { silent?: boolean }) => {
     if (!options?.silent) setLoading(true);
@@ -221,6 +237,44 @@ export default function ContentPage() {
   useEffect(() => {
     loadContent();
   }, [loadContent]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadExtras() {
+      try {
+        const [formationsRes, packsRes] = await Promise.all([
+          fetch("/api/content/formations", { cache: "no-store" }),
+          fetch("/api/admin/packs", { credentials: "include", cache: "no-store" }),
+        ]);
+        if (formationsRes.ok) {
+          const data = await formationsRes.json();
+          if (!cancelled && Array.isArray(data)) {
+            setFormationTypes(data.map((item: unknown) => String(item)));
+          }
+        }
+        if (packsRes.ok) {
+          const data = await packsRes.json();
+          if (!cancelled && Array.isArray(data)) {
+            setProductPacks(
+              data
+                .filter((pack: { active?: boolean }) => pack.active !== false)
+                .map((pack: { id: string; name: string; description: string }) => ({
+                  id: String(pack.id),
+                  name: String(pack.name || ""),
+                  description: String(pack.description || ""),
+                }))
+            );
+          }
+        }
+      } catch {
+        /* preview extras stay empty */
+      }
+    }
+    void loadExtras();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function save(section: string, data: object): Promise<false | unknown> {
     setSaving(true);
@@ -306,8 +360,58 @@ export default function ContentPage() {
     showInNav: page.showInNav,
   }));
 
+  const previewNavLinks = sitePages
+    .filter((page) => page.showInNav && page.href)
+    .map((page) => ({
+      id: page.id,
+      href: page.href,
+      label: page.label.trim() || tabLabel(page.id),
+    }));
+
+  const serviceLinks = SERVICE_LINKS.map((link) => ({
+    href: link.href,
+    title:
+      link.href === "/services/accompagnement"
+        ? tabLabel("accompagnement") || link.title
+        : link.href === "/services/audit"
+          ? tabLabel("audit") || link.title
+          : link.href === "/services/produits"
+            ? tabLabel("products") || link.title
+            : tabLabel("formation") || link.title,
+    description: link.description,
+  }));
+
+  const previewFooter = {
+    email: settings.contactEmail || "contact@aqf.ma",
+    phone: settings.contactPhone || "+212 600 000 000",
+    address: settings.address || "Maroc",
+    serviceLinks,
+  };
+
   const activeCustomId = customPageIdFromTab(activeTab);
   const activeCustom = customPages.find((page) => page.id === activeCustomId);
+  const activeSitePage = sitePages.find((page) => page.id === activeTab);
+  const previewHref = livePageHref(activeTab, activeSitePage?.href);
+  const previewTitle =
+    activeTab === "careers"
+      ? careers.title.trim() || tabLabel("careers")
+      : activeTab === "formation" || activeTab === "formations"
+        ? pageBlocks(pages, "formation_intro", "formation:")[0]?.title?.trim() ||
+          tabLabel("formation")
+        : activeTab === "packs" || activeTab === "ged"
+          ? tabLabel("products")
+          : activeTab === "team"
+            ? tabLabel("about")
+            : tabLabel(activeTab);
+  const previewSubtitle = LIVE_PAGE_SUBTITLES[activeTab];
+  const previewHero = activeTab === "homepage" ? "homepage" : "page";
+  const previewBack =
+    activeTab === "formation" ||
+    activeTab === "formations" ||
+    activeTab === "packs" ||
+    activeTab === "ged"
+      ? { backHref: "/services", backLabel: "Retour aux services" }
+      : {};
 
   async function createCustomPage() {
     const title = newTitle.trim();
@@ -383,6 +487,7 @@ export default function ContentPage() {
 
   return (
     <div>
+      <div className="px-4 pt-6 lg:px-8">
       <h2 className="mb-6 text-2xl font-bold text-primary-900">Contenu & Pages</h2>
       <p className="mb-4 text-sm text-text-muted">
         Éditeur visuel live — les changements sont enregistrés dans SQLite.
@@ -489,18 +594,15 @@ export default function ContentPage() {
           </div>
         </div>
       </Modal>
+      </div>
 
       {activeCustom && (
         <CustomPageEditor
           page={activeCustom}
           saving={saving}
-          navLinks={sitePages
-            .filter((page) => page.showInNav && page.href)
-            .map((page) => ({
-              id: page.id,
-              href: page.href,
-              label: page.label.trim() || tabLabel(page.id),
-            }))}
+          navLinks={previewNavLinks}
+          footer={previewFooter}
+          whatsappNumber={settings.whatsappNumber}
           onSave={async (data) => {
             const result = await save("custom-page", data);
             if (result) await loadContent();
@@ -514,20 +616,34 @@ export default function ContentPage() {
 
       {!activeCustom && activeTab && activeTab !== "settings" ? (
       <VisualPageFrame
-        title={tabLabel(activeTab)}
-        href={sitePages.find((page) => page.id === activeTab)?.href || undefined}
-        navLinks={sitePages
-          .filter((page) => page.showInNav && page.href)
-          .map((page) => ({
-            id: page.id,
-            href: page.href,
-            label: page.label.trim() || tabLabel(page.id),
-          }))}
-        activeHref={sitePages.find((page) => page.id === activeTab)?.href}
-        showInNav={Boolean(sitePages.find((page) => page.id === activeTab)?.showInNav)}
+        title={previewTitle}
+        href={previewHref}
+        subtitle={previewSubtitle}
+        hero={previewHero}
+        backHref={previewBack.backHref}
+        backLabel={previewBack.backLabel}
+        navLinks={previewNavLinks}
+        activeHref={previewHref}
+        showInNav={Boolean(activeSitePage?.showInNav)}
         saving={saving}
+        footer={previewFooter}
+        whatsappNumber={settings.whatsappNumber}
         onRename={async (label) => {
-          await saveLabel(activeTab, label);
+          if (activeTab === "careers") {
+            const next = { ...careers, title: label };
+            const ok = await save("careers", next);
+            if (ok) setCareers(next);
+            return;
+          }
+          const labelId =
+            activeTab === "team"
+              ? "about"
+              : activeTab === "formations"
+                ? "formation"
+                : activeTab === "ged"
+                  ? "products"
+                  : activeTab;
+          await saveLabel(labelId, label);
         }}
         onToggleNav={async (showInNav) => {
           const ok = await save("site-page", { id: activeTab, showInNav });
@@ -542,9 +658,12 @@ export default function ContentPage() {
           if (link.id) setActiveTab(link.id);
         }}
       >
-      {activeTab === "about" && (
+      {(activeTab === "about" || activeTab === "team") && (
         <SectionBlocksEditor
+          variant="about"
           blocks={sortAboutBlocks(about)}
+          team={team}
+          teamTitle={tabLabel("team")}
           saving={saving}
           onSave={async (data) => {
             const ok = await save("about", data);
@@ -566,67 +685,67 @@ export default function ContentPage() {
       )}
 
       {activeTab === "homepage" && (
-        <SectionBlocksEditor
-          blocks={pageBlocks(pages, "homepage_presentation", "homepage:")}
-          saving={saving}
-          onSave={async (data) => {
-            const ok = await save("page", data);
-            if (ok) await loadContent();
-          }}
-          onAdd={async () => {
-            const hasPrimary = pages.some((page) => page.key === "homepage_presentation");
-            const ok = await save("page", {
-              key: hasPrimary ? `homepage:${crypto.randomUUID()}` : "homepage_presentation",
-              title: "Nouvelle section",
-              content: "",
-            });
-            if (ok) await loadContent();
-          }}
-          onDelete={async (key) => {
-            const ok = await save("page-delete", { key });
-            if (ok) await loadContent();
-          }}
-        />
+        <>
+          <SectionBlocksEditor
+            variant="homepage"
+            blocks={pageBlocks(pages, "homepage_presentation", "homepage:")}
+            saving={saving}
+            onSave={async (data) => {
+              const ok = await save("page", data);
+              if (ok) await loadContent();
+            }}
+            onAdd={async () => {
+              const hasPrimary = pages.some((page) => page.key === "homepage_presentation");
+              const ok = await save("page", {
+                key: hasPrimary ? `homepage:${crypto.randomUUID()}` : "homepage_presentation",
+                title: "Nouvelle section",
+                content: "",
+              });
+              if (ok) await loadContent();
+            }}
+            onDelete={async (key) => {
+              const ok = await save("page-delete", { key });
+              if (ok) await loadContent();
+            }}
+          />
+          <HomepageStats />
+          <HomepageExplore navLinks={previewNavLinks} />
+        </>
       )}
 
-      {activeTab === "formation" && (
-        <SectionBlocksEditor
-          blocks={pageBlocks(pages, "formation_intro", "formation:")}
-          saving={saving}
-          onSave={async (data) => {
-            const ok = await save("page", data);
-            if (ok) await loadContent();
-          }}
-          onAdd={async () => {
-            const hasPrimary = pages.some((page) => page.key === "formation_intro");
-            const ok = await save("page", {
-              key: hasPrimary ? `formation:${crypto.randomUUID()}` : "formation_intro",
-              title: "Nouvelle section",
-              content: "",
-            });
-            if (ok) await loadContent();
-          }}
-          onDelete={async (key) => {
-            const ok = await save("page-delete", { key });
-            if (ok) await loadContent();
-          }}
+      {(activeTab === "formation" || activeTab === "formations") && (
+        <FormationPageBody
+          intro={pageBlocks(pages, "formation_intro", "formation:")[0]}
+          extraSections={pageBlocks(pages, "formation_intro", "formation:").slice(1)}
+          catalogTitle={tabLabel("formations")}
+          formations={formationTypes}
         />
       )}
 
       {activeTab === "formations" && (
-        <div className="px-6 py-6">
+        <div className="border-t border-primary-50 bg-surface-muted/30 px-6 py-6">
           <FormationsManager heading={tabLabel("formations")} />
         </div>
       )}
 
+      {(activeTab === "packs" || activeTab === "ged") && (
+        <ProductsPageBody
+          packsTitle={tabLabel("packs")}
+          gedTitle={tabLabel("ged")}
+          packs={productPacks}
+          ged={ged}
+          extraSections={pages.filter((page) => page.key.startsWith("ged:"))}
+        />
+      )}
+
       {activeTab === "packs" && (
-        <div className="px-6 py-6">
+        <div className="border-t border-primary-50 bg-surface-muted/30 px-6 py-6">
           <PacksManager heading={tabLabel("packs")} />
         </div>
       )}
 
       {activeTab === "ged" && (
-        <div className="space-y-6 px-6 py-6">
+        <div className="border-t border-primary-50 bg-surface-muted/30 px-6 py-6">
           <GedEditor
             ged={ged}
             saving={saving}
@@ -639,32 +758,13 @@ export default function ContentPage() {
             }}
             onUpload={uploadImage}
           />
-          <SectionBlocksEditor
-            blocks={pages.filter((page) => page.key.startsWith("ged:"))}
-            saving={saving}
-            addLabel="Ajouter une section"
-            onSave={async (data) => {
-              const ok = await save("page", data);
-              if (ok) await loadContent();
-            }}
-            onAdd={async () => {
-              const ok = await save("page", {
-                key: `ged:${crypto.randomUUID()}`,
-                title: "Nouvelle section",
-                content: "",
-              });
-              if (ok) await loadContent();
-            }}
-            onDelete={async (key) => {
-              const ok = await save("page-delete", { key });
-              if (ok) await loadContent();
-            }}
-          />
         </div>
       )}
 
+      {activeTab === "services" && <ServicesPageBody services={serviceLinks} />}
+
       {activeTab === "team" && (
-        <div className="space-y-4 px-6 py-6">
+        <div className="border-t border-primary-50 bg-surface-muted/30 px-6 py-6">
           {team.map((member) => (
             <TeamEditor
               key={member.id}
@@ -683,6 +783,7 @@ export default function ContentPage() {
             />
           ))}
           <Button
+            className="mt-4"
             loading={saving}
             onClick={async () => {
               const ok = await save("team", {
@@ -700,13 +801,10 @@ export default function ContentPage() {
       )}
 
       {activeTab === "sectors" && (
-        <div className="space-y-4 px-6 py-6">
-          {sectors.length === 0 ? (
-            <p className="rounded-2xl bg-white p-8 text-center text-text-muted">
-              Aucun secteur disponible.
-            </p>
-          ) : (
-            sectors.map((sector) => (
+        <>
+          <SectorsPageBody sectors={sectors} />
+          <div className="border-t border-primary-50 bg-surface-muted/30 px-6 py-6">
+            {sectors.map((sector) => (
               <SectorEditor
                 key={sector.id}
                 sector={sector}
@@ -722,27 +820,37 @@ export default function ContentPage() {
                 }}
                 onUpload={uploadImage}
               />
-            ))
-          )}
-          <Button
-            variant="outline"
-            loading={saving}
-            onClick={async () => {
-              const ok = await save("sector", {
-                name: "Nouveau secteur",
-                description: "",
-                order: sectors.length,
-              });
-              if (ok) await loadContent();
-            }}
-          >
-            Ajouter une section
-          </Button>
-        </div>
+            ))}
+            <Button
+              variant="outline"
+              className="mt-4"
+              loading={saving}
+              onClick={async () => {
+                const ok = await save("sector", {
+                  name: "Nouveau secteur",
+                  description: "",
+                  order: sectors.length,
+                });
+                if (ok) await loadContent();
+              }}
+            >
+              Ajouter une section
+            </Button>
+          </div>
+        </>
       )}
 
       {activeTab === "careers" && (
-        <div className="space-y-6 px-6 py-6">
+        <CareersPageBody
+          content={careers.content}
+          email={careers.email}
+          phone={careers.phone}
+          extraSections={pages.filter((page) => page.key.startsWith("careers:"))}
+        />
+      )}
+
+      {activeTab === "careers" && (
+        <div className="border-t border-primary-50 bg-surface-muted/30 px-6 py-6">
           <CareersEditor
             settings={careers}
             saving={saving}
@@ -754,46 +862,101 @@ export default function ContentPage() {
               }
             }}
           />
-          <SectionBlocksEditor
-            blocks={pages.filter((page) => page.key.startsWith("careers:"))}
-            saving={saving}
-            addLabel="Ajouter une section"
-            onSave={async (data) => {
-              const ok = await save("page", data);
-              if (ok) await loadContent();
-            }}
-            onAdd={async () => {
-              const ok = await save("page", {
-                key: `careers:${crypto.randomUUID()}`,
-                title: "Nouvelle section",
-                content: "",
-              });
-              if (ok) await loadContent();
-            }}
-            onDelete={async (key) => {
-              const ok = await save("page-delete", { key });
-              if (ok) await loadContent();
-            }}
-          />
         </div>
       )}
 
-      <TabExtraBlocksEditor
-        tabId={activeTab}
-        initialBlocks={layouts[activeTab] ?? EMPTY_PAGE_BLOCKS}
-        saving={saving}
-        onSave={async (blocks) => {
-          const ok = await save("layout", { tabId: activeTab, blocks });
-          if (ok) {
-            setLayouts((prev) => ({ ...prev, [activeTab]: blocks }));
-          }
-        }}
-      />
+      {(activeTab === "about" || activeTab === "team") && (
+        <>
+          <TabExtraBlocksEditor
+            tabId="about"
+            initialBlocks={layouts.about ?? EMPTY_PAGE_BLOCKS}
+            saving={saving}
+            onSave={async (blocks) => {
+              const ok = await save("layout", { tabId: "about", blocks });
+              if (ok) setLayouts((prev) => ({ ...prev, about: blocks }));
+            }}
+          />
+          <TabExtraBlocksEditor
+            tabId="team"
+            initialBlocks={layouts.team ?? EMPTY_PAGE_BLOCKS}
+            saving={saving}
+            onSave={async (blocks) => {
+              const ok = await save("layout", { tabId: "team", blocks });
+              if (ok) setLayouts((prev) => ({ ...prev, team: blocks }));
+            }}
+          />
+        </>
+      )}
+
+      {(activeTab === "formation" || activeTab === "formations") && (
+        <>
+          <TabExtraBlocksEditor
+            tabId="formation"
+            initialBlocks={layouts.formation ?? EMPTY_PAGE_BLOCKS}
+            saving={saving}
+            onSave={async (blocks) => {
+              const ok = await save("layout", { tabId: "formation", blocks });
+              if (ok) setLayouts((prev) => ({ ...prev, formation: blocks }));
+            }}
+          />
+          <TabExtraBlocksEditor
+            tabId="formations"
+            initialBlocks={layouts.formations ?? EMPTY_PAGE_BLOCKS}
+            saving={saving}
+            onSave={async (blocks) => {
+              const ok = await save("layout", { tabId: "formations", blocks });
+              if (ok) setLayouts((prev) => ({ ...prev, formations: blocks }));
+            }}
+          />
+        </>
+      )}
+
+      {(activeTab === "packs" || activeTab === "ged") && (
+        <>
+          <TabExtraBlocksEditor
+            tabId="packs"
+            initialBlocks={layouts.packs ?? EMPTY_PAGE_BLOCKS}
+            saving={saving}
+            onSave={async (blocks) => {
+              const ok = await save("layout", { tabId: "packs", blocks });
+              if (ok) setLayouts((prev) => ({ ...prev, packs: blocks }));
+            }}
+          />
+          <TabExtraBlocksEditor
+            tabId="ged"
+            initialBlocks={layouts.ged ?? EMPTY_PAGE_BLOCKS}
+            saving={saving}
+            onSave={async (blocks) => {
+              const ok = await save("layout", { tabId: "ged", blocks });
+              if (ok) setLayouts((prev) => ({ ...prev, ged: blocks }));
+            }}
+          />
+        </>
+      )}
+
+      {activeTab !== "about" &&
+      activeTab !== "team" &&
+      activeTab !== "formation" &&
+      activeTab !== "formations" &&
+      activeTab !== "packs" &&
+      activeTab !== "ged" ? (
+        <TabExtraBlocksEditor
+          tabId={activeTab}
+          initialBlocks={layouts[activeTab] ?? EMPTY_PAGE_BLOCKS}
+          saving={saving}
+          onSave={async (blocks) => {
+            const ok = await save("layout", { tabId: activeTab, blocks });
+            if (ok) {
+              setLayouts((prev) => ({ ...prev, [activeTab]: blocks }));
+            }
+          }}
+        />
+      ) : null}
       </VisualPageFrame>
       ) : null}
 
       {activeTab === "settings" && (
-        <div className="space-y-6">
+        <div className="space-y-6 px-4 py-6 lg:px-8">
           <SettingsEditor
             settings={settings}
             saving={saving}
@@ -843,6 +1006,8 @@ function CustomPageEditor({
   page,
   saving,
   navLinks,
+  footer,
+  whatsappNumber,
   onSave,
   onDelete,
   onSelectNav,
@@ -850,6 +1015,13 @@ function CustomPageEditor({
   page: CustomPageItem;
   saving: boolean;
   navLinks: { id?: string; href: string; label: string }[];
+  footer: {
+    email: string;
+    phone: string;
+    address: string;
+    serviceLinks: { href: string; title: string }[];
+  };
+  whatsappNumber?: string;
   onSave: (data: CustomPageItem) => Promise<void>;
   onDelete: () => Promise<void>;
   onSelectNav?: (link: { id?: string; href: string; label: string }) => void;
@@ -887,6 +1059,8 @@ function CustomPageEditor({
       activeHref={publicPath}
       showInNav={showInNav}
       saving={saving}
+      footer={footer}
+      whatsappNumber={whatsappNumber}
       onRename={async (nextTitle) => {
         setTitle(nextTitle);
         await onSave(snapshot({ title: nextTitle }));
@@ -898,7 +1072,7 @@ function CustomPageEditor({
       onDelete={onDelete}
       onSelectNav={onSelectNav}
     >
-      <div className="border-b border-primary-50 bg-white px-6 py-4">
+      <div className="border-b border-accent-50 bg-accent-50/40 px-4 py-3 sm:px-6">
         <Input
           label="Slug (URL)"
           value={slug}
@@ -915,11 +1089,6 @@ function CustomPageEditor({
           await onSave(snapshot({ blocks: next }));
         }}
       />
-      <div className="border-t border-primary-50 bg-white px-6 py-4 text-center">
-        <Button loading={saving} onClick={() => onSave(snapshot())}>
-          Enregistrer la page
-        </Button>
-      </div>
     </VisualPageFrame>
   );
 }

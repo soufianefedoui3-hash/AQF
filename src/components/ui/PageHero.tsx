@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -10,6 +11,7 @@ interface PageHeroProps {
   backLabel?: string;
   image?: string;
   className?: string;
+  titleNode?: ReactNode;
 }
 
 export function PageHero({
@@ -19,6 +21,7 @@ export function PageHero({
   backLabel = "Retour",
   image,
   className,
+  titleNode,
 }: PageHeroProps) {
   const safeImage = toLocalImageUrl(image) || undefined;
 
@@ -56,9 +59,11 @@ export function PageHero({
             {backLabel}
           </Link>
         )}
-        <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl">
-          {title}
-        </h1>
+        {titleNode ?? (
+          <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl">
+            {title}
+          </h1>
+        )}
         {subtitle && (
           <p className="mt-4 max-w-2xl text-lg text-primary-100">{subtitle}</p>
         )}

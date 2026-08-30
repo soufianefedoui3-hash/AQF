@@ -2,9 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { ExternalLink, Trash2 } from "lucide-react";
-import { Logo } from "@/components/brand/Logo";
+import { Navbar } from "@/components/layout/Navbar";
+import { SiteFooter, type FooterServiceLink } from "@/components/layout/SiteFooter";
+import { WhatsAppWidget } from "@/components/layout/WhatsAppWidget";
+import { HomepageHero } from "@/components/content/HomepageHero";
+import { PageHero } from "@/components/ui/PageHero";
 import { Button } from "@/components/ui/Button";
-import { cn } from "@/lib/utils";
 
 export type PreviewNavLink = { id?: string; href: string; label: string };
 
@@ -12,10 +15,15 @@ export function VisualPageFrame({
   title,
   href,
   subtitle,
+  hero = "page",
+  backHref,
+  backLabel,
   navLinks,
   activeHref,
   showInNav,
   saving,
+  footer,
+  whatsappNumber,
   onRename,
   onToggleNav,
   onDelete,
@@ -25,10 +33,20 @@ export function VisualPageFrame({
   title: string;
   href?: string;
   subtitle?: string;
+  hero?: "page" | "homepage";
+  backHref?: string;
+  backLabel?: string;
   navLinks: PreviewNavLink[];
   activeHref?: string;
   showInNav?: boolean;
   saving: boolean;
+  footer: {
+    email: string;
+    phone: string;
+    address: string;
+    serviceLinks: FooterServiceLink[];
+  };
+  whatsappNumber?: string;
   onRename?: (title: string) => Promise<void> | void;
   onToggleNav?: (show: boolean) => Promise<void> | void;
   onDelete?: () => void;
@@ -49,15 +67,45 @@ export function VisualPageFrame({
     if (next !== title) await onRename?.(next);
   }
 
+  const titleNode =
+    onRename && hero === "page" ? (
+      editingTitle ? (
+        <input
+          autoFocus
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={() => void commitTitle()}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") void commitTitle();
+            if (e.key === "Escape") {
+              setDraft(title);
+              setEditingTitle(false);
+            }
+          }}
+          className="w-full bg-transparent text-3xl font-bold tracking-tight text-white outline-none ring-2 ring-white/40 sm:text-4xl lg:text-5xl"
+        />
+      ) : (
+        <button
+          type="button"
+          disabled={saving}
+          onClick={() => setEditingTitle(true)}
+          className="text-left text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl"
+          title="Cliquer pour renommer"
+        >
+          {title}
+        </button>
+      )
+    ) : undefined;
+
   return (
-    <div className="overflow-hidden rounded-3xl border border-primary-100 bg-white shadow-sm">
+    <div className="overflow-hidden bg-white shadow-sm lg:rounded-t-3xl lg:border lg:border-b-0 lg:border-primary-100">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-primary-50 bg-accent-50/60 px-4 py-3 sm:px-5">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent-700">
-            Aperçu live
+            Aperçu live — miroir 1:1
           </p>
           <p className="text-sm text-text-muted">
-            Même mise en page que le site public. Survolez un bloc pour le modifier.
+            Mêmes composants, classes et ordre que le site public. Survolez un bloc pour le modifier.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -93,74 +141,39 @@ export function VisualPageFrame({
         </div>
       </div>
 
-      <header className="border-b border-primary-100 bg-white/95">
-        <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
-          <Logo variant="navbar" />
-          <div className="hidden min-w-0 flex-1 items-center justify-center gap-1 md:flex">
-            {navLinks.map((link) => {
-              const active = Boolean(activeHref && link.href === activeHref);
-              return (
-                <button
-                  key={`${link.href}-${link.label}`}
-                  type="button"
-                  onClick={() => onSelectNav?.(link)}
-                  className={cn(
-                    "rounded-lg px-3 py-2 text-sm font-medium transition",
-                    active
-                      ? "bg-accent-50 text-primary-900 ring-1 ring-accent-200"
-                      : "text-text-muted hover:bg-accent-50 hover:text-primary-900"
-                  )}
-                >
-                  {link.label}
-                </button>
-              );
-            })}
-          </div>
-          <span className="hidden rounded-xl bg-cta-gradient px-4 py-2 text-sm font-semibold text-primary-900 shadow-sm sm:inline">
-            Demander une consultation
-          </span>
-        </nav>
-      </header>
-
-      <section className="relative overflow-hidden bg-brand-gradient pb-12 pt-10 md:pb-14 md:pt-12">
-        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          {editingTitle && onRename ? (
-            <input
-              autoFocus
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onBlur={() => void commitTitle()}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") void commitTitle();
-                if (e.key === "Escape") {
-                  setDraft(title);
-                  setEditingTitle(false);
-                }
-              }}
-              className="w-full bg-transparent text-3xl font-bold tracking-tight text-white outline-none ring-2 ring-white/40 sm:text-4xl"
+      <div className="relative isolate flex min-h-screen flex-col bg-white">
+        <Navbar
+          embedded
+          links={navLinks}
+          activeHref={activeHref}
+          onSelectLink={(nextHref) => {
+            const link = navLinks.find((item) => item.href === nextHref);
+            if (link) onSelectNav?.(link);
+          }}
+        />
+        <main className="flex-1">
+          {hero === "homepage" ? (
+            <HomepageHero />
+          ) : (
+            <PageHero
+              title={title}
+              subtitle={subtitle}
+              backHref={backHref}
+              backLabel={backLabel}
+              titleNode={titleNode}
             />
-          ) : (
-            <button
-              type="button"
-              disabled={!onRename || saving}
-              onClick={() => onRename && setEditingTitle(true)}
-              className="text-left text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl"
-              title="Cliquer pour renommer"
-            >
-              {title}
-            </button>
           )}
-          {subtitle ? (
-            <p className="mt-4 max-w-2xl text-lg text-primary-100">{subtitle}</p>
-          ) : (
-            <p className="mt-3 text-sm text-primary-100/80">
-              Cliquez sur le titre pour le renommer. Le menu public se met à jour automatiquement.
-            </p>
-          )}
-        </div>
-      </section>
-
-      {children}
+          {children}
+        </main>
+        <SiteFooter
+          navLinks={navLinks}
+          serviceLinks={footer.serviceLinks}
+          email={footer.email}
+          phone={footer.phone}
+          address={footer.address}
+        />
+        <WhatsAppWidget embedded phone={whatsappNumber} />
+      </div>
     </div>
   );
 }

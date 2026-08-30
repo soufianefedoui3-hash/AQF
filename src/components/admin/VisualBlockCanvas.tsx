@@ -32,30 +32,38 @@ function BlockTypePicker({
   onClose: () => void;
 }) {
   return (
-    <div className="mx-4 my-3 rounded-2xl border border-accent-200 bg-white p-4 shadow-lg sm:mx-8">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <p className="text-sm font-semibold text-primary-900">Ajouter un bloc ici</p>
-        <button
-          type="button"
-          onClick={onClose}
-          className="text-xs font-medium text-text-muted hover:text-primary-900"
-        >
-          Fermer
-        </button>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {PAGE_BLOCK_TYPES.map((type) => (
-          <Button
-            key={type}
+    <div
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-primary-900/40 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="max-h-[80vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-accent-200 bg-white p-5 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <p className="text-sm font-semibold text-primary-900">Ajouter un bloc ici</p>
+          <button
             type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => onPick(type)}
+            onClick={onClose}
+            className="text-xs font-medium text-text-muted hover:text-primary-900"
           >
-            <Plus className="h-4 w-4" />
-            {PAGE_BLOCK_LABELS[type]}
-          </Button>
-        ))}
+            Fermer
+          </button>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {PAGE_BLOCK_TYPES.map((type) => (
+            <Button
+              key={type}
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => onPick(type)}
+            >
+              <Plus className="h-4 w-4" />
+              {PAGE_BLOCK_LABELS[type]}
+            </Button>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -90,14 +98,17 @@ export function VisualBlockCanvas({
   }
 
   return (
-    <div className="bg-white">
-      {blocks.length === 0 && insertAt === null ? (
-        <div className="px-6 py-16 text-center">
-          <p className="text-text-muted">Cette page n’a pas encore de blocs visuels.</p>
+    <div className="relative bg-white">
+      {insertAt !== null ? (
+        <BlockTypePicker onPick={pickType} onClose={() => setInsertAt(null)} />
+      ) : null}
+
+      {blocks.length === 0 ? (
+        <div className="pointer-events-none absolute inset-x-0 top-4 z-20 flex justify-center">
           <Button
             type="button"
             variant="outline"
-            className="mt-4"
+            className="pointer-events-auto shadow-sm"
             disabled={saving}
             onClick={() => setInsertAt(0)}
           >
@@ -107,78 +118,62 @@ export function VisualBlockCanvas({
         </div>
       ) : null}
 
-      {insertAt === 0 ? <BlockTypePicker onPick={pickType} onClose={() => setInsertAt(null)} /> : null}
-
       {blocks.map((block, index) => {
         const editing = editingId === block.id;
         return (
-          <div key={block.id}>
-            <VisualItemChrome
-              label={PAGE_BLOCK_LABELS[block.type]}
-              editing={editing}
-              disabled={saving}
-              onEdit={() => setEditingId(block.id)}
-              onDone={() => {
-                setEditingId(null);
-                void onPersist?.(blocks);
-              }}
-              onAdd={() => setInsertAt(index + 1)}
-              onDelete={() => {
-                if (!confirm("Supprimer cet élément ?")) return;
-                const next = blocks.filter((item) => item.id !== block.id);
-                if (editingId === block.id) setEditingId(null);
-                void commit(next);
-              }}
-            >
-              {editing ? (
-                <div className="bg-surface-muted/40 px-4 py-8 sm:px-8">
-                  <div className="mx-auto max-w-3xl rounded-2xl border border-accent-200 bg-white p-5 shadow-sm sm:p-6">
-                    <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-accent-700">
-                      Édition — {PAGE_BLOCK_LABELS[block.type]}
-                    </p>
-                    <BlockFields
-                      block={block}
-                      onChange={(nextBlock) =>
-                        onChange(blocks.map((item) => (item.id === block.id ? nextBlock : item)))
-                      }
-                    />
-                    <div className="mt-4">
-                      <Button
-                        type="button"
-                        size="sm"
-                        disabled={saving}
-                        onClick={() => {
-                          setEditingId(null);
-                          void onPersist?.(blocks);
-                        }}
-                      >
-                        Enregistrer ce bloc
-                      </Button>
-                    </div>
+          <VisualItemChrome
+            key={block.id}
+            label={PAGE_BLOCK_LABELS[block.type]}
+            editing={editing}
+            disabled={saving}
+            onEdit={() => setEditingId(block.id)}
+            onDone={() => {
+              setEditingId(null);
+              void onPersist?.(blocks);
+            }}
+            onAdd={() => setInsertAt(index + 1)}
+            onDelete={() => {
+              if (!confirm("Supprimer cet élément ?")) return;
+              const next = blocks.filter((item) => item.id !== block.id);
+              if (editingId === block.id) setEditingId(null);
+              void commit(next);
+            }}
+          >
+            {editing ? (
+              <div className="bg-surface-muted/40 px-4 py-8 sm:px-8">
+                <div className="mx-auto max-w-3xl rounded-2xl border border-accent-200 bg-white p-5 shadow-sm sm:p-6">
+                  <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-accent-700">
+                    Édition — {PAGE_BLOCK_LABELS[block.type]}
+                  </p>
+                  <BlockFields
+                    block={block}
+                    onChange={(nextBlock) =>
+                      onChange(blocks.map((item) => (item.id === block.id ? nextBlock : item)))
+                    }
+                  />
+                  <div className="mt-4">
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={saving}
+                      onClick={() => {
+                        setEditingId(null);
+                        void onPersist?.(blocks);
+                      }}
+                    >
+                      Enregistrer ce bloc
+                    </Button>
                   </div>
                 </div>
-              ) : (
-                <PageBlockView
-                  block={block}
-                  muted={index % 2 === 1}
-                  showPlaceholders
-                  compact
-                />
-              )}
-            </VisualItemChrome>
-            {insertAt === index + 1 ? (
-              <BlockTypePicker onPick={pickType} onClose={() => setInsertAt(null)} />
+              </div>
             ) : (
-              <button
-                type="button"
-                disabled={saving}
-                onClick={() => setInsertAt(index + 1)}
-                className="mx-auto flex h-0 w-full items-center justify-center overflow-hidden text-xs font-medium text-accent-700 opacity-0 transition hover:h-10 hover:opacity-100 focus:h-10 focus:opacity-100"
-              >
-                + Ajouter un bloc ici
-              </button>
+              <PageBlockView
+                block={block}
+                muted={index % 2 === 1}
+                showPlaceholders
+              />
             )}
-          </div>
+          </VisualItemChrome>
         );
       })}
     </div>
