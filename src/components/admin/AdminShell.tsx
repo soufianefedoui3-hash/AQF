@@ -72,7 +72,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const isContentEditor = pathname.startsWith("/admin/content");
 
   return (
-    <div className="flex min-h-screen bg-surface-muted">
+    <div className="flex h-dvh max-h-dvh overflow-hidden bg-surface-muted">
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/50 lg:hidden"
@@ -82,9 +82,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex flex-col overflow-hidden bg-brand-gradient text-white transition-[width,transform] duration-300 ease-in-out",
+          "fixed inset-y-0 left-0 z-50 flex h-dvh flex-col overflow-hidden bg-brand-gradient text-white transition-[width,transform] duration-300 ease-in-out",
           sidebarOpen ? "translate-x-0" : "-translate-x-full",
-          "lg:static lg:translate-x-0",
+          "lg:translate-x-0",
           collapsed ? "w-64 lg:w-20" : "w-64"
         )}
         style={desktop && collapsed ? { width: "5rem" } : undefined}
@@ -185,7 +185,12 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div
+        className={cn(
+          "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden transition-[padding] duration-300 ease-in-out",
+          collapsed ? "lg:pl-20" : "lg:pl-64"
+        )}
+      >
         <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b border-primary-100 bg-white px-4 lg:px-8">
           <button className="shrink-0 lg:hidden" onClick={() => setSidebarOpen(true)}>
             <Menu className="h-6 w-6 text-primary-800" />
@@ -206,7 +211,14 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             <Logo variant="navbar" href={null} className="opacity-90" />
           </div>
         </header>
-        <div className={cn("flex-1", isContentEditor ? "p-0" : "p-4 lg:p-8")}>{children}</div>
+        <div
+          className={cn(
+            "min-h-0 flex-1 overflow-y-auto overscroll-contain",
+            isContentEditor ? "p-0" : "p-4 lg:p-8"
+          )}
+        >
+          {children}
+        </div>
       </div>
     </div>
   );
