@@ -7,6 +7,7 @@ export type CertificateData = {
   trainerName: string;
   issuePlace: string;
   issueDate: string;
+  backgroundImage: string;
 };
 
 export type CertificateFormat = "a4" | "a3";
@@ -20,6 +21,7 @@ export const CERTIFICATE_DEFAULTS: CertificateData = {
   trainerName: "",
   issuePlace: "",
   issueDate: "",
+  backgroundImage: "",
 };
 
 export const CERTIFICATE_STORAGE_KEY = "aqf-admin-certificate-draft-v2";
@@ -67,5 +69,6 @@ export function parseCertificateDraft(raw: unknown): CertificateData | null {
     trainerName: String(data.trainerName ?? ""),
     issuePlace: String(data.issuePlace ?? ""),
     issueDate: String(data.issueDate ?? ""),
+    backgroundImage: String(data.backgroundImage ?? ""),
   };
 }

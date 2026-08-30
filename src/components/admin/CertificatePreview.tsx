@@ -1,108 +1,76 @@
 import { forwardRef, useId } from "react";
+import { LOGO_PATH } from "@/lib/brand";
 import { type CertificateData, formatCertificateDate } from "@/lib/certificate";
 
-const NAVY = "#004d5a";
-const EMERALD = "#0a6b73";
 const TEAL = "#0c7f88";
-const GOLD = "#b8975a";
-const IVORY = "#f8f6f1";
-const INK = "#1c2a2e";
-const MUTED = "#4a5c61";
+const TEAL_DEEP = "#0a5f66";
+const INK = "#1a1a1a";
 const WHITE = "#ffffff";
 const SANS = 'Arial, "Helvetica Neue", Helvetica, sans-serif';
-const SERIF = 'Georgia, "Palatino Linotype", "Times New Roman", Times, serif';
+const SERIF = 'Georgia, "Times New Roman", Times, serif';
 
 export const CERTIFICATE_WIDTH = 1123;
 export const CERTIFICATE_HEIGHT = 794;
 
-function AqfMark({ size = 88, gid = "aqf-mark" }: { size?: number; gid?: string }) {
+const PLUS_GUTTER =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'%3E%3Cpath d='M6.1 2.4h1.8v9.2H6.1zM2.4 6.1h9.2v1.8H2.4z' fill='%230c7f88' fill-opacity='0.38'/%3E%3C/svg%3E\")";
+
+function AqfMark({ size = 96, gid = "aqf-mark" }: { size?: number; gid?: string }) {
   return (
-    <svg width={size} height={size * 0.56} viewBox="0 0 220 124" aria-hidden>
+    <svg width={size} height={size * 0.58} viewBox="0 0 220 128" aria-hidden>
       <defs>
-        <linearGradient id={gid} x1="8%" y1="92%" x2="92%" y2="8%">
-          <stop offset="0%" stopColor={NAVY} />
-          <stop offset="55%" stopColor={TEAL} />
-          <stop offset="100%" stopColor="#7ee0c8" />
+        <linearGradient id={gid} x1="10%" y1="90%" x2="90%" y2="10%">
+          <stop offset="0%" stopColor="#0a5f66" />
+          <stop offset="100%" stopColor="#1ec8c4" />
         </linearGradient>
       </defs>
-      <path d="M16 114 L56 12 H74 L114 114 H94 L86 90 H44 L36 114 Z M48 74 H82 L65 28 Z" fill={NAVY} />
-      <circle cx="128" cy="62" r="36" fill="none" stroke={`url(#${gid})`} strokeWidth="12" />
-      <path d="M122 74 L152 16 L166 24 L136 78 Z" fill={TEAL} />
-      <path d="M166 26 H212 V40 H182 V54 H206 V66 H182 V80 H212 V94 H166 Z" fill={NAVY} />
-      <path d="M174 20 L194 4 L202 12 L184 26 Z" fill="#7ee0c8" />
+      <path d="M18 118 L58 14 H76 L116 118 H96 L88 94 H46 L38 118 Z M50 78 H84 L67 32 Z" fill="#2a3336" />
+      <circle cx="128" cy="64" r="38" fill="none" stroke={`url(#${gid})`} strokeWidth="13" />
+      <path d="M122 78 L154 18 L168 26 L138 82 Z" fill={TEAL} />
+      <path d="M168 28 H214 V42 H184 V56 H208 V68 H184 V82 H214 V96 H168 Z" fill="#2a3336" />
+      <path d="M176 22 L196 4 L204 12 L186 28 Z" fill="#7ee0c8" />
     </svg>
   );
 }
 
-function ElegantDivider() {
+function DiamondDivider() {
   return (
-    <svg width="520" height="22" viewBox="0 0 520 22" aria-hidden>
-      <path d="M12 11 H214" stroke={GOLD} strokeWidth="1.15" />
-      <path d="M306 11 H508" stroke={GOLD} strokeWidth="1.15" />
-      <path d="M214 11 L228 11" stroke={TEAL} strokeWidth="1.4" />
-      <path d="M292 11 L306 11" stroke={TEAL} strokeWidth="1.4" />
-      <path d="M246 11 L260 4.5 L274 11 L260 17.5 Z" fill={TEAL} />
-      <circle cx="260" cy="11" r="2.2" fill={IVORY} />
+    <svg width="440" height="20" viewBox="0 0 440 20" aria-hidden>
+      <path d="M6 10 L34 5 L44 10 L34 15 Z" fill={TEAL} />
+      <path d="M44 10 H198" stroke={TEAL} strokeWidth="1.7" />
+      <path d="M210 10 L220 4.2 L230 10 L220 15.8 Z" fill={TEAL} />
+      <path d="M242 10 H396" stroke={TEAL} strokeWidth="1.7" />
+      <path d="M396 10 L406 5 L434 10 L406 15 Z" fill={TEAL} />
     </svg>
   );
 }
 
-function CornerFillet({ corner }: { corner: "tl" | "tr" | "bl" | "br" }) {
-  const top = corner.startsWith("t");
-  const left = corner.endsWith("l");
-  return (
-    <span
-      aria-hidden
-      style={{
-        position: "absolute",
-        width: 22,
-        height: 22,
-        top: top ? -1 : undefined,
-        bottom: top ? undefined : -1,
-        left: left ? -1 : undefined,
-        right: left ? undefined : -1,
-        borderTop: top ? `2px solid ${GOLD}` : undefined,
-        borderBottom: top ? undefined : `2px solid ${GOLD}`,
-        borderLeft: left ? `2px solid ${GOLD}` : undefined,
-        borderRight: left ? undefined : `2px solid ${GOLD}`,
-      }}
-    />
-  );
-}
-
-function NameFrame({ children }: { children: string }) {
+function NameBox({ children, framed }: { children: string; framed: boolean }) {
   return (
     <div
       style={{
-        position: "relative",
-        minWidth: 480,
-        maxWidth: 740,
-        padding: 5,
-        border: `1px solid ${GOLD}`,
-        background:
-          "linear-gradient(180deg, rgba(184,151,90,0.07) 0%, rgba(255,255,255,0.4) 40%, rgba(12,127,136,0.05) 100%)",
+        minWidth: 460,
+        maxWidth: 720,
+        padding: framed ? 4 : 0,
+        border: framed ? `2.4px solid ${TEAL}` : "none",
+        background: framed ? WHITE : "transparent",
       }}
     >
       <div
         style={{
-          position: "relative",
-          padding: "14px 48px",
-          border: `1.6px solid ${TEAL}`,
-          backgroundColor: WHITE,
+          padding: "12px 42px",
+          border: framed ? `1.2px solid ${TEAL}` : "none",
         }}
       >
-        {(["tl", "tr", "bl", "br"] as const).map((corner) => (
-          <CornerFillet key={corner} corner={corner} />
-        ))}
         <p
           style={{
             margin: 0,
-            color: EMERALD,
+            color: TEAL,
             fontFamily: SERIF,
-            fontSize: 38,
+            fontSize: 36,
             fontWeight: 700,
-            letterSpacing: "0.03em",
-            lineHeight: 1.12,
+            letterSpacing: "0.02em",
+            lineHeight: 1.15,
           }}
         >
           {children}
@@ -112,39 +80,73 @@ function NameFrame({ children }: { children: string }) {
   );
 }
 
+function CornerPlusCluster({ corner }: { corner: "tl" | "tr" | "bl" | "br" }) {
+  const cells = [];
+  for (let row = 0; row < 5; row += 1) {
+    for (let col = 0; col < 5; col += 1) {
+      cells.push(
+        <path
+          key={`${row}-${col}`}
+          d={`M${3.2 + col * 9}.4 ${1 + row * 9} h1.8 v6.2 h-1.8z M${1 + col * 9} ${3.4 + row * 9} h6.6 v1.8 H${1 + col * 9}z`}
+          fill={TEAL}
+          fillOpacity="0.7"
+        />
+      );
+    }
+  }
+
+  return (
+    <svg
+      width="50"
+      height="50"
+      viewBox="0 0 48 48"
+      aria-hidden
+      style={{
+        position: "absolute",
+        top: corner.startsWith("t") ? 6 : undefined,
+        bottom: corner.startsWith("b") ? 6 : undefined,
+        left: corner.endsWith("l") ? 6 : undefined,
+        right: corner.endsWith("r") ? 6 : undefined,
+      }}
+    >
+      {cells}
+    </svg>
+  );
+}
+
 function AcademySeal({ uid }: { uid: string }) {
-  const spikes = 40;
+  const spikes = 36;
   const points: string[] = [];
   for (let i = 0; i < spikes * 2; i += 1) {
     const angle = (Math.PI * i) / spikes - Math.PI / 2;
-    const radius = i % 2 === 0 ? 58 : 50;
+    const radius = i % 2 === 0 ? 58 : 49;
     points.push(`${60 + radius * Math.cos(angle)},${60 + radius * Math.sin(angle)}`);
   }
   const rimId = `${uid}-seal-rim`;
 
   return (
-    <svg width="112" height="112" viewBox="0 0 120 120" aria-hidden>
+    <svg width="118" height="118" viewBox="0 0 120 120" aria-hidden>
       <polygon points={points.join(" ")} fill={TEAL} />
-      <circle cx="60" cy="60" r="46" fill={NAVY} />
-      <circle cx="60" cy="60" r="42" fill="none" stroke={GOLD} strokeWidth="1.2" />
+      <circle cx="60" cy="60" r="44" fill={TEAL_DEEP} />
+      <circle cx="60" cy="60" r="40" fill="none" stroke={WHITE} strokeWidth="1.1" />
       <defs>
-        <path id={rimId} d="M60,60 m-33,0 a33,33 0 1,1 66,0 a33,33 0 1,1 -66,0" />
+        <path id={rimId} d="M60,60 m-32,0 a32,32 0 1,1 64,0 a32,32 0 1,1 -64,0" />
       </defs>
-      <text fill={WHITE} fontFamily={SANS} fontSize="6.2" fontWeight="700" letterSpacing="2.3">
+      <text fill={WHITE} fontFamily={SANS} fontSize="6.4" fontWeight="700" letterSpacing="2.1">
         <textPath href={`#${rimId}`} startOffset="0%">
           AQF ACADÉMIE · AQF ACADÉMIE ·
         </textPath>
       </text>
-      <circle cx="60" cy="60" r="20" fill="none" stroke={WHITE} strokeWidth="1" />
+      <circle cx="60" cy="60" r="18" fill="none" stroke={WHITE} strokeWidth="1" />
       <text
         x="60"
         y="64"
         textAnchor="middle"
         fill={WHITE}
         fontFamily={SANS}
-        fontSize="14"
+        fontSize="13"
         fontWeight="700"
-        letterSpacing="1.4"
+        letterSpacing="1.2"
       >
         AQF
       </text>
@@ -155,6 +157,7 @@ function AcademySeal({ uid }: { uid: string }) {
 export const CertificatePreview = forwardRef<HTMLDivElement, { data: CertificateData }>(
   function CertificatePreview({ data }, ref) {
     const uid = useId().replace(/:/g, "");
+    const customBg = data.backgroundImage.trim();
     const student = data.studentName.trim() || "[Prénom NOM]";
     const title =
       data.trainingTitle.trim().toUpperCase() || "[INTITULÉ DE LA FORMATION/ACCOMPAGNEMENT]";
@@ -170,6 +173,285 @@ export const CertificatePreview = forwardRef<HTMLDivElement, { data: Certificate
       ? formatCertificateDate(data.issueDate)
       : "[DATE DE DÉLIVRANCE]";
 
+    const body = (
+      <>
+        {!customBg && (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={LOGO_PATH}
+              alt=""
+              aria-hidden
+              style={{
+                position: "absolute",
+                left: -10,
+                bottom: -8,
+                width: 380,
+                height: "auto",
+                opacity: 0.06,
+                mixBlendMode: "multiply",
+                pointerEvents: "none",
+              }}
+            />
+            <AqfMark size={108} gid={`${uid}-lockup`} />
+          </>
+        )}
+        {customBg && <div style={{ height: 108 }} />}
+        <p
+          style={{
+            margin: customBg ? 0 : "7px 0 0",
+            color: INK,
+            fontSize: 22,
+            fontWeight: 800,
+            letterSpacing: "0.2em",
+            visibility: customBg ? "hidden" : "visible",
+          }}
+        >
+          AQF
+        </p>
+        <p
+          style={{
+            margin: "5px 0 0",
+            color: INK,
+            fontSize: 12,
+            fontWeight: 700,
+            letterSpacing: "0.16em",
+            visibility: customBg ? "hidden" : "visible",
+          }}
+        >
+          ACADÉMIE DE QUALITÉ ET DE FORMATION
+        </p>
+        <p
+          style={{
+            margin: "4px 0 0",
+            color: INK,
+            fontSize: 9.5,
+            fontWeight: 500,
+            letterSpacing: "0.32em",
+            visibility: customBg ? "hidden" : "visible",
+          }}
+        >
+          ACCOMPAGNEMENT &amp; FORMATION
+        </p>
+
+        <h1
+          style={{
+            margin: "16px 0 0",
+            color: INK,
+            fontFamily: SERIF,
+            fontSize: 34,
+            fontWeight: 700,
+            letterSpacing: "0.06em",
+            visibility: customBg ? "hidden" : "visible",
+          }}
+        >
+          ATTESTATION DE RÉUSSITE
+        </h1>
+        <div style={{ marginTop: 8, visibility: customBg ? "hidden" : "visible" }}>
+          <DiamondDivider />
+        </div>
+
+        <p
+          style={{
+            margin: "16px 0 0",
+            color: INK,
+            fontSize: 12,
+            fontWeight: 600,
+            letterSpacing: "0.16em",
+            visibility: customBg ? "hidden" : "visible",
+          }}
+        >
+          L&apos;ACADÉMIE CERTIFIE QUE
+        </p>
+
+        <div style={{ marginTop: 11 }}>
+          <NameBox framed={!customBg}>{student}</NameBox>
+        </div>
+
+        <p
+          style={{
+            margin: "14px 0 0",
+            maxWidth: 820,
+            color: INK,
+            fontSize: 12,
+            fontWeight: 600,
+            letterSpacing: "0.04em",
+            lineHeight: 1.45,
+            visibility: customBg ? "hidden" : "visible",
+          }}
+        >
+          A SUIVI ET VALIDÉ AVEC SUCCÈS LE PROGRAMME COMPLET DE FORMATION ET
+          D&apos;ACCOMPAGNEMENT PROFESSIONNEL EN :
+        </p>
+        <p
+          style={{
+            margin: "10px 0 0",
+            maxWidth: 820,
+            color: INK,
+            fontSize: 15,
+            fontWeight: 800,
+            letterSpacing: "0.03em",
+            lineHeight: 1.3,
+          }}
+        >
+          {title}
+        </p>
+        <p
+          style={{
+            margin: "9px 0 0",
+            color: INK,
+            fontSize: 12.5,
+            fontWeight: 700,
+            letterSpacing: "0.03em",
+          }}
+        >
+          DU {start} AU {end} (DURÉE TOTALE : {hours} HEURES)
+        </p>
+        <p
+          style={{
+            margin: "8px 0 0",
+            color: INK,
+            fontSize: 13.5,
+            fontWeight: 800,
+            letterSpacing: "0.04em",
+          }}
+        >
+          {trainer}
+        </p>
+        <p
+          style={{
+            margin: "10px 0 0",
+            maxWidth: 800,
+            color: INK,
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: "0.035em",
+            lineHeight: 1.55,
+            visibility: customBg ? "hidden" : "visible",
+          }}
+        >
+          DÉLIVRÉ APRÈS ÉVALUATION DES COMPÉTENCES ET VALIDATION DU PARCOURS PRATIQUE.
+        </p>
+        <p
+          style={{
+            margin: "3px 0 0",
+            maxWidth: 800,
+            color: INK,
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: "0.035em",
+            lineHeight: 1.55,
+            visibility: customBg ? "hidden" : "visible",
+          }}
+        >
+          EN FOI DE QUOI, CETTE ATTESTATION EST ÉTABLIE POUR SERVIR ET VALOIR CE QUE DE DROIT.
+        </p>
+        <p
+          style={{
+            margin: "12px 0 0",
+            color: INK,
+            fontSize: 13,
+            fontWeight: 800,
+            letterSpacing: "0.06em",
+          }}
+        >
+          FAIT À {place} | {issued}
+        </p>
+
+        <div
+          style={{
+            marginTop: "auto",
+            display: "grid",
+            width: "100%",
+            gridTemplateColumns: "1fr 1fr 122px",
+            alignItems: "end",
+            paddingTop: 10,
+          }}
+        >
+          <div style={{ textAlign: "left", paddingLeft: 10, alignSelf: "start" }}>
+            <p
+              style={{
+                margin: 0,
+                color: INK,
+                fontSize: 11,
+                fontWeight: 800,
+                letterSpacing: "0.08em",
+                visibility: customBg ? "hidden" : "visible",
+              }}
+            >
+              LE DIRECTEUR ACADÉMIQUE
+            </p>
+            <div style={{ height: 88 }} />
+          </div>
+          <div style={{ textAlign: "center", alignSelf: "start" }}>
+            <p
+              style={{
+                margin: 0,
+                color: INK,
+                fontSize: 11,
+                fontWeight: 800,
+                letterSpacing: "0.08em",
+                visibility: customBg ? "hidden" : "visible",
+              }}
+            >
+              LE RESPONSABLE PÉDAGOGIQUE
+            </p>
+            <div style={{ height: 88 }} />
+          </div>
+          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "flex-end" }}>
+            {!customBg && <AcademySeal uid={uid} />}
+          </div>
+        </div>
+      </>
+    );
+
+    if (customBg) {
+      return (
+        <div
+          ref={ref}
+          data-certificate-root
+          style={{
+            position: "relative",
+            width: CERTIFICATE_WIDTH,
+            height: CERTIFICATE_HEIGHT,
+            boxSizing: "border-box",
+            overflow: "hidden",
+            color: INK,
+            fontFamily: SANS,
+            backgroundColor: WHITE,
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={customBg}
+            alt=""
+            style={{
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              objectPosition: "center",
+            }}
+          />
+          <div
+            style={{
+              position: "relative",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              height: "100%",
+              boxSizing: "border-box",
+              padding: "62px 84px 44px",
+              textAlign: "center",
+            }}
+          >
+            {body}
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div
         ref={ref}
@@ -178,267 +460,44 @@ export const CertificatePreview = forwardRef<HTMLDivElement, { data: Certificate
           width: CERTIFICATE_WIDTH,
           height: CERTIFICATE_HEIGHT,
           boxSizing: "border-box",
-          backgroundColor: NAVY,
-          padding: 12,
+          backgroundColor: TEAL,
+          padding: 14,
           color: INK,
           fontFamily: SANS,
         }}
       >
         <div
           style={{
+            position: "relative",
             height: "100%",
             boxSizing: "border-box",
-            padding: 5,
-            backgroundColor: GOLD,
+            padding: 30,
+            backgroundColor: WHITE,
+            backgroundImage: PLUS_GUTTER,
+            backgroundRepeat: "repeat",
           }}
         >
+          <CornerPlusCluster corner="tl" />
+          <CornerPlusCluster corner="tr" />
+          <CornerPlusCluster corner="bl" />
+          <CornerPlusCluster corner="br" />
+
           <div
             style={{
               position: "relative",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
               height: "100%",
               boxSizing: "border-box",
-              padding: 11,
-              backgroundColor: NAVY,
+              overflow: "hidden",
+              padding: "18px 40px 14px",
+              border: `1.6px solid ${TEAL}`,
+              backgroundColor: WHITE,
+              textAlign: "center",
             }}
           >
-            <div
-              style={{
-                position: "relative",
-                display: "flex",
-                height: "100%",
-                flexDirection: "column",
-                alignItems: "center",
-                boxSizing: "border-box",
-                overflow: "hidden",
-                padding: "22px 48px 16px",
-                background:
-                  "radial-gradient(ellipse at 50% 0%, #ffffff 0%, #f8f6f1 62%, #f3f0e8 100%)",
-                border: `1px solid ${TEAL}`,
-                textAlign: "center",
-              }}
-            >
-              <div
-                aria-hidden
-                style={{
-                  position: "absolute",
-                  inset: 10,
-                  border: `1px solid rgba(184,151,90,0.45)`,
-                  pointerEvents: "none",
-                }}
-              />
-
-              <div
-                aria-hidden
-                style={{
-                  position: "absolute",
-                  left: "50%",
-                  top: "40%",
-                  transform: "translate(-50%, -50%)",
-                  opacity: 0.045,
-                  pointerEvents: "none",
-                }}
-              >
-                <AqfMark size={420} gid={`${uid}-watermark`} />
-              </div>
-
-              <AqfMark size={86} gid={`${uid}-lockup`} />
-              <p
-                style={{
-                  margin: "8px 0 0",
-                  color: NAVY,
-                  fontSize: 20,
-                  fontWeight: 800,
-                  letterSpacing: "0.28em",
-                }}
-              >
-                AQF
-              </p>
-              <p
-                style={{
-                  margin: "5px 0 0",
-                  color: NAVY,
-                  fontSize: 11.5,
-                  fontWeight: 700,
-                  letterSpacing: "0.2em",
-                }}
-              >
-                ACADÉMIE DE QUALITÉ ET DE FORMATION
-              </p>
-              <p
-                style={{
-                  margin: "4px 0 0",
-                  color: MUTED,
-                  fontSize: 9,
-                  fontWeight: 500,
-                  letterSpacing: "0.38em",
-                }}
-              >
-                ACCOMPAGNEMENT &amp; FORMATION
-              </p>
-
-              <h1
-                style={{
-                  margin: "18px 0 0",
-                  color: NAVY,
-                  fontFamily: SERIF,
-                  fontSize: 36,
-                  fontWeight: 700,
-                  letterSpacing: "0.1em",
-                }}
-              >
-                ATTESTATION DE RÉUSSITE
-              </h1>
-              <div style={{ marginTop: 8 }}>
-                <ElegantDivider />
-              </div>
-
-              <p
-                style={{
-                  margin: "16px 0 0",
-                  color: MUTED,
-                  fontSize: 11.5,
-                  fontWeight: 600,
-                  letterSpacing: "0.2em",
-                }}
-              >
-                L&apos;ACADÉMIE CERTIFIE QUE
-              </p>
-
-              <div style={{ marginTop: 12 }}>
-                <NameFrame>{student}</NameFrame>
-              </div>
-
-              <p
-                style={{
-                  margin: "16px 0 0",
-                  maxWidth: 780,
-                  color: INK,
-                  fontSize: 12,
-                  fontWeight: 500,
-                  letterSpacing: "0.055em",
-                  lineHeight: 1.5,
-                }}
-              >
-                A SUIVI ET VALIDÉ AVEC SUCCÈS LE PROGRAMME COMPLET DE FORMATION ET
-                D&apos;ACCOMPAGNEMENT PROFESSIONNEL EN :
-              </p>
-              <p
-                style={{
-                  margin: "11px 0 0",
-                  maxWidth: 780,
-                  color: NAVY,
-                  fontFamily: SERIF,
-                  fontSize: 17,
-                  fontWeight: 700,
-                  letterSpacing: "0.04em",
-                  lineHeight: 1.3,
-                }}
-              >
-                {title}
-              </p>
-              <p
-                style={{
-                  margin: "10px 0 0",
-                  color: INK,
-                  fontSize: 12.5,
-                  fontWeight: 600,
-                  letterSpacing: "0.04em",
-                }}
-              >
-                DU {start} AU {end} (DURÉE TOTALE : {hours} HEURES)
-              </p>
-              <p
-                style={{
-                  margin: "8px 0 0",
-                  color: NAVY,
-                  fontSize: 13,
-                  fontWeight: 800,
-                  letterSpacing: "0.06em",
-                }}
-              >
-                {trainer}
-              </p>
-              <p
-                style={{
-                  margin: "12px 0 0",
-                  maxWidth: 760,
-                  color: MUTED,
-                  fontSize: 10.5,
-                  fontWeight: 500,
-                  letterSpacing: "0.045em",
-                  lineHeight: 1.6,
-                }}
-              >
-                DÉLIVRÉ APRÈS ÉVALUATION DES COMPÉTENCES ET VALIDATION DU PARCOURS PRATIQUE.
-              </p>
-              <p
-                style={{
-                  margin: "3px 0 0",
-                  maxWidth: 760,
-                  color: MUTED,
-                  fontSize: 10.5,
-                  fontWeight: 500,
-                  letterSpacing: "0.045em",
-                  lineHeight: 1.6,
-                }}
-              >
-                EN FOI DE QUOI, CETTE ATTESTATION EST ÉTABLIE POUR SERVIR ET VALOIR CE QUE DE DROIT.
-              </p>
-              <p
-                style={{
-                  margin: "12px 0 0",
-                  color: NAVY,
-                  fontSize: 12.5,
-                  fontWeight: 800,
-                  letterSpacing: "0.08em",
-                }}
-              >
-                FAIT À {place} | {issued}
-              </p>
-
-              <div
-                style={{
-                  marginTop: "auto",
-                  display: "grid",
-                  width: "100%",
-                  gridTemplateColumns: "1fr 1fr 118px",
-                  alignItems: "end",
-                  paddingTop: 8,
-                }}
-              >
-                <div style={{ textAlign: "left", paddingLeft: 8, alignSelf: "start" }}>
-                  <p
-                    style={{
-                      margin: 0,
-                      color: NAVY,
-                      fontSize: 10.5,
-                      fontWeight: 800,
-                      letterSpacing: "0.1em",
-                    }}
-                  >
-                    LE DIRECTEUR ACADÉMIQUE
-                  </p>
-                  <div style={{ height: 86 }} />
-                </div>
-                <div style={{ textAlign: "center", alignSelf: "start" }}>
-                  <p
-                    style={{
-                      margin: 0,
-                      color: NAVY,
-                      fontSize: 10.5,
-                      fontWeight: 800,
-                      letterSpacing: "0.1em",
-                    }}
-                  >
-                    LE RESPONSABLE PÉDAGOGIQUE
-                  </p>
-                  <div style={{ height: 86 }} />
-                </div>
-                <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "flex-end" }}>
-                  <AcademySeal uid={uid} />
-                </div>
-              </div>
-            </div>
+            {body}
           </div>
         </div>
       </div>

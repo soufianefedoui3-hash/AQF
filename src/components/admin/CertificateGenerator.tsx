@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { Award, FileDown } from "lucide-react";
+import { Award, FileDown, ImagePlus, Trash2 } from "lucide-react";
 import { CertificatePreview, CERTIFICATE_HEIGHT, CERTIFICATE_WIDTH } from "@/components/admin/CertificatePreview";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -36,6 +36,8 @@ export function CertificateGenerator() {
   const [formatOpen, setFormatOpen] = useState(false);
   const [format, setFormat] = useState<CertificateFormat>("a4");
   const [exporting, setExporting] = useState(false);
+  const [uploadingBg, setUploadingBg] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setData(loadDraft());
@@ -66,6 +68,39 @@ export function CertificateGenerator() {
     setData((prev) => ({ ...prev, [key]: value }));
   }
 
+  async function handleBackgroundUpload(file: File | undefined) {
+    if (!file) return;
+    const type = file.type.toLowerCase();
+    if (!["image/png", "image/jpeg", "image/jpg"].includes(type)) {
+      toast.error("Utilisez un fichier PNG ou JPG");
+      return;
+    }
+    setUploadingBg(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("prefix", "certificate-bg");
+      const res = await fetch("/api/admin/upload", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+        cache: "no-store",
+      });
+      const payload = (await res.json().catch(() => null)) as { url?: string; error?: string } | null;
+      if (!res.ok || typeof payload?.url !== "string") {
+        toast.error(payload?.error || "Échec du téléchargement");
+        return;
+      }
+      update("backgroundImage", payload.url);
+      toast.success("Arrière-plan mis à jour");
+    } catch {
+      toast.error("Échec du téléchargement");
+    } finally {
+      setUploadingBg(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
   async function generatePdf() {
     const node = exportRef.current;
     if (!node) {
@@ -83,7 +118,7 @@ export function CertificateGenerator() {
       const canvas = await html2canvas(node, {
         scale: 4,
         useCORS: true,
-        backgroundColor: "#004d5a",
+        backgroundColor: data.backgroundImage.trim() ? "#ffffff" : "#0c7f88",
         width: CERTIFICATE_WIDTH,
         height: CERTIFICATE_HEIGHT,
         windowWidth: CERTIFICATE_WIDTH,
@@ -159,6 +194,53 @@ export function CertificateGenerator() {
             <h3 className="font-semibold">Variables de l&apos;attestation</h3>
           </div>
           <div className="space-y-5">
+            <div className="space-y-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent-700">
+                Télécharger l&apos;arrière-plan de l&apos;attestation
+              </p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,.png,.jpg,.jpeg"
+                className="sr-only"
+                onChange={(e) => void handleBackgroundUpload(e.target.files?.[0])}
+              />
+              {data.backgroundImage ? (
+                <div className="overflow-hidden rounded-xl border border-primary-100">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={data.backgroundImage}
+                    alt="Arrière-plan"
+                    className="h-28 w-full object-cover"
+                  />
+                </div>
+              ) : (
+                <p className="text-xs text-text-muted">
+                  PNG ou JPG. Le texte dynamique se place au-dessus de l&apos;image.
+                </p>
+              )}
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  loading={uploadingBg}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <ImagePlus className="h-4 w-4" />
+                  {data.backgroundImage ? "Remplacer" : "Choisir un fichier"}
+                </Button>
+                {data.backgroundImage ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => update("backgroundImage", "")}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Retirer
+                  </Button>
+                ) : null}
+              </div>
+            </div>
             <div className="space-y-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent-700">
                 Participant
