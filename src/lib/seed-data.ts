@@ -151,6 +151,46 @@ export const DEFAULT_PRODUCT_PACKS = [
   { name: "ISO 13189", description: "Pack norme spécialisée pour votre secteur.", order: 7 },
 ] as const;
 
+/** Stable ids for admin content tabs + public nav/headings. */
+export const DEFAULT_CONTENT_LABELS: Record<string, string> = {
+  homepage: "Accueil",
+  about: "À propos",
+  formation: "Formation (texte)",
+  formations: "Formations disponibles",
+  packs: "Packs produits",
+  ged: "GED",
+  team: "Équipe",
+  sectors: "Secteurs",
+  careers: "Carrières",
+  settings: "Paramètres",
+  services: "Services",
+  news: "Actualités",
+  accompagnement: "Accompagnement",
+  audit: "Audit",
+  products: "Produits & Services",
+};
+
+export const ADMIN_CONTENT_TAB_IDS = [
+  "about",
+  "homepage",
+  "formation",
+  "formations",
+  "packs",
+  "ged",
+  "team",
+  "sectors",
+  "careers",
+  "settings",
+] as const;
+
+export const PUBLIC_NAV_LABEL_IDS = [
+  "services",
+  "news",
+  "accompagnement",
+  "audit",
+  "products",
+] as const;
+
 /** Static fallback for admin content API when SQLite is unavailable. */
 export const DEFAULT_ADMIN_CONTENT = {
   about: DEFAULT_ABOUT_SECTIONS.map((section, index) => ({
@@ -208,4 +248,5 @@ export const DEFAULT_ADMIN_CONTENT = {
     imageUrl: DEFAULT_GED_SERVICE.imageUrl,
     updatedAt: new Date(0),
   },
+  labels: { ...DEFAULT_CONTENT_LABELS },
 };

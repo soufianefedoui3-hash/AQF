@@ -14,12 +14,15 @@ import {
   getSectorRow,
   getSettingsRow,
   listAboutSections,
+  listLabels,
   listNews,
   listPacks,
   listPages,
   listSectors,
   listTeamMembers,
 } from "@/lib/cms/store";
+import { DEFAULT_CONTENT_LABELS } from "@/lib/seed-data";
+import { NAV_LINKS, SERVICE_LINKS } from "@/lib/constants";
 
 export const SECTOR_FALLBACK_IMAGE = PLACEHOLDER_GENERIC;
 export const FALLBACK_SECTORS = [
@@ -361,6 +364,66 @@ export async function getPublishedArticleBySlug(slug: string) {
   } catch {
     return null;
   }
+}
+
+export async function getContentLabels(): Promise<Record<string, string>> {
+  const labels = { ...DEFAULT_CONTENT_LABELS };
+  try {
+    const rows = await listLabels();
+    for (const row of rows) {
+      const text = row.label.trim();
+      if (text) labels[row.id] = text;
+    }
+  } catch {
+    /* keep fallbacks */
+  }
+  return labels;
+}
+
+export function labelOf(
+  labels: Record<string, string>,
+  id: string,
+  fallback?: string
+): string {
+  const value = labels[id]?.trim();
+  return value || fallback || DEFAULT_CONTENT_LABELS[id] || id;
+}
+
+export async function getNavLinks() {
+  const labels = await getContentLabels();
+  return NAV_LINKS.map((link) => {
+    const id =
+      link.href === "/"
+        ? "homepage"
+        : link.href === "/a-propos"
+          ? "about"
+          : link.href === "/services"
+            ? "services"
+            : link.href === "/secteurs"
+              ? "sectors"
+              : link.href === "/actualites"
+                ? "news"
+                : link.href === "/carrieres"
+                  ? "careers"
+                  : "";
+    return {
+      href: link.href,
+      label: id ? labelOf(labels, id, link.label) : link.label,
+    };
+  });
+}
+
+export async function getServiceLinks() {
+  const labels = await getContentLabels();
+  const byHref: Record<string, string> = {
+    "/services/accompagnement": "accompagnement",
+    "/services/audit": "audit",
+    "/services/produits": "products",
+  };
+  return SERVICE_LINKS.map((link) => ({
+    ...link,
+    title: labelOf(labels, byHref[link.href] || "", link.title),
+  }));
 }
 
 export async function getSiteSettings() {

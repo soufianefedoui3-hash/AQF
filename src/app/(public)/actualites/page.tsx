@@ -4,13 +4,17 @@ import { PageSection } from "@/components/ui/PageSection";
 
 import { ArticleCard } from "@/components/news/ArticleCard";
 
-import { getPublishedArticles } from "@/lib/content";
+import { getContentLabels, getPublishedArticles, labelOf } from "@/lib/content";
 
-
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function ActualitesPage() {
 
-  const articles = await getPublishedArticles();
+  const [articles, labels] = await Promise.all([
+    getPublishedArticles(),
+    getContentLabels(),
+  ]);
 
 
 
@@ -20,7 +24,7 @@ export default async function ActualitesPage() {
 
       <PageHero
 
-        title="Actualités"
+        title={labelOf(labels, "news", "Actualités")}
 
         subtitle="Restez informé des dernières avancées en qualité, formation et réglementation."
 

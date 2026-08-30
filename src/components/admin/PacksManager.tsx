@@ -15,7 +15,7 @@ interface ProductPack {
   active: boolean;
 }
 
-export function PacksManager() {
+export function PacksManager({ heading }: { heading?: string }) {
   const [packs, setPacks] = useState<ProductPack[]>([]);
   const [loading, setLoading] = useState(true);
   const [newName, setNewName] = useState("");
@@ -167,7 +167,7 @@ export function PacksManager() {
 
       <div className="rounded-2xl border border-primary-100 bg-white p-6">
         <h3 className="mb-4 font-semibold text-primary-900">
-          Packs d&apos;implémentation ({packs.length})
+          {heading || "Packs produits"} ({packs.length})
         </h3>
 
         {packs.length === 0 ? (

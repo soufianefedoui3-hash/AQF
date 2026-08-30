@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { BRAND, NAV_LINKS, SERVICE_LINKS, SOCIAL_LINKS } from "@/lib/constants";
+import { BRAND, SOCIAL_LINKS } from "@/lib/constants";
 import { Logo } from "@/components/brand/Logo";
-import { getSiteSettings } from "@/lib/content";
+import { getNavLinks, getServiceLinks, getSiteSettings } from "@/lib/content";
 
 export async function Footer() {
   let settings;
@@ -13,6 +13,7 @@ export async function Footer() {
   const email = settings?.contactEmail || "contact@aqf.ma";
   const phone = settings?.contactPhone || "+212 600 000 000";
   const address = settings?.address || "Maroc";
+  const [navLinks, serviceLinks] = await Promise.all([getNavLinks(), getServiceLinks()]);
 
   return (
     <footer className="bg-brand-gradient text-primary-100">
@@ -28,7 +29,7 @@ export async function Footer() {
           <div>
             <h3 className="mb-4 font-semibold text-white">Navigation</h3>
             <ul className="space-y-2">
-              {NAV_LINKS.map((link) => (
+              {navLinks.map((link) => (
                 <li key={link.href}>
                   <Link href={link.href} className="text-sm transition hover:text-accent-300">
                     {link.label}
@@ -41,7 +42,7 @@ export async function Footer() {
           <div>
             <h3 className="mb-4 font-semibold text-white">Services</h3>
             <ul className="space-y-2">
-              {SERVICE_LINKS.map((link) => (
+              {serviceLinks.map((link) => (
                 <li key={link.href}>
                   <Link href={link.href} className="text-sm transition hover:text-accent-300">
                     {link.title}

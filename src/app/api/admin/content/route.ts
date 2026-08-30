@@ -13,6 +13,7 @@ import {
   upsertGed,
   upsertPage,
   upsertSector,
+  upsertLabel,
   upsertSettings,
   upsertTeam,
 } from "@/lib/cms/store";
@@ -39,10 +40,14 @@ export async function GET(request: NextRequest) {
       settings: data.settings || DEFAULT_ADMIN_CONTENT.settings,
       pages: data.pages.length > 0 ? data.pages : DEFAULT_ADMIN_CONTENT.pages,
       ged: data.ged || DEFAULT_ADMIN_CONTENT.ged,
+      labels: { ...DEFAULT_ADMIN_CONTENT.labels, ...data.labels },
     });
   } catch (error) {
     console.error("[cms] admin GET failed:", error);
-    return NextResponse.json(DEFAULT_ADMIN_CONTENT);
+    return NextResponse.json({
+      ...DEFAULT_ADMIN_CONTENT,
+      labels: { ...DEFAULT_ADMIN_CONTENT.labels },
+    });
   }
 }
 
@@ -143,6 +148,13 @@ export async function PUT(request: NextRequest) {
       case "page-delete":
         if (!data.key) return jsonError("Clé de page requise", 400);
         result = await deletePage(String(data.key));
+        break;
+      case "label":
+        if (!data.id) return jsonError("Identifiant de libellé requis", 400);
+        result = await upsertLabel({
+          id: String(data.id),
+          label: data.label == null ? "" : String(data.label),
+        });
         break;
       case "ged":
         result = await upsertGed({

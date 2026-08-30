@@ -12,7 +12,13 @@ import {
   sortAboutBlocks,
   type ContentBlock,
 } from "@/components/admin/SectionBlocksEditor";
+import { TabLabelEditor } from "@/components/admin/TabLabelEditor";
 import { adminFetch } from "@/lib/admin-fetch";
+import {
+  ADMIN_CONTENT_TAB_IDS,
+  DEFAULT_CONTENT_LABELS,
+  PUBLIC_NAV_LABEL_IDS,
+} from "@/lib/seed-data";
 
 interface TeamMember {
   id: string;
@@ -96,6 +102,9 @@ export default function ContentPage() {
   const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
   const [pages, setPages] = useState<PageContentItem[]>([]);
   const [ged, setGed] = useState<GedService>(DEFAULT_GED);
+  const [labels, setLabels] = useState<Record<string, string>>({
+    ...DEFAULT_CONTENT_LABELS,
+  });
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("about");
   const [saving, setSaving] = useState(false);
@@ -117,6 +126,12 @@ export default function ContentPage() {
       setSettings((data.settings as SiteSettings) || DEFAULT_SETTINGS);
       setPages(Array.isArray(data.pages) ? data.pages : []);
       setGed((data.ged as GedService) || DEFAULT_GED);
+      setLabels({
+        ...DEFAULT_CONTENT_LABELS,
+        ...(data.labels && typeof data.labels === "object"
+          ? (data.labels as Record<string, string>)
+          : {}),
+      });
     } catch {
       toast.error("Erreur de connexion");
     } finally {
@@ -185,18 +200,23 @@ export default function ContentPage() {
     );
   }
 
-  const tabs = [
-    { id: "about", label: "À propos" },
-    { id: "homepage", label: "Accueil" },
-    { id: "formation", label: "Formation (texte)" },
-    { id: "formations", label: "Formations disponibles" },
-    { id: "packs", label: "Packs produits" },
-    { id: "ged", label: "GED" },
-    { id: "team", label: "Équipe" },
-    { id: "sectors", label: "Secteurs" },
-    { id: "careers", label: "Carrières" },
-    { id: "settings", label: "Paramètres" },
-  ];
+  function tabLabel(id: string): string {
+    return labels[id]?.trim() || DEFAULT_CONTENT_LABELS[id] || id;
+  }
+
+  async function saveLabel(id: string, label: string): Promise<boolean> {
+    const next = label.trim() || DEFAULT_CONTENT_LABELS[id] || id;
+    const ok = await save("label", { id, label: next });
+    if (ok) {
+      setLabels((prev) => ({ ...prev, [id]: next }));
+    }
+    return ok;
+  }
+
+  const tabs = ADMIN_CONTENT_TAB_IDS.map((id) => ({
+    id,
+    label: tabLabel(id),
+  }));
 
   return (
     <div>
@@ -218,6 +238,14 @@ export default function ContentPage() {
           </button>
         ))}
       </div>
+
+      <TabLabelEditor
+        tabId={activeTab}
+        value={tabLabel(activeTab)}
+        fallback={DEFAULT_CONTENT_LABELS[activeTab] || activeTab}
+        saving={saving}
+        onSave={(label) => saveLabel(activeTab, label)}
+      />
 
       {activeTab === "about" && (
         <SectionBlocksEditor
@@ -290,9 +318,11 @@ export default function ContentPage() {
         />
       )}
 
-      {activeTab === "formations" && <FormationsManager />}
+      {activeTab === "formations" && (
+        <FormationsManager heading={tabLabel("formations")} />
+      )}
 
-      {activeTab === "packs" && <PacksManager />}
+      {activeTab === "packs" && <PacksManager heading={tabLabel("packs")} />}
 
       {activeTab === "ged" && (
         <div className="space-y-6">
@@ -448,17 +478,36 @@ export default function ContentPage() {
       )}
 
       {activeTab === "settings" && (
-        <SettingsEditor
-          settings={settings}
-          saving={saving}
-          onSave={async (data) => {
-            const ok = await save("settings", data);
-            if (ok) {
-              setSettings(data);
-              await loadContent();
-            }
-          }}
-        />
+        <div className="space-y-6">
+          <SettingsEditor
+            settings={settings}
+            saving={saving}
+            onSave={async (data) => {
+              const ok = await save("settings", data);
+              if (ok) {
+                setSettings(data);
+                await loadContent();
+              }
+            }}
+          />
+          <div className="rounded-2xl border border-primary-100 bg-white p-6">
+            <h3 className="mb-4 font-semibold text-primary-900">
+              Autres libellés du site
+            </h3>
+            <div className="space-y-4">
+              {PUBLIC_NAV_LABEL_IDS.map((id) => (
+                <TabLabelEditor
+                  key={id}
+                  tabId={id}
+                  value={tabLabel(id)}
+                  fallback={DEFAULT_CONTENT_LABELS[id] || id}
+                  saving={saving}
+                  onSave={(label) => saveLabel(id, label)}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

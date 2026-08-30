@@ -3,23 +3,24 @@ import { PageHero } from "@/components/ui/PageHero";
 import { PageSection } from "@/components/ui/PageSection";
 import { FormationRegistrationForm } from "@/components/forms/FormationRegistrationForm";
 import { FORMATION_BENEFITS } from "@/lib/constants";
-import { getFormationSections } from "@/lib/content";
+import { getContentLabels, getFormationSections, labelOf } from "@/lib/content";
 import { getFormationTypes } from "@/lib/formations";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function FormationPage() {
-  const [sections, formations] = await Promise.all([
+  const [sections, formations, labels] = await Promise.all([
     getFormationSections(),
     getFormationTypes(),
+    getContentLabels(),
   ]);
   const [intro, ...extraSections] = sections;
 
   return (
     <>
       <PageHero
-        title={intro.title?.trim() || "Formation Qualité"}
+        title={intro.title?.trim() || labelOf(labels, "formation", "Formation Qualité")}
         subtitle="Des formations adaptées aux étudiants et aux professionnels de santé et du corporate."
         backHref="/services"
         backLabel="Retour aux services"
@@ -65,7 +66,9 @@ export default async function FormationPage() {
           </div>
 
           <div>
-            <h2 className="mb-6 text-xl font-bold text-primary-900">Formations disponibles</h2>
+            <h2 className="mb-6 text-xl font-bold text-primary-900">
+              {labelOf(labels, "formations", "Formations disponibles")}
+            </h2>
             {formations.length === 0 ? (
               <p className="text-sm text-text-muted">Aucune formation disponible pour le moment.</p>
             ) : (

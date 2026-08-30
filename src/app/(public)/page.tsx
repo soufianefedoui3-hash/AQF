@@ -1,6 +1,6 @@
 import { ArrowRight } from "lucide-react";
-import { NAV_LINKS, HOMEPAGE_STATS } from "@/lib/constants";
-import { getHomepageSections } from "@/lib/content";
+import { HOMEPAGE_STATS } from "@/lib/constants";
+import { getHomepageSections, getNavLinks } from "@/lib/content";
 import { NavCard } from "@/components/layout/NavCard";
 import { Button } from "@/components/ui/Button";
 import { Logo } from "@/components/brand/Logo";
@@ -9,7 +9,10 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function HomePage() {
-  const sections = await getHomepageSections();
+  const [sections, navLinks] = await Promise.all([
+    getHomepageSections(),
+    getNavLinks(),
+  ]);
   const [presentation, ...extraSections] = sections;
 
   return (
@@ -76,7 +79,7 @@ export default async function HomePage() {
             Explorez nos services
           </h2>
           <div className="grid gap-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
-            {NAV_LINKS.filter((l) => l.href !== "/").map((link) => (
+            {navLinks.filter((l) => l.href !== "/").map((link) => (
               <NavCard
                 key={link.href}
                 href={link.href}

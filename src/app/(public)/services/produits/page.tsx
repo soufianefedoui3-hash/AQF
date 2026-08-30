@@ -4,22 +4,29 @@ import { SectionHeader } from "@/components/ui/SectionHeader";
 import { PackMockup } from "@/components/ui/PackMockup";
 import { GedRequestForm } from "@/components/forms/GedRequestForm";
 import { Logo } from "@/components/brand/Logo";
-import { getGedExtraSections, getGedService, getProductPacks } from "@/lib/content";
+import {
+  getContentLabels,
+  getGedExtraSections,
+  getGedService,
+  getProductPacks,
+  labelOf,
+} from "@/lib/content";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function ProduitsPage() {
-  const [ged, packs, extraSections] = await Promise.all([
+  const [ged, packs, extraSections, labels] = await Promise.all([
     getGedService(),
     getProductPacks(),
     getGedExtraSections(),
+    getContentLabels(),
   ]);
 
   return (
     <>
       <PageHero
-        title="Produits et Services"
+        title={labelOf(labels, "products", "Produits et Services")}
         subtitle="Packs d'implémentation prêts à l'emploi et solutions web sur mesure."
         backHref="/services"
         backLabel="Retour aux services"
@@ -28,7 +35,7 @@ export default async function ProduitsPage() {
       <PageSection>
         <SectionHeader
           badge="Partie 1"
-          title="Packs d'implémentation"
+          title={labelOf(labels, "packs", "Packs produits")}
           subtitle="Des packs complets, prêts à déployer, pour chaque norme clé."
         />
         {packs.length === 0 ? (
@@ -47,7 +54,7 @@ export default async function ProduitsPage() {
       <PageSection muted>
         <SectionHeader
           badge="Partie 2"
-          title="Services Web"
+          title={labelOf(labels, "ged", "GED")}
           subtitle="Solution GED développée par AQF pour la gestion documentaire qualité."
         />
 

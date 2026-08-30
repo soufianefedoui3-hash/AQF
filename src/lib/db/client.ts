@@ -60,7 +60,8 @@ export function ensureSchema(): boolean {
   try {
     const database = getDb();
     if (!database) return false;
-    if (globalForDb.aqfSchemaReady) return true;
+    // Always re-apply CREATE TABLE IF NOT EXISTS so newly added tables
+    // appear on existing DBs and after Next.js hot reload.
     return applySchema(database);
   } catch (error) {
     console.error(

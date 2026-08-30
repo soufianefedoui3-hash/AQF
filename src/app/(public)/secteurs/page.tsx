@@ -24,7 +24,7 @@ import { PageSection } from "@/components/ui/PageSection";
 
 import { SectorImage } from "@/components/sectors/SectorImage";
 
-import { getSectors } from "@/lib/content";
+import { getContentLabels, getSectors, labelOf } from "@/lib/content";
 
 
 
@@ -46,7 +46,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
 
 export default async function SecteursPage() {
 
-  const sectors = await getSectors();
+  const [sectors, labels] = await Promise.all([getSectors(), getContentLabels()]);
 
 
 
@@ -56,7 +56,7 @@ export default async function SecteursPage() {
 
       <PageHero
 
-        title="Secteurs Cibles"
+        title={labelOf(labels, "sectors", "Secteurs")}
 
         subtitle="Une expertise sectorielle reconnue pour les domaines les plus exigeants."
 

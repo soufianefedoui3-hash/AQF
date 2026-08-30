@@ -7,6 +7,7 @@ import {
   DEFAULT_GED_SERVICE,
   DEFAULT_PAGE_CONTENT,
   DEFAULT_PRODUCT_PACKS,
+  DEFAULT_CONTENT_LABELS,
   DEFAULT_SECTORS,
   DEFAULT_SITE_SETTINGS,
 } from "@/lib/seed-data";
@@ -130,6 +131,16 @@ export async function seedDefaults(): Promise<boolean> {
           [newId(), name, order]
         );
       });
+    });
+
+    seedIfEmpty("ContentLabel", () => {
+      const now = new Date().toISOString();
+      for (const [id, label] of Object.entries(DEFAULT_CONTENT_LABELS)) {
+        execute(
+          `INSERT INTO "ContentLabel" ("id", "label", "updatedAt") VALUES (?, ?, ?)`,
+          [id, label, now]
+        );
+      }
     });
 
     seedIfEmpty("ProductPack", () => {

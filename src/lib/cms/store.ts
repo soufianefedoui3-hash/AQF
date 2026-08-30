@@ -1,4 +1,5 @@
 import { execute, newId, query, queryOne, readyDb } from "@/lib/db";
+import { DEFAULT_CONTENT_LABELS } from "@/lib/seed-data";
 import { toLocalImageUrl } from "@/lib/placeholder-images";
 
 export type CmsOk<T> = { ok: true; data: T };
@@ -125,6 +126,12 @@ export type GedRow = {
   updatedAt: Date;
 };
 
+export type LabelRow = {
+  id: string;
+  label: string;
+  updatedAt: Date;
+};
+
 export type PackRow = {
   id: string;
   name: string;
@@ -228,6 +235,14 @@ function mapGed(row: Record<string, unknown>): GedRow {
     title: asString(row.title),
     description: asString(row.description),
     imageUrl: localImage(row.imageUrl),
+    updatedAt: asDate(row.updatedAt),
+  };
+}
+
+function mapLabel(row: Record<string, unknown>): LabelRow {
+  return {
+    id: asString(row.id),
+    label: asString(row.label),
     updatedAt: asDate(row.updatedAt),
   };
 }
@@ -365,8 +380,59 @@ export async function getNewsById(id: string): Promise<NewsRow | null> {
   return row ? mapNews(row) : null;
 }
 
+export async function ensureDefaultLabels(): Promise<void> {
+  await readyDb();
+  const now = nowIso();
+  for (const [id, label] of Object.entries(DEFAULT_CONTENT_LABELS)) {
+    const existing = queryOne(`SELECT "id" FROM "ContentLabel" WHERE "id" = ?`, [id]);
+    if (!existing) {
+      execute(
+        `INSERT INTO "ContentLabel" ("id", "label", "updatedAt") VALUES (?, ?, ?)`,
+        [id, label, now]
+      );
+    }
+  }
+}
+
+export async function listLabels(): Promise<LabelRow[]> {
+  await readyDb();
+  await ensureDefaultLabels();
+  return query(`SELECT * FROM "ContentLabel"`).rows.map(mapLabel);
+}
+
+export async function upsertLabel(data: {
+  id: string;
+  label: string;
+}): Promise<CmsResult<LabelRow>> {
+  return withDb(async () => {
+    const id = data.id.trim();
+    if (!id) throw new Error("Identifiant de libellé requis");
+    if (!Object.prototype.hasOwnProperty.call(DEFAULT_CONTENT_LABELS, id)) {
+      throw new Error("Libellé inconnu");
+    }
+    const fallback = DEFAULT_CONTENT_LABELS[id] || id;
+    const label = asString(data.label).trim() || fallback;
+    const updatedAt = nowIso();
+    const existing = queryOne(`SELECT "id" FROM "ContentLabel" WHERE "id" = ?`, [id]);
+    if (existing) {
+      execute(`UPDATE "ContentLabel" SET "label" = ?, "updatedAt" = ? WHERE "id" = ?`, [
+        label,
+        updatedAt,
+        id,
+      ]);
+    } else {
+      execute(`INSERT INTO "ContentLabel" ("id", "label", "updatedAt") VALUES (?, ?, ?)`, [
+        id,
+        label,
+        updatedAt,
+      ]);
+    }
+    return mapLabel({ id, label, updatedAt });
+  }, "Impossible d'enregistrer le libellé");
+}
+
 export async function loadAdminContent() {
-  const [about, team, sectors, careers, settings, pages, ged] = await Promise.all([
+  const [about, team, sectors, careers, settings, pages, ged, labelRows] = await Promise.all([
     listAboutSections(),
     listTeamMembers(),
     listSectors(),
@@ -374,8 +440,13 @@ export async function loadAdminContent() {
     getSettingsRow(),
     listPages(),
     getGedRow(),
+    listLabels(),
   ]);
-  return { about, team, sectors, careers, settings, pages, ged };
+  const labels = { ...DEFAULT_CONTENT_LABELS };
+  for (const row of labelRows) {
+    if (row.label.trim()) labels[row.id] = row.label.trim();
+  }
+  return { about, team, sectors, careers, settings, pages, ged, labels };
 }
 
 export async function upsertAbout(data: {

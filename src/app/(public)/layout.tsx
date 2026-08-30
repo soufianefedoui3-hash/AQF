@@ -1,7 +1,7 @@
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { WhatsAppWidget } from "@/components/layout/WhatsAppWidget";
-import { getSiteSettings } from "@/lib/content";
+import { getNavLinks, getSiteSettings } from "@/lib/content";
 
 /** Always fetch fresh CMS data so admin edits appear immediately. */
 export const dynamic = "force-dynamic";
@@ -34,9 +34,11 @@ export default async function PublicLayout({
     console.error("[layout] site settings failed:", error);
   }
 
+  const navLinks = await getNavLinks();
+
   return (
     <div className="flex min-h-screen flex-col">
-      <Navbar />
+      <Navbar links={navLinks} />
       <main className="flex-1">{children}</main>
       <Footer />
       <WhatsAppWidget phone={settings.whatsappNumber} />

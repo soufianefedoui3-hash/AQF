@@ -12,6 +12,8 @@ import { Menu, X } from "lucide-react";
 
 import { NAV_LINKS } from "@/lib/constants";
 
+export type NavLinkItem = { href: string; label: string };
+
 import { Button } from "@/components/ui/Button";
 
 import { Logo } from "@/components/brand/Logo";
@@ -22,7 +24,8 @@ import { ConsultationModal } from "@/components/forms/ConsultationModal";
 
 
 
-export function Navbar() {
+export function Navbar({ links }: { links?: readonly NavLinkItem[] }) {
+  const navLinks = links && links.length > 0 ? links : NAV_LINKS;
 
   const pathname = usePathname();
 
@@ -86,7 +89,7 @@ export function Navbar() {
 
           <div className="hidden min-w-0 flex-1 items-center justify-center gap-1 lg:flex">
 
-            {NAV_LINKS.map((link) => {
+            {navLinks.map((link) => {
 
               const active = pathname === link.href;
 
@@ -162,7 +165,7 @@ export function Navbar() {
 
             <div className="flex flex-col gap-1">
 
-              {NAV_LINKS.map((link) => (
+              {navLinks.map((link) => (
 
                 <Link
 

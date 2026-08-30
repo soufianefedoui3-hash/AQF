@@ -174,6 +174,12 @@ export const SQLITE_SCHEMA_SQL = [
     "createdAt" TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
 
+  `CREATE TABLE IF NOT EXISTS "ContentLabel" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "label" TEXT NOT NULL,
+    "updatedAt" TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+
   `CREATE TABLE IF NOT EXISTS "JobApplication" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "positionName" TEXT NOT NULL,

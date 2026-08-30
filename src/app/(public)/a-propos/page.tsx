@@ -1,19 +1,22 @@
 import { Users, FileText, ListChecks } from "lucide-react";
 import { PageHero } from "@/components/ui/PageHero";
 import { PageSection, ContentCard } from "@/components/ui/PageSection";
-import { getAboutData } from "@/lib/content";
+import { getAboutData, getContentLabels, labelOf } from "@/lib/content";
 import { normalizeImageUrl } from "@/lib/news";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function AboutPage() {
-  const { sections, team } = await getAboutData();
+  const [{ sections, team }, labels] = await Promise.all([
+    getAboutData(),
+    getContentLabels(),
+  ]);
 
   return (
     <>
       <PageHero
-        title="À propos de AQF"
+        title={labelOf(labels, "about", "À propos")}
         subtitle="Notre mission, notre équipe et notre méthode d'accompagnement."
       />
 
@@ -47,7 +50,9 @@ export default async function AboutPage() {
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent-100">
               <Users className="h-5 w-5 text-accent-700" />
             </div>
-            <h2 className="text-2xl font-bold text-primary-900">Portfolios — Notre Équipe</h2>
+            <h2 className="text-2xl font-bold text-primary-900">
+              {labelOf(labels, "team", "Équipe")}
+            </h2>
           </div>
 
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">

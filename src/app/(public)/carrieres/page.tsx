@@ -2,7 +2,12 @@ import { Mail, Phone } from "lucide-react";
 import { PageHero } from "@/components/ui/PageHero";
 import { PageSection, ContentCard } from "@/components/ui/PageSection";
 import { CareersApplicationForm } from "@/components/forms/CareersApplicationForm";
-import { getCareersExtraSections, getCareersSettings } from "@/lib/content";
+import {
+  getCareersExtraSections,
+  getCareersSettings,
+  getContentLabels,
+  labelOf,
+} from "@/lib/content";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +24,10 @@ export default async function CarrieresPage() {
       phone: "+212 600 000 000",
     };
   }
-  const extraSections = await getCareersExtraSections();
+  const [extraSections, labels] = await Promise.all([
+    getCareersExtraSections(),
+    getContentLabels(),
+  ]);
 
   const phone = String(settings.phone || "").trim();
   const email = String(settings.email || "").trim();
@@ -28,7 +36,10 @@ export default async function CarrieresPage() {
   return (
     <>
       <PageHero
-        title={String(settings.title || "").trim() || "Votre expertise, notre force"}
+        title={
+          String(settings.title || "").trim() ||
+          labelOf(labels, "careers", "Votre expertise, notre force")
+        }
         subtitle="Rejoignez AQF et contribuez à l'excellence qualité."
       />
 

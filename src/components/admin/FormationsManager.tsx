@@ -14,7 +14,7 @@ interface FormationType {
   active: boolean;
 }
 
-export function FormationsManager() {
+export function FormationsManager({ heading }: { heading?: string }) {
   const [formations, setFormations] = useState<FormationType[]>([]);
   const [loading, setLoading] = useState(true);
   const [newName, setNewName] = useState("");
@@ -151,7 +151,7 @@ export function FormationsManager() {
 
       <div className="rounded-2xl border border-primary-100 bg-white p-6">
         <h3 className="mb-4 font-semibold text-primary-900">
-          Formations disponibles ({formations.length})
+          {heading || "Formations disponibles"} ({formations.length})
         </h3>
 
         {formations.length === 0 ? (

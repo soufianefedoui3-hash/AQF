@@ -2,27 +2,35 @@ import Link from "next/link";
 import { Building2, GraduationCap, ClipboardCheck, Package, ArrowRight } from "lucide-react";
 import { PageHero } from "@/components/ui/PageHero";
 import { PageSection } from "@/components/ui/PageSection";
-import { SERVICE_LINKS } from "@/lib/constants";
+import { getContentLabels, getServiceLinks, labelOf } from "@/lib/content";
 
-const ICONS = {
-  Accompagnement: Building2,
-  "Formation Qualité": GraduationCap,
-  Audit: ClipboardCheck,
-  "Produits & Services": Package,
+const ICONS: Record<string, typeof Package> = {
+  "/services/accompagnement": Building2,
+  "/services/formation": GraduationCap,
+  "/services/audit": ClipboardCheck,
+  "/services/produits": Package,
 };
 
-export default function ServicesPage() {
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+export default async function ServicesPage() {
+  const [services, labels] = await Promise.all([
+    getServiceLinks(),
+    getContentLabels(),
+  ]);
+
   return (
     <>
       <PageHero
-        title="Nos Services"
+        title={labelOf(labels, "services", "Nos Services")}
         subtitle="Des solutions complètes pour votre excellence en qualité, formation et audit."
       />
 
       <PageSection>
         <div className="grid gap-6 md:grid-cols-2 md:gap-8">
-          {SERVICE_LINKS.map((service) => {
-            const Icon = ICONS[service.title as keyof typeof ICONS] || Package;
+          {services.map((service) => {
+            const Icon = ICONS[service.href] || Package;
             return (
               <Link
                 key={service.href}
