@@ -129,4 +129,6 @@ export function newId(): string {
 export function resetDbCache(): void {
   globalForDb.aqfSqlite = undefined;
   globalForDb.aqfSchemaReady = false;
+  const globalForPath = globalThis as unknown as { aqfSqlitePath?: string };
+  globalForPath.aqfSqlitePath = undefined;
 }

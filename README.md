@@ -51,7 +51,7 @@ ADMIN_EMAIL="admin@aqf.ma"
 ADMIN_PASSWORD="Admin@AQF2026"
 ```
 
-Optionnel : `DATABASE_PATH="./data/aqf.sqlite"`, `SETUP_SECRET`, `ADMIN_FORCE_RESET=true`.
+Optionnel : `DATABASE_PATH="/home/u784461488/domains/aqf.ma/data/aqf.sqlite"` (chemin absolu persistant — ne pas utiliser `./data/aqf.sqlite` sur Hostinger), `SETUP_SECRET`, `ADMIN_FORCE_RESET=true`.
 
 Si un ancien fichier `prisma/production.db` existe déjà, il est réutilisé automatiquement.
 
