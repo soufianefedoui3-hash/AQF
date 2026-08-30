@@ -30,8 +30,8 @@ export function TabExtraBlocksEditor({
       <div>
         <h3 className="text-lg font-semibold text-primary-900">Blocs modulaires</h3>
         <p className="mt-1 text-sm text-text-muted">
-          Ajoutez des titres, paragraphes, cartes ou boutons d&apos;action. Ils apparaissent
-          sur la page publique correspondante.
+          Ajoutez titres, alertes, citations, grilles, FAQ, vidéos, statistiques et plus.
+          Ils apparaissent sur la page publique correspondante.
         </p>
       </div>
       <PageBlockBuilder blocks={blocks} saving={saving} onChange={setBlocks} />
