@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sessionFromRequest } from "@/lib/auth";
 import { DEFAULT_ADMIN_CONTENT } from "@/lib/seed-data";
+import { isProtectedContentTab } from "@/lib/page-blocks";
 import { revalidateCms } from "@/lib/revalidate-cms";
 import {
   deleteAbout,
@@ -179,10 +180,15 @@ export async function PUT(request: NextRequest) {
           blocks: data.blocks,
         });
         break;
-      case "custom-page-delete":
-        if (!data.id) return jsonError("ID requis", 400);
-        result = await deleteCustomPage(String(data.id));
+      case "custom-page-delete": {
+        const id = data.id ? String(data.id).trim() : "";
+        if (!id) return jsonError("ID requis", 400);
+        if (isProtectedContentTab(id)) {
+          return jsonError("Cette page système ne peut pas être supprimée", 400);
+        }
+        result = await deleteCustomPage(id);
         break;
+      }
       default:
         return jsonError("Section invalide", 400);
     }

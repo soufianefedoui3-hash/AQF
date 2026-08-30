@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { Input, Textarea } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -25,6 +25,7 @@ import {
 import {
   customPageIdFromTab,
   customPageTabId,
+  isProtectedContentTab,
   normalizePageSlug,
   parsePageBlocks,
   type PageBlock,
@@ -134,8 +135,8 @@ export default function ContentPage() {
   const [newShowInNav, setNewShowInNav] = useState(true);
   const [newSlugTouched, setNewSlugTouched] = useState(false);
 
-  const loadContent = useCallback(async () => {
-    setLoading(true);
+  const loadContent = useCallback(async (options?: { silent?: boolean }) => {
+    if (!options?.silent) setLoading(true);
     try {
       const result = await adminFetch<Record<string, unknown>>("/api/admin/content");
       if (!result.ok) {
@@ -172,7 +173,7 @@ export default function ContentPage() {
     } catch {
       toast.error("Erreur de connexion");
     } finally {
-      setLoading(false);
+      if (!options?.silent) setLoading(false);
     }
   }, []);
 
@@ -291,25 +292,90 @@ export default function ContentPage() {
     setActiveTab(customPageTabId(String((created as { id: string }).id)));
   }
 
+  async function removeCustomPage(page: CustomPageItem) {
+    if (isProtectedContentTab(page.id)) {
+      toast.error("Cette page système ne peut pas être supprimée");
+      return;
+    }
+    const label = page.title.trim() || page.slug || "cette page";
+    if (!confirm(`Supprimer définitivement la page « ${label} » et tout son contenu ?`)) {
+      return;
+    }
+
+    const previousPages = customPages;
+    const previousTab = activeTab;
+    setCustomPages((list) => list.filter((item) => item.id !== page.id));
+    setActiveTab("about");
+    setSaving(true);
+    try {
+      const res = await fetch("/api/admin/content", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ section: "custom-page-delete", data: { id: page.id } }),
+      });
+      if (!res.ok) {
+        setCustomPages(previousPages);
+        setActiveTab(previousTab);
+        toast.error(await readErrorMessage(res));
+        return;
+      }
+      toast.success("Page supprimée");
+      await loadContent({ silent: true });
+    } catch {
+      setCustomPages(previousPages);
+      setActiveTab(previousTab);
+      toast.error("Erreur de connexion");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <div>
       <h2 className="mb-6 text-2xl font-bold text-primary-900">Contenu & Pages</h2>
 
       <div className="mb-6 flex flex-wrap gap-2">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setActiveTab(tab.id)}
-            className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
-              activeTab === tab.id
-                ? "bg-primary-900 text-white shadow-sm"
-                : "border border-primary-100 bg-white text-text-muted hover:bg-accent-50"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+        {tabs.map((tab) => {
+          const customId = customPageIdFromTab(tab.id);
+          const customPage = customId
+            ? customPages.find((page) => page.id === customId)
+            : undefined;
+          const active = activeTab === tab.id;
+          return (
+            <div
+              key={tab.id}
+              className={`inline-flex items-center rounded-lg text-sm font-medium transition ${
+                active
+                  ? "bg-primary-900 text-white shadow-sm"
+                  : "border border-primary-100 bg-white text-text-muted"
+              }`}
+            >
+              <button
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-4 py-2 ${active ? "" : "hover:bg-accent-50"} rounded-lg`}
+              >
+                {tab.label}
+              </button>
+              {customPage ? (
+                <button
+                  type="button"
+                  disabled={saving}
+                  title="Supprimer cette page"
+                  aria-label={`Supprimer ${tab.label}`}
+                  onClick={() => removeCustomPage(customPage)}
+                  className={`mr-1 rounded-md p-1.5 transition ${
+                    active
+                      ? "text-white/80 hover:bg-white/15 hover:text-white"
+                      : "text-text-muted hover:bg-red-50 hover:text-red-600"
+                  }`}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              ) : null}
+            </div>
+          );
+        })}
         <button
           type="button"
           onClick={() => {
@@ -394,14 +460,7 @@ export default function ContentPage() {
             const result = await save("custom-page", data);
             if (result) await loadContent();
           }}
-          onDelete={async () => {
-            if (!confirm("Supprimer définitivement cette page ?")) return;
-            const ok = await save("custom-page-delete", { id: activeCustom.id });
-            if (ok) {
-              setActiveTab("about");
-              await loadContent();
-            }
-          }}
+          onDelete={() => removeCustomPage(activeCustom)}
         />
       )}
 
@@ -699,6 +758,13 @@ function CustomPageEditor({
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border border-primary-100 bg-white p-5 sm:p-6">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h3 className="font-semibold text-primary-900">Paramètres de la page</h3>
+          <Button type="button" variant="danger" size="sm" loading={saving} onClick={onDelete}>
+            <Trash2 className="h-4 w-4" />
+            Supprimer cette page
+          </Button>
+        </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <Input
             label="Nom de la page"
@@ -740,9 +806,6 @@ function CustomPageEditor({
             }
           >
             Enregistrer la page
-          </Button>
-          <Button type="button" variant="danger" loading={saving} onClick={onDelete}>
-            Supprimer la page
           </Button>
         </div>
       </div>

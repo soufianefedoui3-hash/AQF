@@ -1,4 +1,5 @@
 import { slugify } from "@/lib/utils";
+import { ADMIN_CONTENT_TAB_IDS } from "@/lib/seed-data";
 
 export const PAGE_BLOCK_TYPES = ["heading", "card", "list", "cta"] as const;
 export type PageBlockType = (typeof PAGE_BLOCK_TYPES)[number];
@@ -140,4 +141,8 @@ export function customPageTabId(id: string): string {
 
 export function customPageIdFromTab(tabId: string): string | null {
   return tabId.startsWith("custom:") ? tabId.slice("custom:".length) : null;
+}
+
+export function isProtectedContentTab(id: string): boolean {
+  return (ADMIN_CONTENT_TAB_IDS as readonly string[]).includes(id);
 }

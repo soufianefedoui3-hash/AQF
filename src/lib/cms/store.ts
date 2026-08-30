@@ -2,6 +2,7 @@ import { execute, newId, query, queryOne, readyDb } from "@/lib/db";
 import { DEFAULT_CONTENT_LABELS } from "@/lib/seed-data";
 import { toLocalImageUrl } from "@/lib/placeholder-images";
 import {
+  isProtectedContentTab,
   isReservedPageSlug,
   normalizePageSlug,
   parsePageBlocks,
@@ -558,13 +559,18 @@ export async function upsertCustomPage(data: {
 
 export async function deleteCustomPage(
   id: string
-): Promise<CmsResult<CustomPageRow | true>> {
+): Promise<CmsResult<CustomPageRow>> {
   return withDb(async () => {
     const key = id.trim();
     if (!key) throw new Error("Identifiant de page requis");
+    if (isProtectedContentTab(key)) {
+      throw new Error("Cette page système ne peut pas être supprimée");
+    }
     const existing = queryOne(`SELECT * FROM "CustomPage" WHERE "id" = ?`, [key]);
-    execute(`DELETE FROM "CustomPage" WHERE "id" = ?`, [key]);
-    return existing ? mapCustomPage(existing) : (true as const);
+    if (!existing) throw new Error("Page introuvable");
+    const result = execute(`DELETE FROM "CustomPage" WHERE "id" = ?`, [key]);
+    if (!result.ok) throw new Error(result.error || "Suppression impossible");
+    return mapCustomPage(existing);
   }, "Impossible de supprimer la page");
 }
 
