@@ -42,21 +42,25 @@ function wrapStatement(stmt: RawStatement): SqlStatement {
 }
 
 function applyPragmas(raw: RawDb): void {
-  try {
-    if (typeof raw.pragma === "function") {
-      raw.pragma("journal_mode = WAL");
-      raw.pragma("foreign_keys = ON");
-      raw.pragma("busy_timeout = 5000");
-      return;
+  // Always use exec — node:sqlite's pragma() helper is not the same as
+  // better-sqlite3 and can no-op or block on Hostinger.
+  const pragmas = [
+    "PRAGMA busy_timeout = 8000",
+    "PRAGMA journal_mode = WAL",
+    "PRAGMA synchronous = NORMAL",
+    "PRAGMA foreign_keys = ON",
+    "PRAGMA temp_store = MEMORY",
+  ];
+  for (const sql of pragmas) {
+    try {
+      raw.exec(sql);
+    } catch (error) {
+      console.warn(
+        "[db] PRAGMA failed:",
+        sql,
+        error instanceof Error ? error.message : error
+      );
     }
-    raw.exec("PRAGMA journal_mode = WAL");
-    raw.exec("PRAGMA foreign_keys = ON");
-    raw.exec("PRAGMA busy_timeout = 5000");
-  } catch (error) {
-    console.warn(
-      "[db] PRAGMA setup skipped:",
-      error instanceof Error ? error.message : error
-    );
   }
 }
 
@@ -79,10 +83,16 @@ function openNodeSqlite(filePath: string): SqlDatabase | null {
     // Literal require so Next can externalize node:sqlite.
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const nodeSqlite = require("node:sqlite") as {
-      DatabaseSync?: new (path: string) => RawDb;
+      DatabaseSync?: new (path: string, options?: { timeout?: number }) => RawDb;
     };
     if (!nodeSqlite.DatabaseSync) return null;
-    return wrapRaw(filePath, "node:sqlite", new nodeSqlite.DatabaseSync(filePath));
+    let raw: RawDb;
+    try {
+      raw = new nodeSqlite.DatabaseSync(filePath, { timeout: 8000 });
+    } catch {
+      raw = new nodeSqlite.DatabaseSync(filePath);
+    }
+    return wrapRaw(filePath, "node:sqlite", raw);
   } catch (error) {
     console.warn(
       "[db] node:sqlite unavailable:",
@@ -96,8 +106,11 @@ function openBetterSqlite(filePath: string): SqlDatabase | null {
   try {
     // Literal require so Next can externalize better-sqlite3.
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const BetterSqlite = require("better-sqlite3") as new (path: string) => RawDb;
-    return wrapRaw(filePath, "better-sqlite3", new BetterSqlite(filePath));
+    const BetterSqlite = require("better-sqlite3") as new (
+      path: string,
+      options?: { timeout?: number }
+    ) => RawDb;
+    return wrapRaw(filePath, "better-sqlite3", new BetterSqlite(filePath, { timeout: 8000 }));
   } catch (error) {
     console.warn(
       "[db] better-sqlite3 unavailable:",

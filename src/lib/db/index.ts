@@ -23,31 +23,26 @@ export {
 };
 
 /**
- * Call from server pages / route handlers that need a ready database.
- * Safe to invoke on every request — schema and seed run once per process.
+ * Open + schema only. Seed (bcrypt) runs in the background so Hostinger
+ * requests never sit on an 8s timeout while the hash is computed.
  */
-async function readyDbInner(): Promise<boolean> {
-  const schemaOk = ensureSchema();
-  if (!schemaOk) return false;
-  return await ensureSeeded();
-}
-
-export async function readyDb(timeoutMs = 8000): Promise<boolean> {
+export async function readyDb(): Promise<boolean> {
   try {
-    return await Promise.race([
-      readyDbInner(),
-      new Promise<boolean>((resolve) => {
-        setTimeout(() => {
-          console.error("[db] readyDb timed out after", timeoutMs, "ms");
-          resolve(false);
-        }, timeoutMs);
-      }),
-    ]);
+    if (!ensureSchema() || !getDb()) {
+      return false;
+    }
+    void ensureSeeded().catch((error) => {
+      console.warn(
+        "[db] background seed failed:",
+        error instanceof Error ? error.message : error
+      );
+    });
+    return true;
   } catch (error) {
     console.error(
       "[db] readyDb failed:",
       error instanceof Error ? error.message : error
     );
-    return false;
+    return getDb() !== null;
   }
 }
