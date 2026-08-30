@@ -28,10 +28,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" className="scroll-smooth">
-      <head>
-        {/* Stable path — Hostinger/LiteSpeed can serve this even when a hashed /_next/static/css/*.css 404s */}
-        <link rel="stylesheet" href="/styles/aqf.css" />
-      </head>
       <body className="font-sans antialiased">
         {children}
         <ClientToasterWrapper />
