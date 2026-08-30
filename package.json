@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start -H 0.0.0.0",
+    "start": "node --import ./scripts/safe-http-close.mjs ./node_modules/next/dist/bin/next start -H 0.0.0.0",
     "lint": "next lint",
     "clean": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true}); try{require('fs').rmSync('node_modules/.cache',{recursive:true,force:true})}catch(e){}\"",
     "db:init": "npx tsx scripts/init-sqlite.ts",

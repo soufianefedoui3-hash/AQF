@@ -58,7 +58,7 @@ Si un ancien fichier `prisma/production.db` existe déjà, il est réutilisé au
 | Commande Hostinger | Script |
 |--------------------|--------|
 | Build | `npm run build` (`next build`) |
-| Start | `npm start` (`next start`) |
+| Start | `npm start` (`next start -H 0.0.0.0`) |
 
 Après chaque déploiement : **hPanel → Cache → Clear cache** (et CDN si activé).
 
