@@ -1,90 +1,94 @@
 import { forwardRef, useId } from "react";
+import { LOGO_PATH } from "@/lib/brand";
 import { type CertificateData, formatCertificateDate } from "@/lib/certificate";
 
 const TEAL = "#0c7f88";
 const TEAL_DEEP = "#0a5f66";
-const TEAL_MID = "#14919b";
-const INK = "#1a1f20";
+const INK = "#1a1a1a";
 const WHITE = "#ffffff";
-const SANS = '"Segoe UI", Arial, Helvetica, sans-serif';
+const SANS = 'Arial, "Helvetica Neue", Helvetica, sans-serif';
+const SERIF = 'Georgia, "Times New Roman", Times, serif';
 
 export const CERTIFICATE_WIDTH = 1123;
 export const CERTIFICATE_HEIGHT = 794;
 
-const PLUS_FIELD =
-  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 18 18'%3E%3Cpath d='M8.15 4.2h1.7v9.6h-1.7zM4.2 8.15h9.6v1.7H4.2z' fill='%230c7f88' fill-opacity='0.22'/%3E%3C/svg%3E\")";
+const PLUS_GUTTER =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'%3E%3Cpath d='M6.1 2.4h1.8v9.2H6.1zM2.4 6.1h9.2v1.8H2.4z' fill='%230c7f88' fill-opacity='0.38'/%3E%3C/svg%3E\")";
 
-function AqfMark({ size = 92, gid = "aqf-mark" }: { size?: number; gid?: string }) {
+function AqfMark({ size = 96, gid = "aqf-mark" }: { size?: number; gid?: string }) {
   return (
-    <svg width={size} height={size * 0.52} viewBox="0 0 200 104" aria-hidden>
+    <svg width={size} height={size * 0.58} viewBox="0 0 220 128" aria-hidden>
       <defs>
-        <linearGradient id={gid} x1="18%" y1="92%" x2="88%" y2="8%">
-          <stop offset="0%" stopColor="#08707a" />
-          <stop offset="55%" stopColor="#14b8c6" />
-          <stop offset="100%" stopColor="#7ee0c8" />
+        <linearGradient id={gid} x1="10%" y1="90%" x2="90%" y2="10%">
+          <stop offset="0%" stopColor="#0a5f66" />
+          <stop offset="100%" stopColor="#1ec8c4" />
         </linearGradient>
       </defs>
-      <path
-        d="M28 92 L52 18 H66 L90 92 H74 L70 78 H48 L44 92 Z M51.2 66 H66.8 L59 40 Z"
-        fill={TEAL_DEEP}
-      />
-      <path d="M62 40 L86 14 L92 20 L74 40 Z" fill="#7ee0c8" />
-      <circle cx="112" cy="54" r="34" fill="none" stroke={`url(#${gid})`} strokeWidth="14" />
-      <path d="M146 28 H196 V40 H158 V50 H188 V62 H158 V74 H196 V86 H146 Z" fill={`url(#${gid})`} />
-      <path d="M108 62 L154 18 L162 26 L122 64 Z" fill="#7ee0c8" />
+      <path d="M18 118 L58 14 H76 L116 118 H96 L88 94 H46 L38 118 Z M50 78 H84 L67 32 Z" fill="#2a3336" />
+      <circle cx="128" cy="64" r="38" fill="none" stroke={`url(#${gid})`} strokeWidth="13" />
+      <path d="M122 78 L154 18 L168 26 L138 82 Z" fill={TEAL} />
+      <path d="M168 28 H214 V42 H184 V56 H208 V68 H184 V82 H214 V96 H168 Z" fill="#2a3336" />
+      <path d="M176 22 L196 4 L204 12 L186 28 Z" fill="#7ee0c8" />
     </svg>
   );
 }
 
 function DiamondDivider() {
   return (
-    <svg width="520" height="18" viewBox="0 0 520 18" aria-hidden>
-      <path d="M8 9 H232" stroke={TEAL} strokeWidth="1.8" />
-      <path d="M244 9 L260 3.2 L276 9 L260 14.8 Z" fill={TEAL} />
-      <path d="M288 9 H512" stroke={TEAL} strokeWidth="1.8" />
+    <svg width="440" height="20" viewBox="0 0 440 20" aria-hidden>
+      <path d="M6 10 L34 5 L44 10 L34 15 Z" fill={TEAL} />
+      <path d="M44 10 H198" stroke={TEAL} strokeWidth="1.7" />
+      <path d="M210 10 L220 4.2 L230 10 L220 15.8 Z" fill={TEAL} />
+      <path d="M242 10 H396" stroke={TEAL} strokeWidth="1.7" />
+      <path d="M396 10 L406 5 L434 10 L406 15 Z" fill={TEAL} />
     </svg>
   );
 }
 
-function NameRules({ children }: { children: string }) {
-  const rule = {
-    height: 6,
-    borderTop: `1.6px solid ${TEAL}`,
-    borderBottom: `1.6px solid ${TEAL}`,
-  } as const;
-
+function NameBox({ children }: { children: string }) {
   return (
-    <div style={{ minWidth: 480, maxWidth: 740 }}>
-      <div style={rule} />
-      <p
+    <div
+      style={{
+        minWidth: 460,
+        maxWidth: 720,
+        padding: 4,
+        border: `2.4px solid ${TEAL}`,
+      }}
+    >
+      <div
         style={{
-          margin: 0,
-          padding: "11px 32px",
-          color: TEAL_MID,
-          fontFamily: SANS,
-          fontSize: 34,
-          fontWeight: 800,
-          letterSpacing: "0.04em",
-          lineHeight: 1.15,
+          padding: "12px 42px",
+          border: `1.2px solid ${TEAL}`,
         }}
       >
-        {children}
-      </p>
-      <div style={rule} />
+        <p
+          style={{
+            margin: 0,
+            color: TEAL,
+            fontFamily: SERIF,
+            fontSize: 36,
+            fontWeight: 700,
+            letterSpacing: "0.02em",
+            lineHeight: 1.15,
+          }}
+        >
+          {children}
+        </p>
+      </div>
     </div>
   );
 }
 
 function CornerPlusCluster({ corner }: { corner: "tl" | "tr" | "bl" | "br" }) {
-  const pluses = [];
-  for (let row = 0; row < 4; row += 1) {
-    for (let col = 0; col < 4; col += 1) {
-      pluses.push(
+  const cells = [];
+  for (let row = 0; row < 5; row += 1) {
+    for (let col = 0; col < 5; col += 1) {
+      cells.push(
         <path
           key={`${row}-${col}`}
-          d={`M${4 + col * 11}.3 ${1 + row * 11} h2.4 v6.6 h-2.4z M${1 + col * 11} ${4.3 + row * 11} h8.6 v2.4 H${1 + col * 11}z`}
+          d={`M${3.2 + col * 9}.4 ${1 + row * 9} h1.8 v6.2 h-1.8z M${1 + col * 9} ${3.4 + row * 9} h6.6 v1.8 H${1 + col * 9}z`}
           fill={TEAL}
-          fillOpacity="0.62"
+          fillOpacity="0.7"
         />
       );
     }
@@ -92,114 +96,60 @@ function CornerPlusCluster({ corner }: { corner: "tl" | "tr" | "bl" | "br" }) {
 
   return (
     <svg
-      width="48"
-      height="48"
-      viewBox="0 0 46 46"
+      width="50"
+      height="50"
+      viewBox="0 0 48 48"
       aria-hidden
       style={{
         position: "absolute",
-        top: corner.startsWith("t") ? 10 : undefined,
-        bottom: corner.startsWith("b") ? 10 : undefined,
-        left: corner.endsWith("l") ? 10 : undefined,
-        right: corner.endsWith("r") ? 10 : undefined,
+        top: corner.startsWith("t") ? 6 : undefined,
+        bottom: corner.startsWith("b") ? 6 : undefined,
+        left: corner.endsWith("l") ? 6 : undefined,
+        right: corner.endsWith("r") ? 6 : undefined,
       }}
     >
-      {pluses}
+      {cells}
     </svg>
   );
 }
 
 function AcademySeal({ uid }: { uid: string }) {
-  const spikes = 34;
+  const spikes = 36;
   const points: string[] = [];
   for (let i = 0; i < spikes * 2; i += 1) {
     const angle = (Math.PI * i) / spikes - Math.PI / 2;
-    const radius = i % 2 === 0 ? 58 : 50;
+    const radius = i % 2 === 0 ? 58 : 49;
     points.push(`${60 + radius * Math.cos(angle)},${60 + radius * Math.sin(angle)}`);
   }
   const rimId = `${uid}-seal-rim`;
 
   return (
-    <svg width="116" height="116" viewBox="0 0 120 120" aria-hidden>
+    <svg width="118" height="118" viewBox="0 0 120 120" aria-hidden>
       <polygon points={points.join(" ")} fill={TEAL} />
-      <circle cx="60" cy="60" r="45" fill={TEAL_DEEP} />
+      <circle cx="60" cy="60" r="44" fill={TEAL_DEEP} />
+      <circle cx="60" cy="60" r="40" fill="none" stroke={WHITE} strokeWidth="1.1" />
       <defs>
-        <path id={rimId} d="M60,60 m-33.5,0 a33.5,33.5 0 1,1 67,0 a33.5,33.5 0 1,1 -67,0" />
+        <path id={rimId} d="M60,60 m-32,0 a32,32 0 1,1 64,0 a32,32 0 1,1 -64,0" />
       </defs>
-      <text
-        fill={WHITE}
-        fontFamily={SANS}
-        fontSize="6.6"
-        fontWeight="700"
-        letterSpacing="2.2"
-      >
+      <text fill={WHITE} fontFamily={SANS} fontSize="6.4" fontWeight="700" letterSpacing="2.1">
         <textPath href={`#${rimId}`} startOffset="0%">
           AQF ACADÉMIE · AQF ACADÉMIE ·
         </textPath>
       </text>
-      <g transform="translate(34, 38) scale(0.26)">
-        <AqfMark size={200} gid={`${uid}-seal-mark`} />
-      </g>
-    </svg>
-  );
-}
-
-function Lockup({ uid }: { uid: string }) {
-  return (
-    <div style={{ textAlign: "center" }}>
-      <AqfMark size={118} gid={`${uid}-lockup-mark`} />
-      <p
-        style={{
-          margin: "8px 0 0",
-          color: TEAL_DEEP,
-          fontFamily: SANS,
-          fontSize: 28,
-          fontWeight: 800,
-          letterSpacing: "0.22em",
-          lineHeight: 1,
-        }}
+      <circle cx="60" cy="60" r="18" fill="none" stroke={WHITE} strokeWidth="1" />
+      <text
+        x="60"
+        y="64"
+        textAnchor="middle"
+        fill={WHITE}
+        fontFamily={SANS}
+        fontSize="13"
+        fontWeight="700"
+        letterSpacing="1.2"
       >
         AQF
-      </p>
-      <p
-        style={{
-          margin: "8px 0 0",
-          color: INK,
-          fontFamily: SANS,
-          fontSize: 13,
-          fontWeight: 800,
-          letterSpacing: "0.14em",
-          lineHeight: 1.2,
-        }}
-      >
-        ACADÉMIE DE QUALITÉ
-      </p>
-      <p
-        style={{
-          margin: "2px 0 0",
-          color: INK,
-          fontFamily: SANS,
-          fontSize: 13,
-          fontWeight: 800,
-          letterSpacing: "0.14em",
-          lineHeight: 1.2,
-        }}
-      >
-        ET DE FORMATION
-      </p>
-      <p
-        style={{
-          margin: "7px 0 0",
-          color: INK,
-          fontFamily: SANS,
-          fontSize: 9,
-          fontWeight: 500,
-          letterSpacing: "0.42em",
-        }}
-      >
-        ACCOMPAGNEMENT &amp; FORMATION
-      </p>
-    </div>
+      </text>
+    </svg>
   );
 }
 
@@ -229,8 +179,8 @@ export const CertificatePreview = forwardRef<HTMLDivElement, { data: Certificate
           width: CERTIFICATE_WIDTH,
           height: CERTIFICATE_HEIGHT,
           boxSizing: "border-box",
-          backgroundColor: WHITE,
-          padding: 18,
+          backgroundColor: TEAL,
+          padding: 14,
           color: INK,
           fontFamily: SANS,
         }}
@@ -240,10 +190,17 @@ export const CertificatePreview = forwardRef<HTMLDivElement, { data: Certificate
             position: "relative",
             height: "100%",
             boxSizing: "border-box",
-            padding: 5,
-            border: `3.2px solid ${TEAL}`,
+            padding: 30,
+            backgroundColor: WHITE,
+            backgroundImage: PLUS_GUTTER,
+            backgroundRepeat: "repeat",
           }}
         >
+          <CornerPlusCluster corner="tl" />
+          <CornerPlusCluster corner="tr" />
+          <CornerPlusCluster corner="bl" />
+          <CornerPlusCluster corner="br" />
+
           <div
             style={{
               position: "relative",
@@ -253,42 +210,71 @@ export const CertificatePreview = forwardRef<HTMLDivElement, { data: Certificate
               height: "100%",
               boxSizing: "border-box",
               overflow: "hidden",
-              padding: "16px 36px 14px",
-              border: `1.35px solid ${TEAL}`,
+              padding: "18px 40px 14px",
+              border: `1.6px solid ${TEAL}`,
               backgroundColor: WHITE,
-              backgroundImage: PLUS_FIELD,
-              backgroundRepeat: "repeat",
               textAlign: "center",
             }}
           >
-            <CornerPlusCluster corner="tl" />
-            <CornerPlusCluster corner="tr" />
-            <CornerPlusCluster corner="bl" />
-            <CornerPlusCluster corner="br" />
-
-            <div
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={LOGO_PATH}
+              alt=""
               aria-hidden
               style={{
                 position: "absolute",
-                left: 18,
-                bottom: 28,
-                opacity: 0.09,
+                left: -10,
+                bottom: -8,
+                width: 380,
+                height: "auto",
+                opacity: 0.06,
+                mixBlendMode: "multiply",
                 pointerEvents: "none",
-                transform: "rotate(-8deg)",
+              }}
+            />
+
+            <AqfMark size={108} gid={`${uid}-lockup`} />
+            <p
+              style={{
+                margin: "7px 0 0",
+                color: INK,
+                fontSize: 22,
+                fontWeight: 800,
+                letterSpacing: "0.2em",
               }}
             >
-              <AqfMark size={340} gid={`${uid}-watermark-mark`} />
-            </div>
-
-            <Lockup uid={uid} />
+              AQF
+            </p>
+            <p
+              style={{
+                margin: "5px 0 0",
+                color: INK,
+                fontSize: 12,
+                fontWeight: 700,
+                letterSpacing: "0.16em",
+              }}
+            >
+              ACADÉMIE DE QUALITÉ ET DE FORMATION
+            </p>
+            <p
+              style={{
+                margin: "4px 0 0",
+                color: INK,
+                fontSize: 9.5,
+                fontWeight: 500,
+                letterSpacing: "0.32em",
+              }}
+            >
+              ACCOMPAGNEMENT &amp; FORMATION
+            </p>
 
             <h1
               style={{
                 margin: "16px 0 0",
-                color: TEAL_DEEP,
-                fontFamily: SANS,
+                color: INK,
+                fontFamily: SERIF,
                 fontSize: 34,
-                fontWeight: 800,
+                fontWeight: 700,
                 letterSpacing: "0.06em",
               }}
             >
@@ -310,18 +296,18 @@ export const CertificatePreview = forwardRef<HTMLDivElement, { data: Certificate
               L&apos;ACADÉMIE CERTIFIE QUE
             </p>
 
-            <div style={{ marginTop: 10 }}>
-              <NameRules>{student}</NameRules>
+            <div style={{ marginTop: 11 }}>
+              <NameBox>{student}</NameBox>
             </div>
 
             <p
               style={{
                 margin: "14px 0 0",
-                maxWidth: 800,
+                maxWidth: 820,
                 color: INK,
                 fontSize: 12,
                 fontWeight: 600,
-                letterSpacing: "0.045em",
+                letterSpacing: "0.04em",
                 lineHeight: 1.45,
               }}
             >
@@ -331,7 +317,7 @@ export const CertificatePreview = forwardRef<HTMLDivElement, { data: Certificate
             <p
               style={{
                 margin: "10px 0 0",
-                maxWidth: 800,
+                maxWidth: 820,
                 color: INK,
                 fontSize: 15,
                 fontWeight: 800,
@@ -366,11 +352,11 @@ export const CertificatePreview = forwardRef<HTMLDivElement, { data: Certificate
             <p
               style={{
                 margin: "10px 0 0",
-                maxWidth: 780,
+                maxWidth: 800,
                 color: INK,
                 fontSize: 11,
                 fontWeight: 600,
-                letterSpacing: "0.04em",
+                letterSpacing: "0.035em",
                 lineHeight: 1.55,
               }}
             >
@@ -379,11 +365,11 @@ export const CertificatePreview = forwardRef<HTMLDivElement, { data: Certificate
             <p
               style={{
                 margin: "3px 0 0",
-                maxWidth: 780,
+                maxWidth: 800,
                 color: INK,
                 fontSize: 11,
                 fontWeight: 600,
-                letterSpacing: "0.04em",
+                letterSpacing: "0.035em",
                 lineHeight: 1.55,
               }}
             >
@@ -406,12 +392,12 @@ export const CertificatePreview = forwardRef<HTMLDivElement, { data: Certificate
                 marginTop: "auto",
                 display: "grid",
                 width: "100%",
-                gridTemplateColumns: "1fr 1fr 120px",
+                gridTemplateColumns: "1fr 1fr 122px",
                 alignItems: "end",
-                paddingTop: 8,
+                paddingTop: 10,
               }}
             >
-              <div style={{ textAlign: "left", paddingLeft: 8, alignSelf: "start" }}>
+              <div style={{ textAlign: "left", paddingLeft: 10, alignSelf: "start" }}>
                 <p
                   style={{
                     margin: 0,
@@ -423,7 +409,7 @@ export const CertificatePreview = forwardRef<HTMLDivElement, { data: Certificate
                 >
                   LE DIRECTEUR ACADÉMIQUE
                 </p>
-                <div style={{ height: 84 }} />
+                <div style={{ height: 88 }} />
               </div>
               <div style={{ textAlign: "center", alignSelf: "start" }}>
                 <p
@@ -437,7 +423,7 @@ export const CertificatePreview = forwardRef<HTMLDivElement, { data: Certificate
                 >
                   LE RESPONSABLE PÉDAGOGIQUE
                 </p>
-                <div style={{ height: 84 }} />
+                <div style={{ height: 88 }} />
               </div>
               <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "flex-end" }}>
                 <AcademySeal uid={uid} />
