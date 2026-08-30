@@ -83,7 +83,7 @@ export function CertificateGenerator() {
       const canvas = await html2canvas(node, {
         scale: 3,
         useCORS: true,
-        backgroundColor: "#0c7f88",
+        backgroundColor: "#ffffff",
         width: CERTIFICATE_WIDTH,
         height: CERTIFICATE_HEIGHT,
         windowWidth: CERTIFICATE_WIDTH,
