@@ -26,7 +26,18 @@ import {
   listTeamMembers,
 } from "@/lib/cms/store";
 import { DEFAULT_CONTENT_LABELS } from "@/lib/seed-data";
-import { serviceDescKey } from "@/lib/site-copy";
+import {
+  CLONE_PAGE_KEYS,
+  parseClonedCards,
+  weaveClonedCards,
+  type ClonedCard,
+} from "@/lib/cloned-cards";
+import {
+  exploreDescKey,
+  resolveCopy,
+  serviceDescKey,
+  STAT_INDEXES,
+} from "@/lib/site-copy";
 import { NAV_LINKS, SERVICE_LINKS } from "@/lib/constants";
 
 export const SECTOR_FALLBACK_IMAGE = PLACEHOLDER_GENERIC;
@@ -466,6 +477,71 @@ export async function getServiceLinks() {
     ...link,
     title: labelOf(labels, byHref[link.href] || "", link.title),
     description: labels[serviceDescKey(link.href)] ?? link.description,
+  }));
+}
+
+export async function getClonedCards(key: string): Promise<ClonedCard[]> {
+  try {
+    const page = await getPageRow(key);
+    return parseClonedCards(page?.content);
+  } catch {
+    return [];
+  }
+}
+
+export async function getServiceCards() {
+  const [links, clones] = await Promise.all([
+    getServiceLinks(),
+    getClonedCards(CLONE_PAGE_KEYS.services),
+  ]);
+  return weaveClonedCards(
+    links.map((link) => ({ ...link, id: link.href })),
+    clones,
+    (clone) => ({
+      id: clone.id,
+      href: clone.href || "/",
+      title: clone.title,
+      description: clone.description,
+    })
+  );
+}
+
+export async function getHomepageExploreCards(
+  navLinks: readonly { href: string; label: string }[],
+  labels: Record<string, string>
+) {
+  const clones = await getClonedCards(CLONE_PAGE_KEYS.explore);
+  return weaveClonedCards(
+    navLinks
+      .filter((link) => link.href !== "/")
+      .map((link) => ({
+        id: link.href,
+        href: link.href,
+        label: link.label,
+        description: resolveCopy(labels, exploreDescKey(link.href)),
+      })),
+    clones,
+    (clone) => ({
+      id: clone.id,
+      href: clone.href || "/",
+      label: clone.title,
+      description: clone.description,
+    })
+  );
+}
+
+export async function getHomepageStatCards(labels: Record<string, string>) {
+  const clones = await getClonedCards(CLONE_PAGE_KEYS.stats);
+  const base = STAT_INDEXES.map((slot) => ({
+    id: `stat-${slot}`,
+    slot,
+    value: resolveCopy(labels, `stat_${slot}_value`),
+    label: resolveCopy(labels, `stat_${slot}_label`),
+  }));
+  return weaveClonedCards(base, clones, (clone) => ({
+    id: clone.id,
+    value: clone.value || "",
+    label: clone.label || clone.title,
   }));
 }
 

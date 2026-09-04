@@ -40,7 +40,7 @@ export function VisualItemChrome({
       <div
         data-builder-chrome
         className={cn(
-          "absolute right-2 top-2 z-30 flex max-w-[calc(100%-1rem)] flex-wrap justify-end gap-1",
+          "pointer-events-auto absolute right-2 top-2 z-50 flex max-w-[calc(100%-1rem)] flex-wrap justify-end gap-1",
           editing
             ? "opacity-100"
             : "opacity-0 group-hover/chrome:opacity-100 group-focus-within/chrome:opacity-100"
@@ -56,7 +56,7 @@ export function VisualItemChrome({
           </ToolbarButton>
         ) : null}
         {onDuplicate ? (
-          <ToolbarButton disabled={disabled} onClick={onDuplicate}>
+          <ToolbarButton onClick={onDuplicate}>
             <Copy className="h-3.5 w-3.5" />
             Dupliquer
           </ToolbarButton>
@@ -100,6 +100,10 @@ function ToolbarButton({
       type="button"
       data-builder-chrome
       disabled={disabled}
+      onMouseDown={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+      }}
       onClick={(event) => {
         event.preventDefault();
         event.stopPropagation();

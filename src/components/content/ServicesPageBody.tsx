@@ -11,17 +11,21 @@ const ICONS: Record<string, typeof Package> = {
   "/services/produits": Package,
 };
 
+export type ServiceCardItem = {
+  id?: string;
+  href: string;
+  title: string;
+  description: string;
+};
+
 export function ServicesPageBody({
   services,
   ctaLabel = SITE_COPY_DEFAULTS.service_cta,
   wrapService,
 }: {
-  services: readonly { href: string; title: string; description: string }[];
+  services: readonly ServiceCardItem[];
   ctaLabel?: string;
-  wrapService?: (
-    service: { href: string; title: string; description: string },
-    node: ReactNode
-  ) => ReactNode;
+  wrapService?: (service: ServiceCardItem, node: ReactNode) => ReactNode;
 }) {
   return (
     <PageSection>
@@ -56,7 +60,7 @@ export function ServicesPageBody({
             </Link>
           );
           return (
-            <div key={service.href} className="h-full min-h-0">
+            <div key={service.id || service.href} className="h-full min-h-0">
               {wrapService ? wrapService(service, card) : card}
             </div>
           );

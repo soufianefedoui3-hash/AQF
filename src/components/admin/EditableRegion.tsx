@@ -54,10 +54,9 @@ export function EditableRegion({
       },
       onPersist: (override) =>
         latest.current.onSave(override ?? builder.selected?.values ?? latest.current.values),
-      onDuplicate: () => {
-        if (latest.current.onDuplicate) return latest.current.onDuplicate();
-        return latest.current.onSave({ ...latest.current.values });
-      },
+      onDuplicate: latest.current.onDuplicate
+        ? () => latest.current.onDuplicate?.()
+        : undefined,
       onDelete: () => {
         if (latest.current.onDelete) return latest.current.onDelete();
         const empty = Object.fromEntries(
@@ -84,19 +83,7 @@ export function EditableRegion({
           bindSelection();
           builder.openEditor();
         }}
-        onDuplicate={
-          onDuplicate
-            ? () => void onDuplicate()
-            : () => {
-                const copy = Object.fromEntries(
-                  Object.entries(latest.current.values).map(([key, value]) => [
-                    key,
-                    value,
-                  ])
-                );
-                void latest.current.onSave(copy);
-              }
-        }
+        onDuplicate={onDuplicate ? () => void onDuplicate() : undefined}
         onDelete={() => {
           if (!confirm(`Supprimer « ${label} » ?`)) return;
           if (onDelete) {
@@ -162,11 +149,7 @@ function ModalFallback({
         editing={open}
         disabled={disabled}
         onEdit={() => setOpen(true)}
-        onDuplicate={
-          onDuplicate
-            ? () => void onDuplicate()
-            : () => void onSave({ ...values })
-        }
+        onDuplicate={onDuplicate ? () => void onDuplicate() : undefined}
         onDelete={() => {
           if (!confirm(`Supprimer « ${label} » ?`)) return;
           if (onDelete) void onDelete();

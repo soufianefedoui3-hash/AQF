@@ -232,9 +232,10 @@ function HomepageEditable({
 export function sortAboutBlocks(sections: ContentBlock[]): ContentBlock[] {
   const rank = (key: string) =>
     key === "presentation" ? 0 : key === "steps" ? 1 : 2;
-  return [...sections].sort(
-    (a, b) => rank(a.key) - rank(b.key) || a.key.localeCompare(b.key)
-  );
+  return sections
+    .map((section, index) => ({ section, index }))
+    .sort((a, b) => rank(a.section.key) - rank(b.section.key) || a.index - b.index)
+    .map(({ section }) => section);
 }
 
 export function pageBlocks(
@@ -243,8 +244,6 @@ export function pageBlocks(
   extraPrefix: string
 ): ContentBlock[] {
   const primary = pages.find((page) => page.key === primaryKey);
-  const extras = pages
-    .filter((page) => page.key.startsWith(extraPrefix))
-    .sort((a, b) => a.key.localeCompare(b.key));
+  const extras = pages.filter((page) => page.key.startsWith(extraPrefix));
   return primary ? [primary, ...extras] : extras;
 }

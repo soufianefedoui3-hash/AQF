@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import toast from "react-hot-toast";
 import { Plus } from "lucide-react";
 import { BlockInsertDrawer } from "@/components/admin/builder/BlockInsertDrawer";
 import { InsertRail } from "@/components/admin/builder/InsertRail";
@@ -43,6 +44,7 @@ export function VisualBlockCanvas({
   blocksRef.current = blocks;
 
   async function commit(next: PageBlock[]) {
+    blocksRef.current = next;
     onChange(next);
     await onPersist?.(next);
     builder?.markSaved();
@@ -89,6 +91,7 @@ export function VisualBlockCanvas({
     next.splice(index + 1, 0, clone);
     void commit(next);
     bindBlock(clone);
+    toast.success("Bloc dupliqué");
   }
 
   function replaceBlock(nextBlock: PageBlock) {
@@ -162,6 +165,7 @@ export function VisualBlockCanvas({
     const items = [...latest.items];
     items.splice(index + 1, 0, { title: source.title, content: source.content });
     void commit(replaceBlock({ ...latest, items }));
+    toast.success("Carte dupliquée");
   }
 
   function deleteGridItem(blockId: string, index: number) {
@@ -181,6 +185,7 @@ export function VisualBlockCanvas({
     const items = [...latest.items];
     items.splice(index + 1, 0, { value: source.value, label: source.label });
     void commit(replaceBlock({ ...latest, items }));
+    toast.success("Compteur dupliqué");
   }
 
   function deleteStatItem(blockId: string, index: number) {

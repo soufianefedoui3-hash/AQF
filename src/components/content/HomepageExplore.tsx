@@ -8,6 +8,13 @@ export function homepageExploreDescription(href: string): string {
   return SITE_COPY_DEFAULTS[exploreDescKey(href)] || "Rejoignez notre réseau d'experts qualité";
 }
 
+export type ExploreCardItem = {
+  id?: string;
+  href: string;
+  label: string;
+  description?: string;
+};
+
 export function HomepageExplore({
   navLinks,
   title = SITE_COPY_DEFAULTS.explore_title,
@@ -17,12 +24,12 @@ export function HomepageExplore({
   wrapCard,
   wrapCta,
 }: {
-  navLinks: readonly { href: string; label: string }[];
+  navLinks: readonly ExploreCardItem[];
   title?: string;
   ctaLabel?: string;
   descriptions?: Record<string, string>;
   wrapHeader?: (node: ReactNode) => ReactNode;
-  wrapCard?: (link: { href: string; label: string }, node: ReactNode) => ReactNode;
+  wrapCard?: (link: ExploreCardItem, node: ReactNode) => ReactNode;
   wrapCta?: (node: ReactNode) => ReactNode;
 }) {
   const heading = title.trim() ? (
@@ -50,12 +57,15 @@ export function HomepageExplore({
                   href={link.href}
                   title={link.label}
                   description={
-                    descriptions?.[link.href] ?? homepageExploreDescription(link.href)
+                    link.description ??
+                    descriptions?.[link.id || ""] ??
+                    descriptions?.[link.href] ??
+                    homepageExploreDescription(link.href)
                   }
                 />
               );
               return (
-                <div key={link.href} className="h-full min-h-0">
+                <div key={link.id || link.href} className="h-full min-h-0">
                   {wrapCard ? wrapCard(link, card) : card}
                 </div>
               );

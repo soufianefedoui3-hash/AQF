@@ -1,7 +1,12 @@
 import type { ReactNode } from "react";
 import { HOMEPAGE_STATS } from "@/lib/constants";
 
-export type HomepageStatItem = { value: string; label: string };
+export type HomepageStatItem = {
+  id?: string;
+  value: string;
+  label: string;
+  slot?: number;
+};
 
 export function HomepageStats({
   stats = HOMEPAGE_STATS,
@@ -24,7 +29,7 @@ export function HomepageStats({
             </div>
           );
           return (
-            <div key={`${stat.label}-${index}`} className="h-full min-h-0">
+            <div key={stat.id || `${stat.label}-${index}`} className="h-full min-h-0">
               {wrapStat ? wrapStat(stat, index, card) : card}
             </div>
           );

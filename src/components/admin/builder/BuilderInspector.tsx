@@ -42,7 +42,6 @@ export function BuilderInspector({ saving }: { saving?: boolean }) {
             type="button"
             variant="outline"
             size="sm"
-            disabled={saving}
             onClick={() => void selected.onDuplicate?.()}
           >
             Dupliquer

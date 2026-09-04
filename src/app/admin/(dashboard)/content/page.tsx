@@ -34,7 +34,6 @@ import { livePageHref } from "@/lib/preview-pages";
 import {
   exploreDescKey,
   formationBenefitsFromLabels,
-  homepageStatsFromLabels,
   resolveCopy,
   serviceDescKey,
   SITE_COPY_DEFAULTS,
@@ -53,6 +52,13 @@ import {
   parsePageBlocks,
   type PageBlock,
 } from "@/lib/page-blocks";
+import {
+  CLONE_PAGE_KEYS,
+  parseClonedCards,
+  serializeClonedCards,
+  weaveClonedCards,
+  type ClonedCard,
+} from "@/lib/cloned-cards";
 
 interface TeamMember {
   id: string;
@@ -374,6 +380,82 @@ export default function ContentPage() {
     );
   }
 
+  function cardsFromPage(key: string): ClonedCard[] {
+    return parseClonedCards(pages.find((page) => page.key === key)?.content);
+  }
+
+  function writeClonePage(
+    prev: PageContentItem[],
+    key: string,
+    items: ClonedCard[]
+  ): PageContentItem[] {
+    const content = serializeClonedCards(items);
+    if (prev.some((page) => page.key === key)) {
+      return prev.map((page) => (page.key === key ? { ...page, content } : page));
+    }
+    return [...prev, { key, title: "Cartes dupliquées", content }];
+  }
+
+  function applyCloneFields(key: string, id: string, patch: Partial<ClonedCard>) {
+    setPages((prev) => {
+      const current = parseClonedCards(prev.find((page) => page.key === key)?.content);
+      return writeClonePage(
+        prev,
+        key,
+        current.map((item) => (item.id === id ? { ...item, ...patch } : item))
+      );
+    });
+  }
+
+  async function persistClones(key: string, items: ClonedCard[], message?: string) {
+    setPages((prev) => writeClonePage(prev, key, items));
+    const ok = await save(
+      "page",
+      { key, title: "Cartes dupliquées", content: serializeClonedCards(items) },
+      { silent: true }
+    );
+    if (ok && message) toast.success(message);
+    if (!ok) await loadContent({ silent: true });
+    return Boolean(ok);
+  }
+
+  async function addClone(key: string, clone: ClonedCard, message: string) {
+    let next: ClonedCard[] = [];
+    setPages((prev) => {
+      const current = parseClonedCards(prev.find((page) => page.key === key)?.content);
+      next = [...current, clone];
+      return writeClonePage(prev, key, next);
+    });
+    const ok = await save(
+      "page",
+      { key, title: "Cartes dupliquées", content: serializeClonedCards(next) },
+      { silent: true }
+    );
+    if (ok) toast.success(message);
+    else await loadContent({ silent: true });
+    return Boolean(ok);
+  }
+
+  async function duplicatePageSection(
+    source: { key: string; title: string | null; content: string },
+    prefix: string
+  ) {
+    const copy = {
+      key: `${prefix}${crypto.randomUUID()}`,
+      title: source.title || "",
+      content: source.content || "",
+    };
+    setPages((prev) => {
+      const next = [...prev];
+      const index = next.findIndex((page) => page.key === source.key);
+      next.splice(index < 0 ? next.length : index + 1, 0, copy);
+      return next;
+    });
+    const ok = await save("page", copy, { silent: true });
+    if (ok) toast.success("Section dupliquée");
+    else await loadContent({ silent: true });
+  }
+
   async function saveLabels(updates: Record<string, string>): Promise<boolean> {
     applyLabels(updates);
     const items = Object.entries(updates).map(([id, label]) => ({ id, label }));
@@ -415,6 +497,50 @@ export default function ContentPage() {
             : tabLabel("formation") || link.title,
     description: resolveCopy(labels, serviceDescKey(link.href), link.description),
   }));
+  const serviceClones = cardsFromPage(CLONE_PAGE_KEYS.services);
+  const serviceCards = weaveClonedCards(
+    serviceLinks.map((link) => ({ ...link, id: link.href })),
+    serviceClones,
+    (clone) => ({
+      id: clone.id,
+      href: clone.href || "/",
+      title: clone.title,
+      description: clone.description,
+    })
+  );
+  const exploreClones = cardsFromPage(CLONE_PAGE_KEYS.explore);
+  const exploreCards = weaveClonedCards(
+    previewNavLinks
+      .filter((link) => link.href !== "/")
+      .map((link) => ({
+        id: link.href,
+        href: link.href,
+        label: link.label,
+        description: resolveCopy(labels, exploreDescKey(link.href)),
+      })),
+    exploreClones,
+    (clone) => ({
+      id: clone.id,
+      href: clone.href || "/",
+      label: clone.title,
+      description: clone.description,
+    })
+  );
+  const statClones = cardsFromPage(CLONE_PAGE_KEYS.stats);
+  const statCards = weaveClonedCards(
+    STAT_INDEXES.map((slot) => ({
+      id: `stat-${slot}`,
+      slot,
+      value: resolveCopy(labels, `stat_${slot}_value`),
+      label: resolveCopy(labels, `stat_${slot}_label`),
+    })),
+    statClones,
+    (clone) => ({
+      id: clone.id,
+      value: clone.value || "",
+      label: clone.label || clone.title,
+    })
+  );
 
   const previewFooter = {
     email: settings.contactEmail || "contact@aqf.ma",
@@ -765,18 +891,30 @@ export default function ContentPage() {
                 if (ok) await loadContent({ silent: true });
               }}
               onDuplicate={async () => {
-                const ok = await save(
+                const source = team.find((item) => item.id === member.id);
+                const created = await save(
                   "team",
                   {
                     name: member.name,
                     role: member.role,
                     skills: member.skills,
                     imageUrl: member.imageUrl,
-                    order: team.length,
+                    order: (source?.order ?? team.length) + 1,
                   },
                   { silent: true }
                 );
-                if (ok) await loadContent({ silent: true });
+                if (!created || typeof created !== "object") {
+                  await loadContent({ silent: true });
+                  return;
+                }
+                const copy = created as TeamMember;
+                setTeam((prev) => {
+                  const index = prev.findIndex((item) => item.id === member.id);
+                  const next = [...prev];
+                  next.splice(index < 0 ? next.length : index + 1, 0, copy);
+                  return next;
+                });
+                toast.success("Membre dupliqué");
               }}
             >
               {node}
@@ -800,16 +938,20 @@ export default function ContentPage() {
             if (ok) await loadContent({ silent: true });
           }}
           onDuplicate={async (block) => {
-            const ok = await save(
-              "about",
-              {
-                key: `section-${crypto.randomUUID()}`,
-                title: block.title || "",
-                content: block.content || "",
-              },
-              { silent: true }
-            );
-            if (ok) await loadContent({ silent: true });
+            const copy = {
+              key: `section-${crypto.randomUUID()}`,
+              title: block.title || "",
+              content: block.content || "",
+            };
+            setAbout((prev) => {
+              const index = prev.findIndex((item) => item.key === block.key);
+              const next = [...prev];
+              next.splice(index < 0 ? next.length : index + 1, 0, copy);
+              return next;
+            });
+            const ok = await save("about", copy, { silent: true });
+            if (ok) toast.success("Section dupliquée");
+            else await loadContent({ silent: true });
           }}
         />
       )}
@@ -842,66 +984,78 @@ export default function ContentPage() {
               if (ok) await loadContent({ silent: true });
             }}
             onDuplicate={async (block) => {
-              const ok = await save(
-                "page",
-                {
-                  key: `homepage:${crypto.randomUUID()}`,
-                  title: block.title || "",
-                  content: block.content || "",
-                },
-                { silent: true }
-              );
-              if (ok) await loadContent({ silent: true });
+              await duplicatePageSection(block, "homepage:");
             }}
           />
           <HomepageStats
-            stats={homepageStatsFromLabels(labels)}
-            wrapStat={(stat, index, node) => {
-              const n = STAT_INDEXES[index] ?? 1;
+            stats={statCards}
+            wrapStat={(stat, _index, node) => {
+              const slot = stat.slot;
+              const statId = stat.id || (slot ? `stat-${slot}` : "");
               return (
                 <EditableRegion
-                  label={`Statistique ${n}`}
+                  label={slot ? `Statistique ${slot}` : "Statistique"}
                   disabled={saving}
                   fields={[
                     { key: "value", label: "Valeur" },
                     { key: "label", label: "Libellé" },
                   ]}
                   values={{ value: stat.value, label: stat.label }}
-                  onChange={(next) =>
-                    applyLabels({
-                      [`stat_${n}_value`]: next.value,
-                      [`stat_${n}_label`]: next.label,
-                    })
-                  }
-                  onSave={(next) =>
-                    saveLabels({
-                      [`stat_${n}_value`]: next.value,
-                      [`stat_${n}_label`]: next.label,
-                    })
-                  }
-                  onDuplicate={async () => {
-                    const empty = STAT_INDEXES.find((index) => {
-                      if (index === n) return false;
-                      return !(
-                        labels[`stat_${index}_value`]?.trim() ||
-                        labels[`stat_${index}_label`]?.trim()
-                      );
-                    });
-                    if (!empty) {
-                      toast.error("Tous les compteurs sont déjà utilisés");
+                  onChange={(next) => {
+                    if (slot) {
+                      applyLabels({
+                        [`stat_${slot}_value`]: next.value,
+                        [`stat_${slot}_label`]: next.label,
+                      });
                       return;
                     }
-                    await saveLabels({
-                      [`stat_${empty}_value`]: stat.value,
-                      [`stat_${empty}_label`]: stat.label,
+                    applyCloneFields(CLONE_PAGE_KEYS.stats, statId, {
+                      value: next.value,
+                      label: next.label,
                     });
                   }}
-                  onDelete={() =>
-                    saveLabels({
-                      [`stat_${n}_value`]: "",
-                      [`stat_${n}_label`]: "",
-                    })
-                  }
+                  onSave={(next) => {
+                    if (slot) {
+                      return saveLabels({
+                        [`stat_${slot}_value`]: next.value,
+                        [`stat_${slot}_label`]: next.label,
+                      });
+                    }
+                    return persistClones(
+                      CLONE_PAGE_KEYS.stats,
+                      statClones.map((item) =>
+                        item.id === statId
+                          ? { ...item, value: next.value, label: next.label }
+                          : item
+                      )
+                    );
+                  }}
+                  onDuplicate={async () => {
+                    await addClone(
+                      CLONE_PAGE_KEYS.stats,
+                      {
+                        id: crypto.randomUUID(),
+                        afterId: statId,
+                        title: stat.label,
+                        description: "",
+                        value: stat.value,
+                        label: stat.label,
+                      },
+                      "Compteur dupliqué"
+                    );
+                  }}
+                  onDelete={() => {
+                    if (slot) {
+                      return saveLabels({
+                        [`stat_${slot}_value`]: "",
+                        [`stat_${slot}_label`]: "",
+                      });
+                    }
+                    return persistClones(
+                      CLONE_PAGE_KEYS.stats,
+                      statClones.filter((item) => item.id !== statId)
+                    );
+                  }}
                 >
                   {node}
                 </EditableRegion>
@@ -909,14 +1063,9 @@ export default function ContentPage() {
             }}
           />
           <HomepageExplore
-            navLinks={previewNavLinks}
+            navLinks={exploreCards}
             title={resolveCopy(labels, "explore_title")}
             ctaLabel={resolveCopy(labels, "explore_cta")}
-            descriptions={Object.fromEntries(
-              previewNavLinks
-                .filter((link) => link.href !== "/")
-                .map((link) => [link.href, resolveCopy(labels, exploreDescKey(link.href))])
-            )}
             wrapHeader={(node) => (
               <EditableRegion
                 label="Titre explorer"
@@ -930,31 +1079,66 @@ export default function ContentPage() {
                 {node}
               </EditableRegion>
             )}
-            wrapCard={(link, node) => (
+            wrapCard={(link, node) => {
+              const cardId = link.id || link.href;
+              const isClone = exploreClones.some((item) => item.id === cardId);
+              const description =
+                link.description ?? resolveCopy(labels, exploreDescKey(link.href));
+              return (
               <EditableRegion
                 label={link.label}
                 disabled={saving}
                 fields={[{ key: "description", label: "Description", type: "textarea", rows: 3 }]}
-                values={{ description: resolveCopy(labels, exploreDescKey(link.href)) }}
-                onChange={(next) => applyLabels({ [exploreDescKey(link.href)]: next.description })}
-                onSave={(next) => saveLabels({ [exploreDescKey(link.href)]: next.description })}
-                onDuplicate={async () => {
-                  const ok = await save(
-                    "page",
-                    {
-                      key: `homepage:${crypto.randomUUID()}`,
-                      title: link.label,
-                      content: resolveCopy(labels, exploreDescKey(link.href)),
-                    },
-                    { silent: true }
-                  );
-                  if (ok) await loadContent({ silent: true });
+                values={{ description }}
+                onChange={(next) => {
+                  if (isClone) {
+                    applyCloneFields(CLONE_PAGE_KEYS.explore, cardId, {
+                      description: next.description,
+                    });
+                    return;
+                  }
+                  applyLabels({ [exploreDescKey(link.href)]: next.description });
                 }}
-                onDelete={() => saveLabels({ [exploreDescKey(link.href)]: "" })}
+                onSave={(next) => {
+                  if (isClone) {
+                    return persistClones(
+                      CLONE_PAGE_KEYS.explore,
+                      exploreClones.map((item) =>
+                        item.id === cardId
+                          ? { ...item, description: next.description }
+                          : item
+                      )
+                    );
+                  }
+                  return saveLabels({ [exploreDescKey(link.href)]: next.description });
+                }}
+                onDuplicate={async () => {
+                  await addClone(
+                    CLONE_PAGE_KEYS.explore,
+                    {
+                      id: crypto.randomUUID(),
+                      afterId: cardId,
+                      title: link.label,
+                      description,
+                      href: link.href,
+                    },
+                    "Carte dupliquée"
+                  );
+                }}
+                onDelete={() => {
+                  if (isClone) {
+                    return persistClones(
+                      CLONE_PAGE_KEYS.explore,
+                      exploreClones.filter((item) => item.id !== cardId)
+                    );
+                  }
+                  return saveLabels({ [exploreDescKey(link.href)]: "" });
+                }}
               >
                 {node}
               </EditableRegion>
-            )}
+              );
+            }}
             wrapCta={(node) => (
               <EditableRegion
                 label="Bouton explorer"
@@ -1014,16 +1198,14 @@ export default function ContentPage() {
                   if (ok) await loadContent({ silent: true });
                 }}
                 onDuplicate={async () => {
-                  const ok = await save(
-                    "page",
+                  await duplicatePageSection(
                     {
-                      key: `formation:${crypto.randomUUID()}`,
+                      key: intro?.key || "formation_intro",
                       title: intro?.title || "",
                       content: intro?.content || "",
                     },
-                    { silent: true }
+                    "formation:"
                   );
-                  if (ok) await loadContent({ silent: true });
                 }}
               >
                 {node}
@@ -1053,16 +1235,7 @@ export default function ContentPage() {
                 if (ok) await loadContent({ silent: true });
               }}
               onDuplicate={async () => {
-                const ok = await save(
-                  "page",
-                  {
-                    key: `formation:${crypto.randomUUID()}`,
-                    title: section.title || "",
-                    content: section.content || "",
-                  },
-                  { silent: true }
-                );
-                if (ok) await loadContent({ silent: true });
+                await duplicatePageSection(section, "formation:");
               }}
             >
               {node}
@@ -1239,14 +1412,18 @@ export default function ContentPage() {
                   return;
                 }
                 const created = (await res.json()) as { id?: string };
-                setProductPacks((prev) => [
-                  ...prev,
-                  {
-                    id: created.id || crypto.randomUUID(),
-                    name: pack.name,
-                    description: pack.description,
-                  },
-                ]);
+                const copy = {
+                  id: created.id || crypto.randomUUID(),
+                  name: pack.name,
+                  description: pack.description,
+                };
+                setProductPacks((prev) => {
+                  const index = prev.findIndex((item) => item.id === pack.id);
+                  const next = [...prev];
+                  next.splice(index < 0 ? next.length : index + 1, 0, copy);
+                  return next;
+                });
+                toast.success("Pack dupliqué");
               }}
             >
               {node}
@@ -1348,16 +1525,7 @@ export default function ContentPage() {
                 if (ok) await loadContent({ silent: true });
               }}
               onDuplicate={async () => {
-                const ok = await save(
-                  "page",
-                  {
-                    key: `ged:${crypto.randomUUID()}`,
-                    title: section.title || "",
-                    content: section.content || "",
-                  },
-                  { silent: true }
-                );
-                if (ok) await loadContent({ silent: true });
+                await duplicatePageSection(section, "ged:");
               }}
             >
               {node}
@@ -1391,9 +1559,20 @@ export default function ContentPage() {
 
       {activeTab === "services" && (
         <ServicesPageBody
-          services={serviceLinks}
+          services={serviceCards}
           ctaLabel={resolveCopy(labels, "service_cta")}
-          wrapService={(service, node) => (
+          wrapService={(service, node) => {
+            const cardId = service.id || service.href;
+            const isClone = serviceClones.some((item) => item.id === cardId);
+            const titleId =
+              service.href.includes("accompagnement")
+                ? "accompagnement"
+                : service.href.includes("audit")
+                  ? "audit"
+                  : service.href.includes("produits")
+                    ? "products"
+                    : "formation";
+            return (
             <EditableRegion
               label={service.title}
               disabled={saving}
@@ -1408,14 +1587,14 @@ export default function ContentPage() {
                 cta: resolveCopy(labels, "service_cta"),
               }}
               onChange={(next) => {
-                const titleId =
-                  service.href.includes("accompagnement")
-                    ? "accompagnement"
-                    : service.href.includes("audit")
-                      ? "audit"
-                      : service.href.includes("produits")
-                        ? "products"
-                        : "formation";
+                if (isClone) {
+                  applyCloneFields(CLONE_PAGE_KEYS.services, cardId, {
+                    title: next.title,
+                    description: next.description,
+                  });
+                  applyLabels({ service_cta: next.cta });
+                  return;
+                }
                 applyLabels({
                   [titleId]: next.title,
                   [serviceDescKey(service.href)]: next.description,
@@ -1423,14 +1602,18 @@ export default function ContentPage() {
                 });
               }}
               onSave={async (next) => {
-                const titleId =
-                  service.href.includes("accompagnement")
-                    ? "accompagnement"
-                    : service.href.includes("audit")
-                      ? "audit"
-                      : service.href.includes("produits")
-                        ? "products"
-                        : "formation";
+                if (isClone) {
+                  await persistClones(
+                    CLONE_PAGE_KEYS.services,
+                    serviceClones.map((item) =>
+                      item.id === cardId
+                        ? { ...item, title: next.title, description: next.description }
+                        : item
+                    )
+                  );
+                  await saveLabels({ service_cta: next.cta });
+                  return;
+                }
                 await saveLabels({
                   [titleId]: next.title,
                   [serviceDescKey(service.href)]: next.description,
@@ -1438,22 +1621,32 @@ export default function ContentPage() {
                 });
               }}
               onDuplicate={async () => {
-                const ok = await save(
-                  "page",
+                await addClone(
+                  CLONE_PAGE_KEYS.services,
                   {
-                    key: `services:${crypto.randomUUID()}`,
+                    id: crypto.randomUUID(),
+                    afterId: cardId,
                     title: service.title,
-                    content: service.description,
+                    description: service.description,
+                    href: service.href,
                   },
-                  { silent: true }
+                  "Carte dupliquée"
                 );
-                if (ok) await loadContent({ silent: true });
               }}
-              onDelete={() => saveLabels({ [serviceDescKey(service.href)]: "" })}
+              onDelete={() => {
+                if (isClone) {
+                  return persistClones(
+                    CLONE_PAGE_KEYS.services,
+                    serviceClones.filter((item) => item.id !== cardId)
+                  );
+                }
+                return saveLabels({ [serviceDescKey(service.href)]: "" });
+              }}
             >
               {node}
             </EditableRegion>
-          )}
+            );
+          }}
         />
       )}
 
@@ -1544,17 +1737,28 @@ export default function ContentPage() {
                 }}
                 onDuplicate={async () => {
                   const match = sectors.find((item) => item.slug === sector.slug);
-                  const ok = await save(
+                  const created = await save(
                     "sector",
                     {
                       name: sector.name,
                       description: sector.description,
                       imageUrl: match?.imageUrl ?? null,
-                      order: sectors.length,
+                      order: (match?.order ?? sectors.length) + 1,
                     },
                     { silent: true }
                   );
-                  if (ok) await loadContent({ silent: true });
+                  if (!created || typeof created !== "object") {
+                    await loadContent({ silent: true });
+                    return;
+                  }
+                  const copy = created as Sector;
+                  setSectors((prev) => {
+                    const index = prev.findIndex((item) => item.slug === sector.slug);
+                    const next = [...prev];
+                    next.splice(index < 0 ? next.length : index + 1, 0, copy);
+                    return next;
+                  });
+                  toast.success("Secteur dupliqué");
                 }}
               >
                 {node}
@@ -1677,16 +1881,7 @@ export default function ContentPage() {
                 if (ok) await loadContent({ silent: true });
               }}
               onDuplicate={async () => {
-                const ok = await save(
-                  "page",
-                  {
-                    key: `careers:${crypto.randomUUID()}`,
-                    title: section.title || "",
-                    content: section.content || "",
-                  },
-                  { silent: true }
-                );
-                if (ok) await loadContent({ silent: true });
+                await duplicatePageSection(section, "careers:");
               }}
             >
               {node}

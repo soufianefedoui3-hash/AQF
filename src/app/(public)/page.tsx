@@ -1,14 +1,17 @@
-import { getContentLabels, getHomepageSections, getNavLinks, getTabLayoutBlocks } from "@/lib/content";
+import {
+  getContentLabels,
+  getHomepageExploreCards,
+  getHomepageSections,
+  getHomepageStatCards,
+  getNavLinks,
+  getTabLayoutBlocks,
+} from "@/lib/content";
 import { PageBlockList } from "@/components/content/PageBlockList";
 import { HomepageHero } from "@/components/content/HomepageHero";
 import { HomepageStats } from "@/components/content/HomepageStats";
 import { HomepageExplore } from "@/components/content/HomepageExplore";
 import { HomepagePresentation } from "@/components/content/HomepagePresentation";
-import {
-  exploreDescKey,
-  homepageStatsFromLabels,
-  resolveCopy,
-} from "@/lib/site-copy";
+import { resolveCopy } from "@/lib/site-copy";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -21,21 +24,20 @@ export default async function HomePage() {
     getContentLabels(),
   ]);
   const [presentation, ...extraSections] = sections;
+  const [statCards, exploreCards] = await Promise.all([
+    getHomepageStatCards(labels),
+    getHomepageExploreCards(navLinks, labels),
+  ]);
 
   return (
     <>
       <HomepageHero tagline={resolveCopy(labels, "hero_tagline")} />
       <HomepagePresentation presentation={presentation} extraSections={extraSections} />
-      <HomepageStats stats={homepageStatsFromLabels(labels)} />
+      <HomepageStats stats={statCards} />
       <HomepageExplore
-        navLinks={navLinks}
+        navLinks={exploreCards}
         title={resolveCopy(labels, "explore_title")}
         ctaLabel={resolveCopy(labels, "explore_cta")}
-        descriptions={Object.fromEntries(
-          navLinks
-            .filter((link) => link.href !== "/")
-            .map((link) => [link.href, resolveCopy(labels, exploreDescKey(link.href))])
-        )}
       />
       <PageBlockList blocks={extraBlocks} showEmpty={false} />
     </>
