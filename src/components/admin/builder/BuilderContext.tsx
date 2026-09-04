@@ -17,6 +17,11 @@ export type BuilderSelection = {
   onDelete?: () => Promise<unknown> | void;
 };
 
+export type DuplicateRegionPayload = {
+  label: string;
+  values: Record<string, string>;
+};
+
 type BuilderContextValue = {
   selected: BuilderSelection | null;
   select: (selection: BuilderSelection) => void;
@@ -30,17 +35,26 @@ type BuilderContextValue = {
   setInsertAt: (index: number | null) => void;
   savedAt: number | null;
   markSaved: () => void;
+  duplicateRegion: (payload: DuplicateRegionPayload) => Promise<void>;
 };
 
 const BuilderContext = createContext<BuilderContextValue | null>(null);
 
-export function BuilderProvider({ children }: { children: React.ReactNode }) {
+export function BuilderProvider({
+  children,
+  onDuplicateRegion,
+}: {
+  children: React.ReactNode;
+  onDuplicateRegion?: (payload: DuplicateRegionPayload) => Promise<void> | void;
+}) {
   const [selected, setSelected] = useState<BuilderSelection | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [insertAt, setInsertAt] = useState<number | null>(null);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const selectedRef = useRef(selected);
   selectedRef.current = selected;
+  const duplicateRef = useRef(onDuplicateRegion);
+  duplicateRef.current = onDuplicateRegion;
 
   const select = useCallback((selection: BuilderSelection) => {
     setSelected(selection);
@@ -74,6 +88,10 @@ export function BuilderProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const duplicateRegion = useCallback(async (payload: DuplicateRegionPayload) => {
+    await duplicateRef.current?.(payload);
+  }, []);
+
   const value = useMemo(
     () => ({
       selected,
@@ -88,8 +106,21 @@ export function BuilderProvider({ children }: { children: React.ReactNode }) {
       setInsertAt,
       savedAt,
       markSaved: () => setSavedAt(Date.now()),
+      duplicateRegion,
     }),
-    [selected, select, clear, editorOpen, openEditor, closeEditor, patchValues, patchBlock, insertAt, savedAt]
+    [
+      selected,
+      select,
+      clear,
+      editorOpen,
+      openEditor,
+      closeEditor,
+      patchValues,
+      patchBlock,
+      insertAt,
+      savedAt,
+      duplicateRegion,
+    ]
   );
 
   return <BuilderContext.Provider value={value}>{children}</BuilderContext.Provider>;

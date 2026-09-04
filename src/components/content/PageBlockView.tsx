@@ -57,6 +57,8 @@ export function PageBlockView({
   compact = false,
   wrapGridItem,
   wrapStatItem,
+  wrapFaqItem,
+  wrapListItem,
 }: {
   block: PageBlock;
   muted?: boolean;
@@ -72,6 +74,12 @@ export function PageBlockView({
     index: number,
     node: ReactNode
   ) => ReactNode;
+  wrapFaqItem?: (
+    item: { question: string; answer: string },
+    index: number,
+    node: ReactNode
+  ) => ReactNode;
+  wrapListItem?: (item: string, index: number, node: ReactNode) => ReactNode;
 }) {
   const sectionClass = compact ? "py-8 md:py-10" : undefined;
 
@@ -135,16 +143,28 @@ export function PageBlockView({
             {title || <Placeholder>Titre de la liste…</Placeholder>}
           </h2>
         ) : null}
-        <ul className="space-y-3">
-          {display.map((item, itemIndex) => (
-            <li key={`${block.id}-${itemIndex}`} className="flex gap-3 text-text-muted">
-              <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-accent-500" aria-hidden />
-              <span className={cn("leading-relaxed", !items.length && "italic text-primary-300")}>
-                {item}
-              </span>
-            </li>
-          ))}
-        </ul>
+        <div className="space-y-3">
+          {(showPlaceholders ? block.items : display).map((item, itemIndex) => {
+            const row = (
+              <div className="flex gap-3 text-text-muted">
+                <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-accent-500" aria-hidden />
+                <span
+                  className={cn(
+                    "leading-relaxed",
+                    !item.trim() && "italic text-primary-300"
+                  )}
+                >
+                  {item.trim() || "Point clé…"}
+                </span>
+              </div>
+            );
+            return (
+              <div key={`${block.id}-${itemIndex}`}>
+                {wrapListItem ? wrapListItem(item, itemIndex, row) : row}
+              </div>
+            );
+          })}
+        </div>
       </PageSection>
     );
   }
@@ -226,7 +246,7 @@ export function PageBlockView({
           </h2>
         ) : null}
         <div className={`grid items-stretch gap-6 ${cols}`}>
-          {display.map((item, itemIndex) => {
+          {(showPlaceholders ? block.items : display).map((item, itemIndex) => {
             const card = (
               <ContentCard className="h-full">
                 <h3 className="mb-2 text-lg font-semibold text-primary-900">
@@ -265,7 +285,10 @@ export function PageBlockView({
             {title || <Placeholder>Questions fréquentes</Placeholder>}
           </h2>
         ) : null}
-        <FaqAccordion items={display} />
+        <FaqAccordion
+          items={showPlaceholders ? block.items : display}
+          wrapItem={wrapFaqItem}
+        />
       </PageSection>
     );
   }
@@ -345,7 +368,7 @@ export function PageBlockView({
           </h2>
         ) : null}
         <div className="grid items-stretch gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {display.map((item, itemIndex) => {
+          {(showPlaceholders ? block.items : display).map((item, itemIndex) => {
             const card = (
               <div className="h-full rounded-2xl border border-primary-100 bg-white px-6 py-8 text-center shadow-sm">
                 <p className="text-4xl font-bold tracking-tight text-accent-600">

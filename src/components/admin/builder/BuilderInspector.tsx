@@ -3,7 +3,7 @@
 import { useBuilder } from "@/components/admin/builder/BuilderContext";
 import { Button } from "@/components/ui/Button";
 
-export function BuilderInspector({ saving }: { saving?: boolean }) {
+export function BuilderInspector({ saving: _saving }: { saving?: boolean }) {
   const builder = useBuilder();
 
   if (!builder) return null;
@@ -32,36 +32,30 @@ export function BuilderInspector({ saving }: { saving?: boolean }) {
         <Button
           type="button"
           size="sm"
-          disabled={saving}
           onClick={() => builder.openEditor()}
         >
           Modifier
         </Button>
-        {selected.onDuplicate ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => void selected.onDuplicate?.()}
-          >
-            Dupliquer
-          </Button>
-        ) : null}
-        {selected.onDelete ? (
-          <Button
-            type="button"
-            variant="danger"
-            size="sm"
-            disabled={saving}
-            onClick={() => {
-              if (!confirm(`Supprimer « ${selected.label} » ?`)) return;
-              void selected.onDelete?.();
-              builder.clear();
-            }}
-          >
-            Supprimer
-          </Button>
-        ) : null}
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => void selected.onDuplicate?.()}
+        >
+          Dupliquer
+        </Button>
+        <Button
+          type="button"
+          variant="danger"
+          size="sm"
+          onClick={() => {
+            if (!confirm(`Supprimer « ${selected.label} » ?`)) return;
+            void selected.onDelete?.();
+            builder.clear();
+          }}
+        >
+          Supprimer
+        </Button>
       </div>
     </div>
   );

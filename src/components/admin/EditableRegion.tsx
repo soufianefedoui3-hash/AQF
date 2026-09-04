@@ -54,17 +54,26 @@ export function EditableRegion({
       },
       onPersist: (override) =>
         latest.current.onSave(override ?? builder.selected?.values ?? latest.current.values),
-      onDuplicate: latest.current.onDuplicate
-        ? () => latest.current.onDuplicate?.()
-        : undefined,
-      onDelete: () => {
-        if (latest.current.onDelete) return latest.current.onDelete();
-        const empty = Object.fromEntries(
-          latest.current.fields.map((field) => [field.key, ""])
-        );
-        return latest.current.onSave(empty);
-      },
+      onDuplicate: () => runDuplicate(),
+      onDelete: () => runDelete(),
     });
+  }
+
+  function runDuplicate() {
+    if (latest.current.onDuplicate) return latest.current.onDuplicate();
+    return builder?.duplicateRegion({
+      label: latest.current.label,
+      values: latest.current.values,
+    });
+  }
+
+  function runDelete() {
+    if (latest.current.onDelete) return latest.current.onDelete();
+    const empty = Object.fromEntries(
+      latest.current.fields.map((field) => [field.key, ""])
+    );
+    latest.current.onChange?.(empty);
+    return latest.current.onSave(empty);
   }
 
   useEffect(() => {
@@ -83,17 +92,10 @@ export function EditableRegion({
           bindSelection();
           builder.openEditor();
         }}
-        onDuplicate={onDuplicate ? () => void onDuplicate() : undefined}
+        onDuplicate={() => void runDuplicate()}
         onDelete={() => {
           if (!confirm(`Supprimer « ${label} » ?`)) return;
-          if (onDelete) {
-            void onDelete();
-          } else {
-            const empty = Object.fromEntries(
-              latest.current.fields.map((field) => [field.key, ""])
-            );
-            void latest.current.onSave(empty);
-          }
+          void runDelete();
           if (selected) builder.clear();
         }}
       >
@@ -109,9 +111,9 @@ export function EditableRegion({
       fields={fields}
       values={values}
       onSave={onSave}
+      onChange={onChange}
       onDelete={onDelete}
       onDuplicate={onDuplicate}
-      onAdd={onAdd}
     >
       {children}
     </ModalFallback>
@@ -124,9 +126,9 @@ function ModalFallback({
   fields,
   values,
   onSave,
+  onChange,
   onDelete,
   onDuplicate,
-  onAdd,
   children,
 }: {
   label: string;
@@ -134,9 +136,9 @@ function ModalFallback({
   fields: EditField[];
   values: Record<string, string>;
   onSave: (values: Record<string, string>) => Promise<unknown> | void;
+  onChange?: (values: Record<string, string>) => void;
   onDelete?: () => Promise<unknown> | void;
   onDuplicate?: () => Promise<unknown> | void;
-  onAdd?: () => void;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -149,12 +151,19 @@ function ModalFallback({
         editing={open}
         disabled={disabled}
         onEdit={() => setOpen(true)}
-        onDuplicate={onDuplicate ? () => void onDuplicate() : undefined}
+        onDuplicate={() => {
+          if (onDuplicate) {
+            void onDuplicate();
+            return;
+          }
+          void onSave({ ...values });
+        }}
         onDelete={() => {
           if (!confirm(`Supprimer « ${label} » ?`)) return;
           if (onDelete) void onDelete();
           else {
             const empty = Object.fromEntries(fields.map((field) => [field.key, ""]));
+            onChange?.(empty);
             void onSave(empty);
           }
         }}

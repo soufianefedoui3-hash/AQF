@@ -49,24 +49,18 @@ export function VisualItemChrome({
         <span className="hidden rounded-full bg-white/95 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-primary-500 shadow-sm sm:inline">
           {label}
         </span>
-        {onEdit ? (
-          <ToolbarButton disabled={disabled} onClick={onEdit}>
-            <Pencil className="h-3.5 w-3.5" />
-            Modifier
-          </ToolbarButton>
-        ) : null}
-        {onDuplicate ? (
-          <ToolbarButton onClick={onDuplicate}>
-            <Copy className="h-3.5 w-3.5" />
-            Dupliquer
-          </ToolbarButton>
-        ) : null}
-        {onDelete ? (
-          <ToolbarButton danger disabled={disabled} onClick={onDelete}>
-            <Trash2 className="h-3.5 w-3.5" />
-            Supprimer
-          </ToolbarButton>
-        ) : null}
+        <ToolbarButton onClick={() => onEdit?.()}>
+          <Pencil className="h-3.5 w-3.5" />
+          Modifier
+        </ToolbarButton>
+        <ToolbarButton onClick={() => onDuplicate?.()}>
+          <Copy className="h-3.5 w-3.5" />
+          Dupliquer
+        </ToolbarButton>
+        <ToolbarButton danger onClick={() => onDelete?.()}>
+          <Trash2 className="h-3.5 w-3.5" />
+          Supprimer
+        </ToolbarButton>
       </div>
       <div
         className={cn(

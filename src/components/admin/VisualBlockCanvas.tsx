@@ -197,6 +197,101 @@ export function VisualBlockCanvas({
     builder?.clear();
   }
 
+  function bindFaqItem(block: Extract<PageBlock, { type: "faq" }>, index: number) {
+    if (!builder) return;
+    const item = block.items[index];
+    if (!item) return;
+    builder.select({
+      id: `${block.id}-faq-${index}`,
+      label: `Question ${index + 1}`,
+      fields: [
+        { key: "question", label: "Question" },
+        { key: "answer", label: "Réponse", type: "textarea", rows: 4 },
+      ],
+      values: { question: item.question, answer: item.answer },
+      onValuesChange: (next) => {
+        const latest = blocksRef.current.find((entry) => entry.id === block.id);
+        if (!latest || latest.type !== "faq") return;
+        replaceBlock({
+          ...latest,
+          items: latest.items.map((entry, entryIndex) =>
+            entryIndex === index
+              ? { question: next.question, answer: next.answer }
+              : entry
+          ),
+        });
+      },
+      onPersist: () => onPersist?.(blocksRef.current),
+      onDuplicate: () => void duplicateFaqItem(block.id, index),
+      onDelete: () => void deleteFaqItem(block.id, index),
+    });
+  }
+
+  function bindListItem(block: Extract<PageBlock, { type: "list" }>, index: number) {
+    if (!builder) return;
+    const item = block.items[index];
+    if (item == null) return;
+    builder.select({
+      id: `${block.id}-list-${index}`,
+      label: `Point ${index + 1}`,
+      fields: [{ key: "text", label: "Texte", type: "textarea", rows: 3 }],
+      values: { text: item },
+      onValuesChange: (next) => {
+        const latest = blocksRef.current.find((entry) => entry.id === block.id);
+        if (!latest || latest.type !== "list") return;
+        replaceBlock({
+          ...latest,
+          items: latest.items.map((entry, entryIndex) =>
+            entryIndex === index ? next.text : entry
+          ),
+        });
+      },
+      onPersist: () => onPersist?.(blocksRef.current),
+      onDuplicate: () => void duplicateListItem(block.id, index),
+      onDelete: () => void deleteListItem(block.id, index),
+    });
+  }
+
+  function duplicateFaqItem(blockId: string, index: number) {
+    const latest = blocksRef.current.find((entry) => entry.id === blockId);
+    if (!latest || latest.type !== "faq") return;
+    const source = latest.items[index];
+    if (!source) return;
+    const items = [...latest.items];
+    items.splice(index + 1, 0, { question: source.question, answer: source.answer });
+    void commit(replaceBlock({ ...latest, items }));
+    toast.success("Question dupliquée");
+  }
+
+  function deleteFaqItem(blockId: string, index: number) {
+    const latest = blocksRef.current.find((entry) => entry.id === blockId);
+    if (!latest || latest.type !== "faq") return;
+    if (!confirm("Supprimer cette question ?")) return;
+    const items = latest.items.filter((_, itemIndex) => itemIndex !== index);
+    void commit(replaceBlock({ ...latest, items }));
+    builder?.clear();
+  }
+
+  function duplicateListItem(blockId: string, index: number) {
+    const latest = blocksRef.current.find((entry) => entry.id === blockId);
+    if (!latest || latest.type !== "list") return;
+    const source = latest.items[index];
+    if (source == null) return;
+    const items = [...latest.items];
+    items.splice(index + 1, 0, source);
+    void commit(replaceBlock({ ...latest, items }));
+    toast.success("Point dupliqué");
+  }
+
+  function deleteListItem(blockId: string, index: number) {
+    const latest = blocksRef.current.find((entry) => entry.id === blockId);
+    if (!latest || latest.type !== "list") return;
+    if (!confirm("Supprimer ce point ?")) return;
+    const items = latest.items.filter((_, itemIndex) => itemIndex !== index);
+    void commit(replaceBlock({ ...latest, items }));
+    builder?.clear();
+  }
+
   return (
     <div className="relative bg-white">
       <BlockInsertDrawer
@@ -242,6 +337,7 @@ export function VisualBlockCanvas({
                 const next = blocksRef.current.filter((item) => item.id !== block.id);
                 if (editing) builder?.clear();
                 void commit(next);
+                toast.success("Bloc supprimé");
               }}
             >
               <PageBlockView
@@ -285,6 +381,46 @@ export function VisualBlockCanvas({
                       }}
                       onDuplicate={() => duplicateStatItem(block.id, itemIndex)}
                       onDelete={() => void deleteStatItem(block.id, itemIndex)}
+                    >
+                      {node}
+                    </VisualItemChrome>
+                  );
+                }}
+                wrapFaqItem={(_item, itemIndex, node) => {
+                  const source = block.type === "faq" ? block : null;
+                  if (!source) return node;
+                  const itemId = `${block.id}-faq-${itemIndex}`;
+                  return (
+                    <VisualItemChrome
+                      label={`Question ${itemIndex + 1}`}
+                      editing={builder?.selected?.id === itemId}
+                      onSelect={() => bindFaqItem(source, itemIndex)}
+                      onEdit={() => {
+                        bindFaqItem(source, itemIndex);
+                        builder?.openEditor();
+                      }}
+                      onDuplicate={() => duplicateFaqItem(block.id, itemIndex)}
+                      onDelete={() => void deleteFaqItem(block.id, itemIndex)}
+                    >
+                      {node}
+                    </VisualItemChrome>
+                  );
+                }}
+                wrapListItem={(_item, itemIndex, node) => {
+                  const source = block.type === "list" ? block : null;
+                  if (!source) return node;
+                  const itemId = `${block.id}-list-${itemIndex}`;
+                  return (
+                    <VisualItemChrome
+                      label={`Point ${itemIndex + 1}`}
+                      editing={builder?.selected?.id === itemId}
+                      onSelect={() => bindListItem(source, itemIndex)}
+                      onEdit={() => {
+                        bindListItem(source, itemIndex);
+                        builder?.openEditor();
+                      }}
+                      onDuplicate={() => duplicateListItem(block.id, itemIndex)}
+                      onDelete={() => void deleteListItem(block.id, itemIndex)}
                     >
                       {node}
                     </VisualItemChrome>

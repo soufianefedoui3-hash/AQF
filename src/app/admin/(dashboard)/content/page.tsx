@@ -436,6 +436,72 @@ export default function ContentPage() {
     return Boolean(ok);
   }
 
+  function valuesToCopy(values: Record<string, string>): { title: string; content: string } {
+    const title = (values.title || values.name || values.label || "").trim();
+    const content = (
+      values.content ||
+      values.description ||
+      values.subtitle ||
+      values.tagline ||
+      values.cta ||
+      Object.entries(values)
+        .filter(([, value]) => value.trim())
+        .map(([key, value]) => `${key}: ${value}`)
+        .join("\n")
+    ).trim();
+    return { title: title || "Bloc dupliqué", content };
+  }
+
+  async function duplicateLooseBlock(payload: { label: string; values: Record<string, string> }) {
+    const copy = valuesToCopy(payload.values);
+    if (activeTab === "about" || activeTab === "team") {
+      const section = {
+        key: `section-${crypto.randomUUID()}`,
+        title: copy.title,
+        content: copy.content,
+      };
+      setAbout((prev) => [...prev, section]);
+      const ok = await save("about", section, { silent: true });
+      if (ok) toast.success("Bloc dupliqué");
+      else await loadContent({ silent: true });
+      return;
+    }
+
+    const prefix =
+      activeTab === "homepage"
+        ? "homepage:"
+        : activeTab === "formation" || activeTab === "formations"
+          ? "formation:"
+          : activeTab === "packs" || activeTab === "ged"
+            ? "ged:"
+            : activeTab === "careers"
+              ? "careers:"
+              : activeTab === "news"
+                ? "news:"
+                : null;
+
+    if (prefix) {
+      await duplicatePageSection(
+        { key: `${prefix}loose`, title: copy.title, content: copy.content },
+        prefix
+      );
+      return;
+    }
+
+    const tabId = activeTab;
+    const card = {
+      id: crypto.randomUUID(),
+      type: "card" as const,
+      title: copy.title,
+      content: copy.content,
+    };
+    const next = [...(layouts[tabId] ?? []), card];
+    setLayouts((prev) => ({ ...prev, [tabId]: next }));
+    const ok = await save("layout", { tabId, blocks: next }, { silent: true });
+    if (ok) toast.success("Bloc dupliqué");
+    else await loadContent({ silent: true });
+  }
+
   async function duplicatePageSection(
     source: { key: string; title: string | null; content: string },
     prefix: string
@@ -453,6 +519,13 @@ export default function ContentPage() {
     });
     const ok = await save("page", copy, { silent: true });
     if (ok) toast.success("Section dupliquée");
+    else await loadContent({ silent: true });
+  }
+
+  async function deletePageSection(key: string) {
+    setPages((prev) => prev.filter((item) => item.key !== key));
+    const ok = await save("page-delete", { key }, { silent: true });
+    if (ok) toast.success("Section supprimée");
     else await loadContent({ silent: true });
   }
 
@@ -657,7 +730,7 @@ export default function ContentPage() {
   }
 
   return (
-    <BuilderProvider>
+    <BuilderProvider onDuplicateRegion={duplicateLooseBlock}>
     <ContentBuilderShell
       pages={tabs}
       activeId={activeTab}
@@ -764,8 +837,11 @@ export default function ContentPage() {
             if (saved) setSettings(next);
           }}
           onSave={async (data) => {
+            setCustomPages((prev) =>
+              prev.map((page) => (page.id === data.id ? { ...page, ...data } : page))
+            );
             const result = await save("custom-page", data, { silent: true });
-            if (result) await loadContent({ silent: true });
+            if (!result) await loadContent({ silent: true });
           }}
           onDelete={() => removeTab(customPageTabId(activeCustom.id))}
           onSelectNav={(link) => {
@@ -887,8 +963,10 @@ export default function ContentPage() {
                 if (ok) await loadContent({ silent: true });
               }}
               onDelete={async () => {
-                const ok = await save("team-delete", { id: member.id });
-                if (ok) await loadContent({ silent: true });
+                setTeam((prev) => prev.filter((item) => item.id !== member.id));
+                const ok = await save("team-delete", { id: member.id }, { silent: true });
+                if (ok) toast.success("Membre supprimé");
+                else await loadContent({ silent: true });
               }}
               onDuplicate={async () => {
                 const source = team.find((item) => item.id === member.id);
@@ -922,20 +1000,28 @@ export default function ContentPage() {
           )}
           saving={saving}
           onSave={async (data) => {
+            setAbout((prev) =>
+              prev.map((item) => (item.key === data.key ? { ...item, ...data } : item))
+            );
             const ok = await save("about", data, { silent: true });
-            if (ok) await loadContent({ silent: true });
+            if (!ok) await loadContent({ silent: true });
           }}
           onAdd={async () => {
-            const ok = await save("about", {
+            const section = {
               key: `section-${crypto.randomUUID()}`,
               title: "Nouvelle section",
               content: "",
-            }, { silent: true });
-            if (ok) await loadContent({ silent: true });
+            };
+            setAbout((prev) => [...prev, section]);
+            const ok = await save("about", section, { silent: true });
+            if (ok) toast.success("Section ajoutée");
+            else await loadContent({ silent: true });
           }}
           onDelete={async (key) => {
+            setAbout((prev) => prev.filter((item) => item.key !== key));
             const ok = await save("about-delete", { key }, { silent: true });
-            if (ok) await loadContent({ silent: true });
+            if (ok) toast.success("Section supprimée");
+            else await loadContent({ silent: true });
           }}
           onDuplicate={async (block) => {
             const copy = {
@@ -963,25 +1049,27 @@ export default function ContentPage() {
             blocks={pageBlocks(pages, "homepage_presentation", "homepage:")}
             saving={saving}
             onSave={async (data) => {
+              applyPageFields(data.key, { title: data.title || "", content: data.content });
               const ok = await save("page", data, { silent: true });
-              if (ok) await loadContent({ silent: true });
+              if (!ok) await loadContent({ silent: true });
             }}
             onAdd={async () => {
               const hasPrimary = pages.some((page) => page.key === "homepage_presentation");
-              const ok = await save(
-                "page",
-                {
-                  key: hasPrimary ? `homepage:${crypto.randomUUID()}` : "homepage_presentation",
-                  title: "Nouvelle section",
-                  content: "",
-                },
-                { silent: true }
-              );
-              if (ok) await loadContent({ silent: true });
+              const section = {
+                key: hasPrimary ? `homepage:${crypto.randomUUID()}` : "homepage_presentation",
+                title: "Nouvelle section",
+                content: "",
+              };
+              setPages((prev) => [...prev, section]);
+              const ok = await save("page", section, { silent: true });
+              if (ok) toast.success("Section ajoutée");
+              else await loadContent({ silent: true });
             }}
             onDelete={async (key) => {
+              setPages((prev) => prev.filter((item) => item.key !== key));
               const ok = await save("page-delete", { key }, { silent: true });
-              if (ok) await loadContent({ silent: true });
+              if (ok) toast.success("Section supprimée");
+              else await loadContent({ silent: true });
             }}
             onDuplicate={async (block) => {
               await duplicatePageSection(block, "homepage:");
@@ -1053,7 +1141,8 @@ export default function ContentPage() {
                     }
                     return persistClones(
                       CLONE_PAGE_KEYS.stats,
-                      statClones.filter((item) => item.id !== statId)
+                      statClones.filter((item) => item.id !== statId),
+                      "Compteur supprimé"
                     );
                   }}
                 >
@@ -1129,7 +1218,8 @@ export default function ContentPage() {
                   if (isClone) {
                     return persistClones(
                       CLONE_PAGE_KEYS.explore,
-                      exploreClones.filter((item) => item.id !== cardId)
+                      exploreClones.filter((item) => item.id !== cardId),
+                      "Carte supprimée"
                     );
                   }
                   return saveLabels({ [exploreDescKey(link.href)]: "" });
@@ -1207,6 +1297,14 @@ export default function ContentPage() {
                     "formation:"
                   );
                 }}
+                onDelete={async () => {
+                  applyPageFields(intro?.key || "formation_intro", { title: "", content: "" });
+                  await save(
+                    "page",
+                    { key: intro?.key || "formation_intro", title: "", content: "" },
+                    { silent: true }
+                  );
+                }}
               >
                 {node}
               </EditableRegion>
@@ -1231,8 +1329,7 @@ export default function ContentPage() {
                 if (ok) await loadContent({ silent: true });
               }}
               onDelete={async () => {
-                const ok = await save("page-delete", { key: section.key });
-                if (ok) await loadContent({ silent: true });
+                await deletePageSection(section.key);
               }}
               onDuplicate={async () => {
                 await duplicatePageSection(section, "formation:");
@@ -1498,6 +1595,16 @@ export default function ContentPage() {
                 }
                 await saveLabels({ products_ged_fallback: next.fallback });
               }}
+              onDuplicate={async () => {
+                await duplicatePageSection(
+                  { key: "ged", title: ged.title, content: ged.description },
+                  "ged:"
+                );
+              }}
+              onDelete={async () => {
+                setGed((prev) => ({ ...prev, description: "" }));
+                await save("ged", { ...ged, description: "" }, { silent: true });
+              }}
             >
               {node}
             </EditableRegion>
@@ -1521,8 +1628,7 @@ export default function ContentPage() {
                 if (ok) await loadContent({ silent: true });
               }}
               onDelete={async () => {
-                const ok = await save("page-delete", { key: section.key });
-                if (ok) await loadContent({ silent: true });
+                await deletePageSection(section.key);
               }}
               onDuplicate={async () => {
                 await duplicatePageSection(section, "ged:");
@@ -1637,7 +1743,8 @@ export default function ContentPage() {
                 if (isClone) {
                   return persistClones(
                     CLONE_PAGE_KEYS.services,
-                    serviceClones.filter((item) => item.id !== cardId)
+                    serviceClones.filter((item) => item.id !== cardId),
+                    "Carte supprimée"
                   );
                 }
                 return saveLabels({ [serviceDescKey(service.href)]: "" });
@@ -1732,8 +1839,10 @@ export default function ContentPage() {
                 onDelete={async () => {
                   const match = sectors.find((item) => item.slug === sector.slug);
                   if (!match) return;
-                  const ok = await save("sector-delete", { id: match.id });
-                  if (ok) await loadContent({ silent: true });
+                  setSectors((prev) => prev.filter((item) => item.id !== match.id));
+                  const ok = await save("sector-delete", { id: match.id }, { silent: true });
+                  if (ok) toast.success("Secteur supprimé");
+                  else await loadContent({ silent: true });
                 }}
                 onDuplicate={async () => {
                   const match = sectors.find((item) => item.slug === sector.slug);
@@ -1854,6 +1963,21 @@ export default function ContentPage() {
                   careers_phone_label: next.phoneLabel,
                 });
               }}
+              onDuplicate={async () => {
+                await duplicatePageSection(
+                  {
+                    key: "careers_intro",
+                    title: "Carrières",
+                    content: careers.content,
+                  },
+                  "careers:"
+                );
+              }}
+              onDelete={async () => {
+                const nextCareers = { ...careers, content: "" };
+                setCareers(nextCareers);
+                await save("careers", nextCareers, { silent: true });
+              }}
             >
               {node}
             </EditableRegion>
@@ -1877,8 +2001,7 @@ export default function ContentPage() {
                 if (ok) await loadContent({ silent: true });
               }}
               onDelete={async () => {
-                const ok = await save("page-delete", { key: section.key });
-                if (ok) await loadContent({ silent: true });
+                await deletePageSection(section.key);
               }}
               onDuplicate={async () => {
                 await duplicatePageSection(section, "careers:");
