@@ -76,6 +76,17 @@ export function BuilderInspector({ saving }: { saving?: boolean }) {
             Enregistrer
           </Button>
         ) : null}
+        {selected.onDuplicate ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={saving}
+            onClick={() => void selected.onDuplicate?.()}
+          >
+            Dupliquer
+          </Button>
+        ) : null}
         {selected.onDelete ? (
           <Button
             type="button"

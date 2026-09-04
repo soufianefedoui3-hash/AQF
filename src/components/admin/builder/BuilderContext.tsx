@@ -13,6 +13,7 @@ export type BuilderSelection = {
   onValuesChange?: (values: Record<string, string>) => void;
   onBlockChange?: (block: PageBlock) => void;
   onPersist?: (values?: Record<string, string>) => Promise<unknown> | void;
+  onDuplicate?: () => Promise<unknown> | void;
   onDelete?: () => Promise<unknown> | void;
 };
 

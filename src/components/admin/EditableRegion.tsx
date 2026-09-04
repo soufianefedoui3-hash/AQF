@@ -19,6 +19,7 @@ export function EditableRegion({
   onSave,
   onChange,
   onDelete,
+  onDuplicate,
   onAdd,
   children,
 }: {
@@ -30,14 +31,15 @@ export function EditableRegion({
   onSave: (values: Record<string, string>) => Promise<unknown> | void;
   onChange?: (values: Record<string, string>) => void;
   onDelete?: () => Promise<unknown> | void;
+  onDuplicate?: () => Promise<unknown> | void;
   onAdd?: () => void;
   children: React.ReactNode;
 }) {
   const reactId = useId();
   const regionId = id || `region-${reactId}`;
   const builder = useBuilder();
-  const latest = useRef({ values, onSave, onChange, onDelete, label, fields });
-  latest.current = { values, onSave, onChange, onDelete, label, fields };
+  const latest = useRef({ values, onSave, onChange, onDelete, onDuplicate, label, fields });
+  latest.current = { values, onSave, onChange, onDelete, onDuplicate, label, fields };
   const selected = builder?.selected?.id === regionId;
 
   function bindSelection() {
@@ -52,6 +54,7 @@ export function EditableRegion({
       },
       onPersist: (override) =>
         latest.current.onSave(override ?? builder.selected?.values ?? latest.current.values),
+      onDuplicate: latest.current.onDuplicate,
       onDelete: latest.current.onDelete,
     });
   }
@@ -70,7 +73,7 @@ export function EditableRegion({
         onSelect={bindSelection}
         onEdit={bindSelection}
         onDone={() => builder.clear()}
-        onAdd={onAdd}
+        onDuplicate={onDuplicate}
         onDelete={
           onDelete
             ? () => {
@@ -94,6 +97,7 @@ export function EditableRegion({
       values={values}
       onSave={onSave}
       onDelete={onDelete}
+      onDuplicate={onDuplicate}
       onAdd={onAdd}
     >
       {children}
@@ -108,6 +112,7 @@ function ModalFallback({
   values,
   onSave,
   onDelete,
+  onDuplicate,
   onAdd,
   children,
 }: {
@@ -117,6 +122,7 @@ function ModalFallback({
   values: Record<string, string>;
   onSave: (values: Record<string, string>) => Promise<unknown> | void;
   onDelete?: () => Promise<unknown> | void;
+  onDuplicate?: () => Promise<unknown> | void;
   onAdd?: () => void;
   children: React.ReactNode;
 }) {
@@ -131,7 +137,7 @@ function ModalFallback({
         disabled={disabled}
         onEdit={() => setOpen(true)}
         onDone={() => setOpen(false)}
-        onAdd={onAdd}
+        onDuplicate={onDuplicate}
         onDelete={
           onDelete
             ? () => {

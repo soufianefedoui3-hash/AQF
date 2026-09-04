@@ -26,7 +26,8 @@ function wrapWithChrome(
   onDelete: () => Promise<void>,
   onAdd: () => Promise<void>,
   view: ReactNode,
-  onLive?: (next: { title: string; content: string }) => void
+  onLive?: (next: { title: string; content: string }) => void,
+  onDuplicate?: () => Promise<void>
 ) {
   return (
     <EditableRegion
@@ -40,6 +41,7 @@ function wrapWithChrome(
       onChange={(next) => onLive?.({ title: next.title, content: next.content })}
       onSave={(next) => onSave({ key: block.key, title: next.title, content: next.content })}
       onDelete={onDelete}
+      onDuplicate={onDuplicate}
       onAdd={() => void onAdd()}
     >
       {view}
@@ -53,6 +55,7 @@ export function SectionBlocksEditor({
   onSave,
   onAdd,
   onDelete,
+  onDuplicate,
   addLabel = "Ajouter une section",
   emptyLabel = "Aucune section. Ajoutez-en une pour commencer.",
   variant = "default",
@@ -66,6 +69,7 @@ export function SectionBlocksEditor({
   onSave: (data: ContentBlock) => Promise<void>;
   onAdd: () => Promise<void>;
   onDelete: (key: string) => Promise<void>;
+  onDuplicate?: (block: ContentBlock) => Promise<void>;
   addLabel?: string;
   emptyLabel?: string;
   variant?: "default" | "about" | "homepage";
@@ -95,7 +99,8 @@ export function SectionBlocksEditor({
       },
       onAdd,
       view,
-      (next) => setLive((prev) => ({ ...prev, [block.key]: next }))
+      (next) => setLive((prev) => ({ ...prev, [block.key]: next })),
+      onDuplicate ? () => onDuplicate(block) : undefined
     );
   }
 

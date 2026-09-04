@@ -1,6 +1,6 @@
 "use client";
 
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Copy, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function VisualItemChrome({
@@ -11,7 +11,7 @@ export function VisualItemChrome({
   onSelect,
   onEdit,
   onDone,
-  onAdd,
+  onDuplicate,
   onDelete,
 }: {
   label: string;
@@ -21,7 +21,7 @@ export function VisualItemChrome({
   onSelect?: () => void;
   onEdit?: () => void;
   onDone?: () => void;
-  onAdd?: () => void;
+  onDuplicate?: () => void;
   onDelete?: () => void;
 }) {
   return (
@@ -62,10 +62,10 @@ export function VisualItemChrome({
             Modifier
           </ToolbarButton>
         ) : null}
-        {onAdd ? (
-          <ToolbarButton disabled={disabled} onClick={onAdd}>
-            <Plus className="h-3.5 w-3.5" />
-            Ajouter un bloc
+        {onDuplicate ? (
+          <ToolbarButton disabled={disabled} onClick={onDuplicate}>
+            <Copy className="h-3.5 w-3.5" />
+            Dupliquer
           </ToolbarButton>
         ) : null}
         {onDelete ? (

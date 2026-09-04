@@ -10,6 +10,7 @@ import { PageBlockView } from "@/components/content/PageBlockView";
 import { Button } from "@/components/ui/Button";
 import {
   PAGE_BLOCK_LABELS,
+  clonePageBlock,
   createEmptyBlock,
   type PageBlock,
   type PageBlockType,
@@ -68,11 +69,23 @@ export function VisualBlockCanvas({
         onChange(next);
       },
       onPersist: () => onPersist?.(blocksRef.current),
+      onDuplicate: () => void duplicateBlock(block.id),
       onDelete: () => {
         const next = blocksRef.current.filter((item) => item.id !== block.id);
         void commit(next);
       },
     });
+  }
+
+  function duplicateBlock(blockId: string) {
+    const current = blocksRef.current;
+    const index = current.findIndex((item) => item.id === blockId);
+    if (index < 0) return;
+    const clone = clonePageBlock(current[index]);
+    const next = [...current];
+    next.splice(index + 1, 0, clone);
+    void commit(next);
+    bindBlock(clone);
   }
 
   return (
@@ -111,10 +124,10 @@ export function VisualBlockCanvas({
               onSelect={() => bindBlock(block)}
               onEdit={() => bindBlock(block)}
               onDone={() => builder?.clear()}
-              onAdd={() => builder?.setInsertAt(index + 1)}
+              onDuplicate={() => duplicateBlock(block.id)}
               onDelete={() => {
                 if (!confirm("Supprimer cet élément ?")) return;
-                const next = blocks.filter((item) => item.id !== block.id);
+                const next = blocksRef.current.filter((item) => item.id !== block.id);
                 if (editing) builder?.clear();
                 void commit(next);
               }}

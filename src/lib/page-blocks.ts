@@ -183,6 +183,12 @@ export function normalizePageSlug(value: string, fallback = ""): string {
   return slug;
 }
 
+export function clonePageBlock(block: PageBlock): PageBlock {
+  const copy = structuredClone(block);
+  copy.id = crypto.randomUUID();
+  return copy;
+}
+
 export function createEmptyBlock(type: PageBlockType): PageBlock {
   const id = crypto.randomUUID();
   switch (type) {

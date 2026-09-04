@@ -764,6 +764,20 @@ export default function ContentPage() {
                 const ok = await save("team-delete", { id: member.id });
                 if (ok) await loadContent({ silent: true });
               }}
+              onDuplicate={async () => {
+                const ok = await save(
+                  "team",
+                  {
+                    name: member.name,
+                    role: member.role,
+                    skills: member.skills,
+                    imageUrl: member.imageUrl,
+                    order: team.length,
+                  },
+                  { silent: true }
+                );
+                if (ok) await loadContent({ silent: true });
+              }}
             >
               {node}
             </EditableRegion>
@@ -783,6 +797,18 @@ export default function ContentPage() {
           }}
           onDelete={async (key) => {
             const ok = await save("about-delete", { key }, { silent: true });
+            if (ok) await loadContent({ silent: true });
+          }}
+          onDuplicate={async (block) => {
+            const ok = await save(
+              "about",
+              {
+                key: `section-${crypto.randomUUID()}`,
+                title: block.title || "",
+                content: block.content || "",
+              },
+              { silent: true }
+            );
             if (ok) await loadContent({ silent: true });
           }}
         />
@@ -813,6 +839,18 @@ export default function ContentPage() {
             }}
             onDelete={async (key) => {
               const ok = await save("page-delete", { key }, { silent: true });
+              if (ok) await loadContent({ silent: true });
+            }}
+            onDuplicate={async (block) => {
+              const ok = await save(
+                "page",
+                {
+                  key: `homepage:${crypto.randomUUID()}`,
+                  title: block.title || "",
+                  content: block.content || "",
+                },
+                { silent: true }
+              );
               if (ok) await loadContent({ silent: true });
             }}
           />
@@ -946,6 +984,18 @@ export default function ContentPage() {
                   });
                   if (ok) await loadContent({ silent: true });
                 }}
+                onDuplicate={async () => {
+                  const ok = await save(
+                    "page",
+                    {
+                      key: `formation:${crypto.randomUUID()}`,
+                      title: intro?.title || "",
+                      content: intro?.content || "",
+                    },
+                    { silent: true }
+                  );
+                  if (ok) await loadContent({ silent: true });
+                }}
               >
                 {node}
               </EditableRegion>
@@ -971,6 +1021,18 @@ export default function ContentPage() {
               }}
               onDelete={async () => {
                 const ok = await save("page-delete", { key: section.key });
+                if (ok) await loadContent({ silent: true });
+              }}
+              onDuplicate={async () => {
+                const ok = await save(
+                  "page",
+                  {
+                    key: `formation:${crypto.randomUUID()}`,
+                    title: section.title || "",
+                    content: section.content || "",
+                  },
+                  { silent: true }
+                );
                 if (ok) await loadContent({ silent: true });
               }}
             >
@@ -1134,6 +1196,29 @@ export default function ContentPage() {
                 toast.success("Pack supprimé");
                 setProductPacks((prev) => prev.filter((item) => item.id !== pack.id));
               }}
+              onDuplicate={async () => {
+                const res = await fetch("/api/admin/packs", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    name: pack.name,
+                    description: pack.description || " ",
+                  }),
+                });
+                if (!res.ok) {
+                  toast.error("Impossible de dupliquer le pack");
+                  return;
+                }
+                const created = (await res.json()) as { id?: string };
+                setProductPacks((prev) => [
+                  ...prev,
+                  {
+                    id: created.id || crypto.randomUUID(),
+                    name: pack.name,
+                    description: pack.description,
+                  },
+                ]);
+              }}
             >
               {node}
             </EditableRegion>
@@ -1231,6 +1316,18 @@ export default function ContentPage() {
               }}
               onDelete={async () => {
                 const ok = await save("page-delete", { key: section.key });
+                if (ok) await loadContent({ silent: true });
+              }}
+              onDuplicate={async () => {
+                const ok = await save(
+                  "page",
+                  {
+                    key: `ged:${crypto.randomUUID()}`,
+                    title: section.title || "",
+                    content: section.content || "",
+                  },
+                  { silent: true }
+                );
                 if (ok) await loadContent({ silent: true });
               }}
             >
@@ -1403,6 +1500,20 @@ export default function ContentPage() {
                   const ok = await save("sector-delete", { id: match.id });
                   if (ok) await loadContent({ silent: true });
                 }}
+                onDuplicate={async () => {
+                  const match = sectors.find((item) => item.slug === sector.slug);
+                  const ok = await save(
+                    "sector",
+                    {
+                      name: sector.name,
+                      description: sector.description,
+                      imageUrl: match?.imageUrl ?? null,
+                      order: sectors.length,
+                    },
+                    { silent: true }
+                  );
+                  if (ok) await loadContent({ silent: true });
+                }}
               >
                 {node}
               </EditableRegion>
@@ -1521,6 +1632,18 @@ export default function ContentPage() {
               }}
               onDelete={async () => {
                 const ok = await save("page-delete", { key: section.key });
+                if (ok) await loadContent({ silent: true });
+              }}
+              onDuplicate={async () => {
+                const ok = await save(
+                  "page",
+                  {
+                    key: `careers:${crypto.randomUUID()}`,
+                    title: section.title || "",
+                    content: section.content || "",
+                  },
+                  { silent: true }
+                );
                 if (ok) await loadContent({ silent: true });
               }}
             >
