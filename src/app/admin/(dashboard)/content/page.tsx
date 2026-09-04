@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { Plus, Trash2 } from "lucide-react";
 import { Input, Textarea } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -27,6 +26,9 @@ import { SectorsPageBody } from "@/components/content/SectorsPageBody";
 import { ServicesPageBody } from "@/components/content/ServicesPageBody";
 import { adminFetch } from "@/lib/admin-fetch";
 import { EditableRegion } from "@/components/admin/EditableRegion";
+import { BuilderProvider } from "@/components/admin/builder/BuilderContext";
+import { CanvasGuard } from "@/components/admin/builder/CanvasGuard";
+import { ContentBuilderShell } from "@/components/admin/builder/ContentBuilderShell";
 import { SERVICE_LINKS } from "@/lib/constants";
 import { livePageHref } from "@/lib/preview-pages";
 import {
@@ -284,8 +286,12 @@ export default function ContentPage() {
     };
   }, []);
 
-  async function save(section: string, data: object): Promise<false | unknown> {
-    setSaving(true);
+  async function save(
+    section: string,
+    data: object,
+    options?: { silent?: boolean }
+  ): Promise<false | unknown> {
+    if (!options?.silent) setSaving(true);
     try {
       const res = await fetch("/api/admin/content", {
         method: "PUT",
@@ -298,7 +304,7 @@ export default function ContentPage() {
         return false;
       }
 
-      toast.success("Enregistré");
+      if (!options?.silent) toast.success("Enregistré");
       try {
         const json = (await res.json()) as { data?: unknown };
         return json?.data ?? true;
@@ -309,7 +315,7 @@ export default function ContentPage() {
       toast.error("Erreur de connexion");
       return false;
     } finally {
-      setSaving(false);
+      if (!options?.silent) setSaving(false);
     }
   }
 
@@ -340,7 +346,7 @@ export default function ContentPage() {
 
   if (loading) {
     return (
-      <div className="flex h-64 items-center justify-center">
+      <div className="flex h-full items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-600 border-t-transparent" />
       </div>
     );
@@ -350,23 +356,37 @@ export default function ContentPage() {
     return labels[id]?.trim() || DEFAULT_CONTENT_LABELS[id] || id;
   }
 
+  function applyLabels(updates: Record<string, string>) {
+    setLabels((prev) => ({ ...prev, ...updates }));
+  }
+
+  function applyPageFields(key: string, next: { title?: string; content?: string }) {
+    setPages((prev) =>
+      prev.map((page) =>
+        page.key === key
+          ? {
+              ...page,
+              title: next.title !== undefined ? next.title : page.title,
+              content: next.content !== undefined ? next.content : page.content,
+            }
+          : page
+      )
+    );
+  }
+
   async function saveLabels(updates: Record<string, string>): Promise<boolean> {
+    applyLabels(updates);
     const items = Object.entries(updates).map(([id, label]) => ({ id, label }));
-    const ok = Boolean(await save("labels", { items }));
-    if (ok) setLabels((prev) => ({ ...prev, ...updates }));
-    return ok;
+    return Boolean(await save("labels", { items }, { silent: true }));
   }
 
   async function saveLabel(id: string, label: string): Promise<boolean> {
     const next = label.trim() || DEFAULT_CONTENT_LABELS[id] || id;
-    const ok = Boolean(await save("label", { id, label: next }));
-    if (ok) {
-      setLabels((prev) => ({ ...prev, [id]: next }));
-      setSitePages((prev) =>
-        prev.map((page) => (page.id === id ? { ...page, label: next } : page))
-      );
-    }
-    return ok;
+    applyLabels({ [id]: next });
+    setSitePages((prev) =>
+      prev.map((page) => (page.id === id ? { ...page, label: next } : page))
+    );
+    return Boolean(await save("label", { id, label: next }, { silent: true }));
   }
 
   const tabs = sitePages.map((page) => ({
@@ -511,65 +531,35 @@ export default function ContentPage() {
   }
 
   return (
-    <div>
-      <div className="px-4 pt-6 lg:px-8">
-      <h2 className="mb-6 text-2xl font-bold text-primary-900">Contenu & Pages</h2>
-      <p className="mb-4 text-sm text-text-muted">
-        Éditeur visuel live — les changements sont enregistrés dans SQLite.
-      </p>
-
-      <div className="mb-6 flex flex-wrap gap-2">
-        {tabs.map((tab) => {
-          const active = activeTab === tab.id;
-          return (
-            <div
-              key={tab.id}
-              className={`inline-flex items-center rounded-lg text-sm font-medium transition ${
-                active
-                  ? "bg-primary-900 text-white shadow-sm"
-                  : "border border-primary-100 bg-white text-text-muted"
-              }`}
-            >
-              <button
-                type="button"
-                onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-2 ${active ? "" : "hover:bg-accent-50"} rounded-lg`}
-              >
-                {tab.label}
-              </button>
-              <button
-                type="button"
-                disabled={saving}
-                title="Supprimer cette page"
-                aria-label={`Supprimer ${tab.label}`}
-                onClick={() => removeTab(tab.id)}
-                className={`mr-1 rounded-md p-1.5 transition ${
-                  active
-                    ? "text-white/80 hover:bg-white/15 hover:text-white"
-                    : "text-text-muted hover:bg-red-50 hover:text-red-600"
-                }`}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          );
-        })}
-        <button
-          type="button"
-          onClick={() => {
-            setNewTitle("");
-            setNewSlug("");
-            setNewShowInNav(true);
-            setNewSlugTouched(false);
-            setCreateOpen(true);
-          }}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-accent-400 bg-accent-50 px-4 py-2 text-sm font-medium text-primary-800 transition hover:bg-accent-100"
-        >
-          <Plus className="h-4 w-4" />
-          Ajouter une nouvelle page
-        </button>
-      </div>
-
+    <BuilderProvider>
+    <ContentBuilderShell
+      pages={tabs}
+      activeId={activeTab}
+      saving={saving}
+      pageHref={previewHref}
+      showInNav={Boolean(activeSitePage?.showInNav)}
+      onSelectPage={setActiveTab}
+      onCreatePage={() => {
+        setNewTitle("");
+        setNewSlug("");
+        setNewShowInNav(true);
+        setNewSlugTouched(false);
+        setCreateOpen(true);
+      }}
+      onDeletePage={activeTab ? () => removeTab(activeTab) : undefined}
+      onToggleNav={
+        activeSitePage
+          ? async (showInNav) => {
+              const ok = await save("site-page", { id: activeTab, showInNav }, { silent: true });
+              if (ok) {
+                setSitePages((prev) =>
+                  prev.map((page) => (page.id === activeTab ? { ...page, showInNav } : page))
+                );
+              }
+            }
+          : undefined
+      }
+    >
       <Modal
         isOpen={createOpen}
         onClose={() => setCreateOpen(false)}
@@ -619,9 +609,9 @@ export default function ContentPage() {
           </div>
         </div>
       </Modal>
-      </div>
 
       {activeCustom && (
+        <CanvasGuard>
         <CustomPageEditor
           page={activeCustom}
           saving={saving}
@@ -648,18 +638,21 @@ export default function ContentPage() {
             if (saved) setSettings(next);
           }}
           onSave={async (data) => {
-            const result = await save("custom-page", data);
-            if (result) await loadContent();
+            const result = await save("custom-page", data, { silent: true });
+            if (result) await loadContent({ silent: true });
           }}
           onDelete={() => removeTab(customPageTabId(activeCustom.id))}
           onSelectNav={(link) => {
             if (link.id) setActiveTab(link.id);
           }}
         />
+        </CanvasGuard>
       )}
 
       {!activeCustom && activeTab && activeTab !== "settings" ? (
+      <CanvasGuard>
       <VisualPageFrame
+        chrome="canvas"
         title={previewTitle}
         href={previewHref}
         subtitle={previewSubtitle}
@@ -736,6 +729,7 @@ export default function ContentPage() {
               disabled={saving}
               fields={[{ key: "title", label: "Titre" }]}
               values={{ title: tabLabel("team") }}
+              onChange={(next) => applyLabels({ team: next.title })}
               onSave={(next) => saveLabel("team", next.title)}
             >
               {node}
@@ -755,6 +749,13 @@ export default function ContentPage() {
                 role: member.role,
                 skills: member.skills,
               }}
+              onChange={(next) => {
+                setTeam((prev) =>
+                  prev.map((item) =>
+                    item.id === member.id ? { ...item, ...next } : item
+                  )
+                );
+              }}
               onSave={async (next) => {
                 const ok = await save("team", { ...member, ...next });
                 if (ok) await loadContent({ silent: true });
@@ -769,20 +770,20 @@ export default function ContentPage() {
           )}
           saving={saving}
           onSave={async (data) => {
-            const ok = await save("about", data);
-            if (ok) await loadContent();
+            const ok = await save("about", data, { silent: true });
+            if (ok) await loadContent({ silent: true });
           }}
           onAdd={async () => {
             const ok = await save("about", {
               key: `section-${crypto.randomUUID()}`,
               title: "Nouvelle section",
               content: "",
-            });
-            if (ok) await loadContent();
+            }, { silent: true });
+            if (ok) await loadContent({ silent: true });
           }}
           onDelete={async (key) => {
-            const ok = await save("about-delete", { key });
-            if (ok) await loadContent();
+            const ok = await save("about-delete", { key }, { silent: true });
+            if (ok) await loadContent({ silent: true });
           }}
         />
       )}
@@ -794,21 +795,25 @@ export default function ContentPage() {
             blocks={pageBlocks(pages, "homepage_presentation", "homepage:")}
             saving={saving}
             onSave={async (data) => {
-              const ok = await save("page", data);
-              if (ok) await loadContent();
+              const ok = await save("page", data, { silent: true });
+              if (ok) await loadContent({ silent: true });
             }}
             onAdd={async () => {
               const hasPrimary = pages.some((page) => page.key === "homepage_presentation");
-              const ok = await save("page", {
-                key: hasPrimary ? `homepage:${crypto.randomUUID()}` : "homepage_presentation",
-                title: "Nouvelle section",
-                content: "",
-              });
-              if (ok) await loadContent();
+              const ok = await save(
+                "page",
+                {
+                  key: hasPrimary ? `homepage:${crypto.randomUUID()}` : "homepage_presentation",
+                  title: "Nouvelle section",
+                  content: "",
+                },
+                { silent: true }
+              );
+              if (ok) await loadContent({ silent: true });
             }}
             onDelete={async (key) => {
-              const ok = await save("page-delete", { key });
-              if (ok) await loadContent();
+              const ok = await save("page-delete", { key }, { silent: true });
+              if (ok) await loadContent({ silent: true });
             }}
           />
           <HomepageStats
@@ -824,6 +829,12 @@ export default function ContentPage() {
                     { key: "label", label: "Libellé" },
                   ]}
                   values={{ value: stat.value, label: stat.label }}
+                  onChange={(next) =>
+                    applyLabels({
+                      [`stat_${n}_value`]: next.value,
+                      [`stat_${n}_label`]: next.label,
+                    })
+                  }
                   onSave={(next) =>
                     saveLabels({
                       [`stat_${n}_value`]: next.value,
@@ -857,6 +868,7 @@ export default function ContentPage() {
                 disabled={saving}
                 fields={[{ key: "title", label: "Titre" }]}
                 values={{ title: resolveCopy(labels, "explore_title") }}
+                onChange={(next) => applyLabels({ explore_title: next.title })}
                 onSave={(next) => saveLabels({ explore_title: next.title })}
                 onDelete={() => saveLabels({ explore_title: "" })}
               >
@@ -869,6 +881,7 @@ export default function ContentPage() {
                 disabled={saving}
                 fields={[{ key: "description", label: "Description", type: "textarea", rows: 3 }]}
                 values={{ description: resolveCopy(labels, exploreDescKey(link.href)) }}
+                onChange={(next) => applyLabels({ [exploreDescKey(link.href)]: next.description })}
                 onSave={(next) => saveLabels({ [exploreDescKey(link.href)]: next.description })}
                 onDelete={() => saveLabels({ [exploreDescKey(link.href)]: "" })}
               >
@@ -881,6 +894,7 @@ export default function ContentPage() {
                 disabled={saving}
                 fields={[{ key: "cta", label: "Texte du bouton" }]}
                 values={{ cta: resolveCopy(labels, "explore_cta") }}
+                onChange={(next) => applyLabels({ explore_cta: next.cta })}
                 onSave={(next) => saveLabels({ explore_cta: next.cta })}
                 onDelete={() => saveLabels({ explore_cta: "" })}
               >
@@ -915,6 +929,7 @@ export default function ContentPage() {
                   title: intro?.title || "",
                   content: intro?.content || "",
                 }}
+                onChange={(next) => applyPageFields(intro?.key || "formation_intro", next)}
                 onSave={async (next) => {
                   const ok = await save("page", {
                     key: intro?.key || "formation_intro",
@@ -945,6 +960,7 @@ export default function ContentPage() {
                 { key: "content", label: "Texte", type: "textarea", rows: 5 },
               ]}
               values={{ title: section.title || "", content: section.content }}
+              onChange={(next) => applyPageFields(section.key, next)}
               onSave={async (next) => {
                 const ok = await save("page", {
                   key: section.key,
@@ -977,6 +993,14 @@ export default function ContentPage() {
                 catalogTitle: tabLabel("formations"),
                 emptyLabel: resolveCopy(labels, "formation_empty"),
               }}
+              onChange={(next) => {
+                applyLabels({
+                  formation_benefits_title: next.benefitsTitle,
+                  formation_benefits: next.benefits,
+                  formation_empty: next.emptyLabel,
+                  formations: next.catalogTitle,
+                });
+              }}
               onSave={async (next) => {
                 await saveLabels({
                   formation_benefits_title: next.benefitsTitle,
@@ -995,6 +1019,7 @@ export default function ContentPage() {
               disabled={saving}
               fields={[{ key: "title", label: "Titre" }]}
               values={{ title: resolveCopy(labels, "formation_enroll_title") }}
+              onChange={(next) => applyLabels({ formation_enroll_title: next.title })}
               onSave={(next) => saveLabels({ formation_enroll_title: next.title })}
               onDelete={() => saveLabels({ formation_enroll_title: "" })}
             >
@@ -1037,6 +1062,13 @@ export default function ContentPage() {
                 title: tabLabel("packs"),
                 subtitle: resolveCopy(labels, "products_packs_subtitle"),
               }}
+              onChange={(next) => {
+                applyLabels({
+                  products_packs_badge: next.badge,
+                  packs: next.title,
+                  products_packs_subtitle: next.subtitle,
+                });
+              }}
               onSave={async (next) => {
                 await saveLabels({
                   products_packs_badge: next.badge,
@@ -1057,6 +1089,15 @@ export default function ContentPage() {
                 { key: "description", label: "Description", type: "textarea", rows: 4 },
               ]}
               values={{ name: pack.name, description: pack.description }}
+              onChange={(next) => {
+                setProductPacks((prev) =>
+                  prev.map((item) =>
+                    item.id === pack.id
+                      ? { ...item, name: next.name, description: next.description }
+                      : item
+                  )
+                );
+              }}
               onSave={async (next) => {
                 const res = await fetch("/api/admin/packs", {
                   method: "PUT",
@@ -1111,6 +1152,13 @@ export default function ContentPage() {
                 title: tabLabel("ged"),
                 subtitle: resolveCopy(labels, "products_ged_subtitle"),
               }}
+              onChange={(next) => {
+                applyLabels({
+                  products_ged_badge: next.badge,
+                  ged: next.title,
+                  products_ged_subtitle: next.subtitle,
+                });
+              }}
               onSave={async (next) => {
                 await saveLabels({
                   products_ged_badge: next.badge,
@@ -1135,6 +1183,14 @@ export default function ContentPage() {
                 title: ged.title,
                 description: ged.description,
                 fallback: resolveCopy(labels, "products_ged_fallback"),
+              }}
+              onChange={(next) => {
+                setGed((prev) => ({
+                  ...prev,
+                  title: next.title,
+                  description: next.description,
+                }));
+                applyLabels({ products_ged_fallback: next.fallback });
               }}
               onSave={async (next) => {
                 const ok = await save("ged", {
@@ -1164,6 +1220,7 @@ export default function ContentPage() {
                 { key: "content", label: "Texte", type: "textarea", rows: 5 },
               ]}
               values={{ title: section.title || "", content: section.content }}
+              onChange={(next) => applyPageFields(section.key, next)}
               onSave={async (next) => {
                 const ok = await save("page", {
                   key: section.key,
@@ -1223,6 +1280,21 @@ export default function ContentPage() {
                 title: service.title,
                 description: service.description,
                 cta: resolveCopy(labels, "service_cta"),
+              }}
+              onChange={(next) => {
+                const titleId =
+                  service.href.includes("accompagnement")
+                    ? "accompagnement"
+                    : service.href.includes("audit")
+                      ? "audit"
+                      : service.href.includes("produits")
+                        ? "products"
+                        : "formation";
+                applyLabels({
+                  [titleId]: next.title,
+                  [serviceDescKey(service.href)]: next.description,
+                  service_cta: next.cta,
+                });
               }}
               onSave={async (next) => {
                 const titleId =
@@ -1302,6 +1374,16 @@ export default function ContentPage() {
                   name: sector.name,
                   description: sector.description,
                   discover: resolveCopy(labels, "sectors_discover"),
+                }}
+                onChange={(next) => {
+                  setSectors((prev) =>
+                    prev.map((item) =>
+                      item.slug === sector.slug
+                        ? { ...item, name: next.name, description: next.description }
+                        : item
+                    )
+                  );
+                  applyLabels({ sectors_discover: next.discover });
                 }}
                 onSave={async (next) => {
                   const match = sectors.find((item) => item.slug === sector.slug);
@@ -1389,6 +1471,18 @@ export default function ContentPage() {
                 emailLabel: resolveCopy(labels, "careers_email_label"),
                 phoneLabel: resolveCopy(labels, "careers_phone_label"),
               }}
+              onChange={(next) => {
+                setCareers((prev) => ({
+                  ...prev,
+                  content: next.content,
+                  email: next.email,
+                  phone: next.phone,
+                }));
+                applyLabels({
+                  careers_email_label: next.emailLabel,
+                  careers_phone_label: next.phoneLabel,
+                });
+              }}
               onSave={async (next) => {
                 const nextCareers = {
                   ...careers,
@@ -1416,6 +1510,7 @@ export default function ContentPage() {
                 { key: "content", label: "Texte", type: "textarea", rows: 5 },
               ]}
               values={{ title: section.title || "", content: section.content }}
+              onChange={(next) => applyPageFields(section.key, next)}
               onSave={async (next) => {
                 const ok = await save("page", {
                   key: section.key,
@@ -1458,7 +1553,7 @@ export default function ContentPage() {
             initialBlocks={layouts.about ?? EMPTY_PAGE_BLOCKS}
             saving={saving}
             onSave={async (blocks) => {
-              const ok = await save("layout", { tabId: "about", blocks });
+              const ok = await save("layout", { tabId: "about", blocks }, { silent: true });
               if (ok) setLayouts((prev) => ({ ...prev, about: blocks }));
             }}
           />
@@ -1467,7 +1562,7 @@ export default function ContentPage() {
             initialBlocks={layouts.team ?? EMPTY_PAGE_BLOCKS}
             saving={saving}
             onSave={async (blocks) => {
-              const ok = await save("layout", { tabId: "team", blocks });
+              const ok = await save("layout", { tabId: "team", blocks }, { silent: true });
               if (ok) setLayouts((prev) => ({ ...prev, team: blocks }));
             }}
           />
@@ -1481,7 +1576,7 @@ export default function ContentPage() {
             initialBlocks={layouts.formation ?? EMPTY_PAGE_BLOCKS}
             saving={saving}
             onSave={async (blocks) => {
-              const ok = await save("layout", { tabId: "formation", blocks });
+              const ok = await save("layout", { tabId: "formation", blocks }, { silent: true });
               if (ok) setLayouts((prev) => ({ ...prev, formation: blocks }));
             }}
           />
@@ -1490,7 +1585,7 @@ export default function ContentPage() {
             initialBlocks={layouts.formations ?? EMPTY_PAGE_BLOCKS}
             saving={saving}
             onSave={async (blocks) => {
-              const ok = await save("layout", { tabId: "formations", blocks });
+              const ok = await save("layout", { tabId: "formations", blocks }, { silent: true });
               if (ok) setLayouts((prev) => ({ ...prev, formations: blocks }));
             }}
           />
@@ -1504,7 +1599,7 @@ export default function ContentPage() {
             initialBlocks={layouts.packs ?? EMPTY_PAGE_BLOCKS}
             saving={saving}
             onSave={async (blocks) => {
-              const ok = await save("layout", { tabId: "packs", blocks });
+              const ok = await save("layout", { tabId: "packs", blocks }, { silent: true });
               if (ok) setLayouts((prev) => ({ ...prev, packs: blocks }));
             }}
           />
@@ -1513,7 +1608,7 @@ export default function ContentPage() {
             initialBlocks={layouts.ged ?? EMPTY_PAGE_BLOCKS}
             saving={saving}
             onSave={async (blocks) => {
-              const ok = await save("layout", { tabId: "ged", blocks });
+              const ok = await save("layout", { tabId: "ged", blocks }, { silent: true });
               if (ok) setLayouts((prev) => ({ ...prev, ged: blocks }));
             }}
           />
@@ -1531,7 +1626,7 @@ export default function ContentPage() {
           initialBlocks={layouts[activeTab] ?? EMPTY_PAGE_BLOCKS}
           saving={saving}
           onSave={async (blocks) => {
-            const ok = await save("layout", { tabId: activeTab, blocks });
+            const ok = await save("layout", { tabId: activeTab, blocks }, { silent: true });
             if (ok) {
               setLayouts((prev) => ({ ...prev, [activeTab]: blocks }));
             }
@@ -1539,6 +1634,7 @@ export default function ContentPage() {
         />
       ) : null}
       </VisualPageFrame>
+      </CanvasGuard>
       ) : null}
 
       {activeTab === "settings" && (
@@ -1576,7 +1672,7 @@ export default function ContentPage() {
             initialBlocks={layouts[activeTab] ?? EMPTY_PAGE_BLOCKS}
             saving={saving}
             onSave={async (blocks) => {
-              const ok = await save("layout", { tabId: activeTab, blocks });
+              const ok = await save("layout", { tabId: activeTab, blocks }, { silent: true });
               if (ok) {
                 setLayouts((prev) => ({ ...prev, [activeTab]: blocks }));
               }
@@ -1584,7 +1680,8 @@ export default function ContentPage() {
           />
         </div>
       )}
-    </div>
+    </ContentBuilderShell>
+    </BuilderProvider>
   );
 }
 
@@ -1658,6 +1755,7 @@ function CustomPageEditor({
 
   return (
     <VisualPageFrame
+      chrome="canvas"
       title={title}
       href={publicPath}
       navLinks={navLinks}

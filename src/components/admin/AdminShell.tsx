@@ -213,8 +213,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         </header>
         <div
           className={cn(
-            "min-h-0 flex-1 overflow-y-auto overscroll-contain",
-            isContentEditor ? "p-0" : "p-4 lg:p-8"
+            "min-h-0 flex-1 overscroll-contain",
+            isContentEditor ? "overflow-hidden p-0 [&>*]:h-full" : "overflow-y-auto p-4 lg:p-8"
           )}
         >
           {children}

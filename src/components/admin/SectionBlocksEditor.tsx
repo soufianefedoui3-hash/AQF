@@ -1,8 +1,9 @@
 "use client";
 
-import { type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Plus } from "lucide-react";
 import { EditableRegion } from "@/components/admin/EditableRegion";
+import { InsertRail } from "@/components/admin/builder/InsertRail";
 import {
   AboutPageBody,
   AboutSectionCard,
@@ -24,7 +25,8 @@ function wrapWithChrome(
   onSave: (data: ContentBlock) => Promise<void>,
   onDelete: () => Promise<void>,
   onAdd: () => Promise<void>,
-  view: ReactNode
+  view: ReactNode,
+  onLive?: (next: { title: string; content: string }) => void
 ) {
   return (
     <EditableRegion
@@ -35,6 +37,7 @@ function wrapWithChrome(
         { key: "content", label: "Texte", type: "textarea", rows: 6, placeholder: "Contenu de la section" },
       ]}
       values={{ title: block.title || "", content: block.content || "" }}
+      onChange={(next) => onLive?.({ title: next.title, content: next.content })}
       onSave={(next) => onSave({ key: block.key, title: next.title, content: next.content })}
       onDelete={onDelete}
       onAdd={() => void onAdd()}
@@ -71,6 +74,16 @@ export function SectionBlocksEditor({
   wrapMember?: (member: AboutTeamMember, node: ReactNode) => ReactNode;
   wrapTeamTitle?: (node: ReactNode) => ReactNode;
 }) {
+  const [live, setLive] = useState<Record<string, { title: string; content: string }>>({});
+  const shown = useMemo(
+    () =>
+      blocks.map((block) => {
+        const overlay = live[block.key];
+        return overlay ? { ...block, title: overlay.title, content: overlay.content } : block;
+      }),
+    [blocks, live]
+  );
+
   function chrome(block: ContentBlock, view: ReactNode) {
     return wrapWithChrome(
       block,
@@ -81,15 +94,17 @@ export function SectionBlocksEditor({
         await onDelete(block.key);
       },
       onAdd,
-      view
+      view,
+      (next) => setLive((prev) => ({ ...prev, [block.key]: next }))
     );
   }
 
   if (variant === "about") {
     return (
       <div>
+        <InsertRail disabled={saving} onAdd={() => void onAdd()} />
         <AboutPageBody
-          sections={blocks}
+          sections={shown}
           team={team ?? []}
           teamTitle={teamTitle || "Équipe"}
           wrapSection={(section: AboutSectionItem, index, node) =>
@@ -115,9 +130,10 @@ export function SectionBlocksEditor({
   }
 
   if (variant === "homepage") {
-    const [presentation, ...extraSections] = blocks;
+    const [presentation, ...extraSections] = shown;
     return (
       <div>
+        <InsertRail disabled={saving} onAdd={() => void onAdd()} />
         <HomepageEditable
           presentation={presentation}
           extraSections={extraSections}
@@ -143,14 +159,15 @@ export function SectionBlocksEditor({
 
   return (
     <div>
-      {blocks.length === 0 ? (
+      {shown.length === 0 ? (
         <PageSection>
           <p className="text-center text-text-muted">{emptyLabel}</p>
         </PageSection>
       ) : (
         <PageSection>
+          <InsertRail disabled={saving} onAdd={() => void onAdd()} />
           <div className="grid gap-6 md:grid-cols-2">
-            {blocks.map((block) =>
+            {shown.map((block) =>
               chrome(
                 block,
                 <ContentCard>

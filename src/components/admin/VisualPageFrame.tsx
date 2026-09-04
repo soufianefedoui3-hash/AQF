@@ -35,6 +35,7 @@ export function VisualPageFrame({
   onSaveSubtitle,
   onSaveHeroTagline,
   onSaveFooterCopy,
+  chrome = "framed",
   children,
 }: {
   title: string;
@@ -78,14 +79,57 @@ export function VisualPageFrame({
     phone: string;
     address: string;
   }) => Promise<void> | void;
+  chrome?: "framed" | "canvas";
   children: React.ReactNode;
 }) {
   const [draft, setDraft] = useState(title);
   const [editingTitle, setEditingTitle] = useState(false);
+  const [liveHero, setLiveHero] = useState(heroTagline || "");
+  const [liveSubtitle, setLiveSubtitle] = useState(subtitle || "");
+  const [liveFooter, setLiveFooter] = useState({
+    tagline: footerCopy?.tagline || SITE_COPY_DEFAULTS.footer_tagline,
+    navTitle: footerCopy?.navTitle || SITE_COPY_DEFAULTS.footer_nav,
+    servicesTitle: footerCopy?.servicesTitle || SITE_COPY_DEFAULTS.footer_services,
+    contactTitle: footerCopy?.contactTitle || SITE_COPY_DEFAULTS.footer_contact,
+    copyright: footerCopy?.copyright || SITE_COPY_DEFAULTS.footer_copyright,
+    email: footer.email,
+    phone: footer.phone,
+    address: footer.address,
+  });
 
   useEffect(() => {
     setDraft(title);
   }, [title]);
+
+  useEffect(() => {
+    setLiveHero(heroTagline || "");
+  }, [heroTagline]);
+
+  useEffect(() => {
+    setLiveSubtitle(subtitle || "");
+  }, [subtitle]);
+
+  useEffect(() => {
+    setLiveFooter({
+      tagline: footerCopy?.tagline || SITE_COPY_DEFAULTS.footer_tagline,
+      navTitle: footerCopy?.navTitle || SITE_COPY_DEFAULTS.footer_nav,
+      servicesTitle: footerCopy?.servicesTitle || SITE_COPY_DEFAULTS.footer_services,
+      contactTitle: footerCopy?.contactTitle || SITE_COPY_DEFAULTS.footer_contact,
+      copyright: footerCopy?.copyright || SITE_COPY_DEFAULTS.footer_copyright,
+      email: footer.email,
+      phone: footer.phone,
+      address: footer.address,
+    });
+  }, [
+    footer.email,
+    footer.phone,
+    footer.address,
+    footerCopy?.tagline,
+    footerCopy?.navTitle,
+    footerCopy?.servicesTitle,
+    footerCopy?.contactTitle,
+    footerCopy?.copyright,
+  ]);
 
   async function commitTitle() {
     const next = draft.trim() || title;
@@ -124,8 +168,17 @@ export function VisualPageFrame({
       )
     ) : undefined;
 
+  const canvas = chrome === "canvas";
+
   return (
-    <div className="overflow-hidden bg-white shadow-sm lg:rounded-t-3xl lg:border lg:border-b-0 lg:border-primary-100">
+    <div
+      className={
+        canvas
+          ? "min-h-full bg-white"
+          : "overflow-hidden bg-white shadow-sm lg:rounded-t-3xl lg:border lg:border-b-0 lg:border-primary-100"
+      }
+    >
+      {canvas ? null : (
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-primary-50 bg-accent-50/60 px-4 py-3 sm:px-5">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent-700">
@@ -167,6 +220,7 @@ export function VisualPageFrame({
           ) : null}
         </div>
       </div>
+      )}
 
       <div className="relative isolate flex min-h-screen flex-col bg-white">
         <Navbar
@@ -185,11 +239,12 @@ export function VisualPageFrame({
                 label="Hero"
                 disabled={saving}
                 fields={[{ key: "tagline", label: "Accroche", type: "textarea", rows: 3 }]}
-                values={{ tagline: heroTagline || "" }}
+                values={{ tagline: liveHero }}
+                onChange={(next) => setLiveHero(next.tagline)}
                 onSave={(next) => onSaveHeroTagline(next.tagline)}
                 onDelete={() => onSaveHeroTagline("")}
               >
-                <HomepageHero tagline={heroTagline} />
+                <HomepageHero tagline={liveHero} />
               </EditableRegion>
             ) : (
               <HomepageHero tagline={heroTagline} />
@@ -201,13 +256,14 @@ export function VisualPageFrame({
               fields={[
                 { key: "subtitle", label: "Sous-titre", type: "textarea", rows: 3 },
               ]}
-              values={{ subtitle: subtitle || "" }}
+              values={{ subtitle: liveSubtitle }}
+              onChange={(next) => setLiveSubtitle(next.subtitle)}
               onSave={(next) => onSaveSubtitle(next.subtitle)}
               onDelete={() => onSaveSubtitle("")}
             >
               <PageHero
                 title={title}
-                subtitle={subtitle}
+                subtitle={liveSubtitle}
                 backHref={backHref}
                 backLabel={backLabel}
                 titleNode={titleNode}
@@ -238,16 +294,19 @@ export function VisualPageFrame({
               { key: "phone", label: "Téléphone" },
               { key: "address", label: "Adresse" },
             ]}
-            values={{
-              tagline: footerCopy?.tagline || SITE_COPY_DEFAULTS.footer_tagline,
-              navTitle: footerCopy?.navTitle || SITE_COPY_DEFAULTS.footer_nav,
-              servicesTitle: footerCopy?.servicesTitle || SITE_COPY_DEFAULTS.footer_services,
-              contactTitle: footerCopy?.contactTitle || SITE_COPY_DEFAULTS.footer_contact,
-              copyright: footerCopy?.copyright || SITE_COPY_DEFAULTS.footer_copyright,
-              email: footer.email,
-              phone: footer.phone,
-              address: footer.address,
-            }}
+            values={liveFooter}
+            onChange={(next) =>
+              setLiveFooter({
+                tagline: next.tagline,
+                navTitle: next.navTitle,
+                servicesTitle: next.servicesTitle,
+                contactTitle: next.contactTitle,
+                copyright: next.copyright,
+                email: next.email,
+                phone: next.phone,
+                address: next.address,
+              })
+            }
             onSave={(next) =>
               onSaveFooterCopy({
                 tagline: next.tagline,
@@ -264,14 +323,14 @@ export function VisualPageFrame({
             <SiteFooter
               navLinks={navLinks}
               serviceLinks={footer.serviceLinks}
-              email={footer.email}
-              phone={footer.phone}
-              address={footer.address}
-              tagline={footerCopy?.tagline}
-              navTitle={footerCopy?.navTitle}
-              servicesTitle={footerCopy?.servicesTitle}
-              contactTitle={footerCopy?.contactTitle}
-              copyright={footerCopy?.copyright}
+              email={liveFooter.email}
+              phone={liveFooter.phone}
+              address={liveFooter.address}
+              tagline={liveFooter.tagline}
+              navTitle={liveFooter.navTitle}
+              servicesTitle={liveFooter.servicesTitle}
+              contactTitle={liveFooter.contactTitle}
+              copyright={liveFooter.copyright}
             />
           </EditableRegion>
         ) : (

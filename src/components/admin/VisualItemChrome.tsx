@@ -8,6 +8,7 @@ export function VisualItemChrome({
   editing,
   disabled,
   children,
+  onSelect,
   onEdit,
   onDone,
   onAdd,
@@ -17,6 +18,7 @@ export function VisualItemChrome({
   editing?: boolean;
   disabled?: boolean;
   children: React.ReactNode;
+  onSelect?: () => void;
   onEdit?: () => void;
   onDone?: () => void;
   onAdd?: () => void;
@@ -24,20 +26,22 @@ export function VisualItemChrome({
 }) {
   return (
     <div
-      className={cn(
-        "group/chrome relative",
-        editing && "z-10"
-      )}
+      className={cn("group/chrome relative", editing && "z-10")}
+      onClick={(event) => {
+        if ((event.target as HTMLElement).closest("[data-builder-chrome]")) return;
+        onSelect?.();
+      }}
     >
       <div
         className={cn(
           "pointer-events-none absolute inset-1 z-10 rounded-2xl ring-2 ring-inset transition",
           editing
-            ? "ring-accent-400"
+            ? "ring-accent-400 shadow-[0_0_0_4px_rgba(45,212,191,0.18)]"
             : "ring-transparent group-hover/chrome:ring-accent-300"
         )}
       />
       <div
+        data-builder-chrome
         className={cn(
           "absolute right-3 top-3 z-20 flex flex-wrap justify-end gap-1 transition",
           editing
@@ -61,7 +65,7 @@ export function VisualItemChrome({
         {onAdd ? (
           <ToolbarButton disabled={disabled} onClick={onAdd}>
             <Plus className="h-3.5 w-3.5" />
-            Ajouter un bloc ici
+            Ajouter un bloc
           </ToolbarButton>
         ) : null}
         {onDelete ? (
@@ -90,8 +94,13 @@ function ToolbarButton({
   return (
     <button
       type="button"
+      data-builder-chrome
       disabled={disabled}
-      onClick={onClick}
+      onClick={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onClick();
+      }}
       className={cn(
         "inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold shadow-sm backdrop-blur",
         "disabled:cursor-not-allowed disabled:opacity-50",
