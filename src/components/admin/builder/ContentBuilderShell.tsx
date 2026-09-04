@@ -1,6 +1,7 @@
 "use client";
 
 import { ExternalLink, Plus, Trash2 } from "lucide-react";
+import { BuilderEditModal } from "@/components/admin/builder/BuilderEditModal";
 import { BuilderInspector } from "@/components/admin/builder/BuilderInspector";
 import { useBuilder } from "@/components/admin/builder/BuilderContext";
 import { Button } from "@/components/ui/Button";
@@ -51,7 +52,9 @@ export function ContentBuilderShell({
           {savedAt ? (
             <p className="mt-1 text-xs text-secondary-700">Enregistré automatiquement</p>
           ) : (
-            <p className="mt-1 text-xs text-text-muted">Cliquez un bloc pour l&apos;éditer.</p>
+            <p className="mt-1 text-xs text-text-muted">
+              Cliquez Modifier pour éditer un bloc.
+            </p>
           )}
         </div>
 
@@ -120,7 +123,7 @@ export function ContentBuilderShell({
           </div>
         </div>
 
-        <div className="min-h-0 flex-[1.15] overflow-y-auto border-t border-primary-100 px-4 py-4">
+        <div className="shrink-0 border-t border-primary-100 px-4 py-4">
           <BuilderInspector saving={saving} />
         </div>
       </aside>
@@ -128,6 +131,7 @@ export function ContentBuilderShell({
       <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
         {children}
       </div>
+      <BuilderEditModal />
     </div>
   );
 }

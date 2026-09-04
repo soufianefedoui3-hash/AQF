@@ -1,81 +1,42 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { BlockFields } from "@/components/admin/PageBlockBuilder";
-import { CopyFields } from "@/components/admin/BlockEditModal";
 import { useBuilder } from "@/components/admin/builder/BuilderContext";
 import { Button } from "@/components/ui/Button";
 
 export function BuilderInspector({ saving }: { saving?: boolean }) {
   const builder = useBuilder();
-  const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const persistRef = useRef(builder?.selected?.onPersist);
-  persistRef.current = builder?.selected?.onPersist;
-
-  useEffect(() => {
-    return () => {
-      if (persistTimer.current) clearTimeout(persistTimer.current);
-    };
-  }, []);
 
   if (!builder) return null;
-  const { selected, patchValues, patchBlock, markSaved } = builder;
-
-  function schedulePersist(values?: Record<string, string>) {
-    if (!persistRef.current) return;
-    if (persistTimer.current) clearTimeout(persistTimer.current);
-    persistTimer.current = setTimeout(() => {
-      void Promise.resolve(persistRef.current?.(values)).then(() => markSaved());
-    }, 450);
-  }
+  const { selected } = builder;
 
   if (!selected) {
     return (
       <div className="rounded-2xl border border-dashed border-primary-200 bg-white p-4 text-sm text-text-muted">
-        Cliquez un élément sur la page pour afficher ses champs ici.
+        Survolez un bloc, puis cliquez <strong>Modifier</strong> pour l&apos;éditer dans une fenêtre.
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent-700">
-          Propriétés
+          Sélection
         </p>
         <h3 className="text-base font-semibold text-primary-900">{selected.label}</h3>
+        <p className="mt-1 text-xs text-text-muted">
+          Les champs s&apos;ouvrent dans une fenêtre plus large.
+        </p>
       </div>
-
-      {selected.block ? (
-        <BlockFields block={selected.block} onChange={(next) => {
-          patchBlock(next);
-          schedulePersist();
-        }} />
-      ) : selected.fields && selected.values ? (
-        <CopyFields
-          fields={selected.fields}
-          values={selected.values}
-          onChange={(key, value) => {
-            const next = { ...selected.values, [key]: value };
-            patchValues(next);
-            schedulePersist(next);
-          }}
-        />
-      ) : (
-        <p className="text-sm text-text-muted">Aucun champ éditable.</p>
-      )}
-
       <div className="flex flex-wrap gap-2">
-        {selected.onPersist ? (
-          <Button
-            type="button"
-            size="sm"
-            loading={saving}
-            onClick={() => void Promise.resolve(selected.onPersist?.()).then(() => markSaved())}
-          >
-            Enregistrer
-          </Button>
-        ) : null}
+        <Button
+          type="button"
+          size="sm"
+          disabled={saving}
+          onClick={() => builder.openEditor()}
+        >
+          Modifier
+        </Button>
         {selected.onDuplicate ? (
           <Button
             type="button"

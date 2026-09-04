@@ -54,7 +54,10 @@ export function VisualBlockCanvas({
     const created = next[index];
     builder?.setInsertAt(null);
     void commit(next);
-    if (created) bindBlock(created);
+    if (created) {
+      bindBlock(created);
+      builder?.openEditor();
+    }
   }
 
   function bindBlock(block: PageBlock) {
@@ -122,7 +125,10 @@ export function VisualBlockCanvas({
               editing={editing}
               disabled={saving}
               onSelect={() => bindBlock(block)}
-              onEdit={() => bindBlock(block)}
+              onEdit={() => {
+                bindBlock(block);
+                builder?.openEditor();
+              }}
               onDone={() => builder?.clear()}
               onDuplicate={() => duplicateBlock(block.id)}
               onDelete={() => {

@@ -71,7 +71,10 @@ export function EditableRegion({
         editing={selected}
         disabled={disabled}
         onSelect={bindSelection}
-        onEdit={bindSelection}
+        onEdit={() => {
+          bindSelection();
+          builder.openEditor();
+        }}
         onDone={() => builder.clear()}
         onDuplicate={onDuplicate}
         onDelete={

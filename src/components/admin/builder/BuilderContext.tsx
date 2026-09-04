@@ -21,6 +21,9 @@ type BuilderContextValue = {
   selected: BuilderSelection | null;
   select: (selection: BuilderSelection) => void;
   clear: () => void;
+  editorOpen: boolean;
+  openEditor: (selection?: BuilderSelection) => void;
+  closeEditor: () => void;
   patchValues: (values: Record<string, string>) => void;
   patchBlock: (block: PageBlock) => void;
   insertAt: number | null;
@@ -33,6 +36,7 @@ const BuilderContext = createContext<BuilderContextValue | null>(null);
 
 export function BuilderProvider({ children }: { children: React.ReactNode }) {
   const [selected, setSelected] = useState<BuilderSelection | null>(null);
+  const [editorOpen, setEditorOpen] = useState(false);
   const [insertAt, setInsertAt] = useState<number | null>(null);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const selectedRef = useRef(selected);
@@ -42,7 +46,17 @@ export function BuilderProvider({ children }: { children: React.ReactNode }) {
     setSelected(selection);
   }, []);
 
-  const clear = useCallback(() => setSelected(null), []);
+  const clear = useCallback(() => {
+    setSelected(null);
+    setEditorOpen(false);
+  }, []);
+
+  const openEditor = useCallback((selection?: BuilderSelection) => {
+    if (selection) setSelected(selection);
+    setEditorOpen(true);
+  }, []);
+
+  const closeEditor = useCallback(() => setEditorOpen(false), []);
 
   const patchValues = useCallback((values: Record<string, string>) => {
     setSelected((prev) => {
@@ -65,6 +79,9 @@ export function BuilderProvider({ children }: { children: React.ReactNode }) {
       selected,
       select,
       clear,
+      editorOpen,
+      openEditor,
+      closeEditor,
       patchValues,
       patchBlock,
       insertAt,
@@ -72,7 +89,7 @@ export function BuilderProvider({ children }: { children: React.ReactNode }) {
       savedAt,
       markSaved: () => setSavedAt(Date.now()),
     }),
-    [selected, select, clear, patchValues, patchBlock, insertAt, savedAt]
+    [selected, select, clear, editorOpen, openEditor, closeEditor, patchValues, patchBlock, insertAt, savedAt]
   );
 
   return <BuilderContext.Provider value={value}>{children}</BuilderContext.Provider>;

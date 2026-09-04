@@ -10,7 +10,6 @@ export function VisualItemChrome({
   children,
   onSelect,
   onEdit,
-  onDone,
   onDuplicate,
   onDelete,
 }: {
@@ -52,11 +51,7 @@ export function VisualItemChrome({
         <span className="hidden rounded-full bg-white/95 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-primary-500 shadow-sm sm:inline">
           {label}
         </span>
-        {editing && onDone ? (
-          <ToolbarButton disabled={disabled} onClick={onDone}>
-            Terminer
-          </ToolbarButton>
-        ) : onEdit ? (
+        {onEdit ? (
           <ToolbarButton disabled={disabled} onClick={onEdit}>
             <Pencil className="h-3.5 w-3.5" />
             Modifier

@@ -23,7 +23,7 @@ export function CopyFields({
   onChange: (key: string, value: string) => void;
 }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {fields.map((field) =>
         field.type === "textarea" ? (
           <Textarea
@@ -54,6 +54,7 @@ export function BlockEditModal({
   saving,
   onClose,
   onSave,
+  size = "lg",
   children,
 }: {
   isOpen: boolean;
@@ -61,13 +62,17 @@ export function BlockEditModal({
   saving?: boolean;
   onClose: () => void;
   onSave: () => Promise<void> | void;
+  size?: "md" | "lg" | "xl";
   children: React.ReactNode;
 }) {
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={title} size="lg">
-      <div className="space-y-5">
+    <Modal isOpen={isOpen} onClose={onClose} title={title} size={size}>
+      <div className="space-y-6">
+        <p className="text-sm text-text-muted">
+          Modifiez les champs ci-dessous, puis enregistrez pour mettre à jour la page.
+        </p>
         {children}
-        <div className="flex justify-end gap-2">
+        <div className="sticky bottom-0 -mx-6 -mb-6 flex justify-end gap-3 border-t border-primary-50 bg-white px-6 py-4">
           <Button type="button" variant="ghost" disabled={saving} onClick={onClose}>
             Annuler
           </Button>
