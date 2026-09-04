@@ -4,13 +4,15 @@ import { useEffect, useState } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Input, Textarea } from "@/components/ui/Input";
+import { ImageField } from "@/components/admin/ImageField";
 
 export type EditField = {
   key: string;
   label: string;
-  type?: "text" | "textarea";
+  type?: "text" | "textarea" | "image";
   rows?: number;
   placeholder?: string;
+  prefix?: string;
 };
 
 export function CopyFields({
@@ -25,7 +27,15 @@ export function CopyFields({
   return (
     <div className="space-y-5">
       {fields.map((field) =>
-        field.type === "textarea" ? (
+        field.type === "image" ? (
+          <ImageField
+            key={field.key}
+            label={field.label}
+            prefix={field.prefix || field.key}
+            value={values[field.key] ?? ""}
+            onChange={(url) => onChange(field.key, url)}
+          />
+        ) : field.type === "textarea" ? (
           <Textarea
             key={field.key}
             label={field.label}

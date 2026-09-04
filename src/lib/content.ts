@@ -36,6 +36,7 @@ import {
   exploreDescKey,
   resolveCopy,
   serviceDescKey,
+  serviceImageKey,
   STAT_INDEXES,
 } from "@/lib/site-copy";
 import { NAV_LINKS, SERVICE_LINKS } from "@/lib/constants";
@@ -477,6 +478,7 @@ export async function getServiceLinks() {
     ...link,
     title: labelOf(labels, byHref[link.href] || "", link.title),
     description: labels[serviceDescKey(link.href)] ?? link.description,
+    imageUrl: labels[serviceImageKey(link.href)]?.trim() || "",
   }));
 }
 
@@ -502,6 +504,7 @@ export async function getServiceCards() {
       href: clone.href || "/",
       title: clone.title,
       description: clone.description,
+      imageUrl: clone.imageUrl || "",
     })
   );
 }

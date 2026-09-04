@@ -111,15 +111,26 @@ export function VisualBlockCanvas({
       fields: [
         { key: "title", label: "Titre" },
         { key: "content", label: "Texte", type: "textarea", rows: 4 },
+        { key: "imageUrl", label: "Image", type: "image", prefix: "grid-card" },
       ],
-      values: { title: item.title, content: item.content },
+      values: {
+        title: item.title,
+        content: item.content,
+        imageUrl: item.imageUrl || "",
+      },
       onValuesChange: (next) => {
         const latest = blocksRef.current.find((entry) => entry.id === block.id);
         if (!latest || latest.type !== "grid") return;
         replaceBlock({
           ...latest,
           items: latest.items.map((entry, entryIndex) =>
-            entryIndex === index ? { title: next.title, content: next.content } : entry
+            entryIndex === index
+              ? {
+                  title: next.title,
+                  content: next.content,
+                  imageUrl: next.imageUrl || "",
+                }
+              : entry
           ),
         });
       },
@@ -163,7 +174,11 @@ export function VisualBlockCanvas({
     const source = latest.items[index];
     if (!source) return;
     const items = [...latest.items];
-    items.splice(index + 1, 0, { title: source.title, content: source.content });
+    items.splice(index + 1, 0, {
+      title: source.title,
+      content: source.content,
+      imageUrl: source.imageUrl || "",
+    });
     void commit(replaceBlock({ ...latest, items }));
     toast.success("Carte dupliquée");
   }

@@ -53,14 +53,43 @@ export function BuilderEditModal() {
       onSave={handleSave}
     >
       {draftBlock ? (
-        <BlockFields block={draftBlock} onChange={setDraftBlock} />
+        <BlockFields
+          block={draftBlock}
+          onChange={(next) => {
+            setDraftBlock(next);
+            const before =
+              draftBlock.type === "card"
+                ? draftBlock.imageUrl || ""
+                : draftBlock.type === "grid"
+                  ? draftBlock.items.map((item) => item.imageUrl || "").join("|")
+                  : "";
+            const after =
+              next.type === "card"
+                ? next.imageUrl || ""
+                : next.type === "grid"
+                  ? next.items.map((item) => item.imageUrl || "").join("|")
+                  : "";
+            if (before !== after) {
+              current.onBlockChange?.(next);
+              void current.onPersist?.();
+            }
+          }}
+        />
       ) : current.fields ? (
         <CopyFields
           fields={current.fields}
           values={draftValues}
-          onChange={(key, value) =>
-            setDraftValues((prev) => ({ ...prev, [key]: value }))
-          }
+          onChange={(key, value) => {
+            setDraftValues((prev) => {
+              const next = { ...prev, [key]: value };
+              const field = current.fields?.find((item) => item.key === key);
+              if (field?.type === "image") {
+                current.onValuesChange?.(next);
+                void current.onPersist?.(next);
+              }
+              return next;
+            });
+          }}
         />
       ) : (
         <p className="text-sm text-text-muted">Aucun champ éditable.</p>

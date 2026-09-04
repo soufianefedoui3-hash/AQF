@@ -3,6 +3,7 @@
 import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import { Input, Select, Textarea } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { ImageField } from "@/components/admin/ImageField";
 import {
   DIVIDER_SPACINGS,
   PAGE_BLOCK_LABELS,
@@ -187,6 +188,18 @@ export function BlockFields({
                 onChange={(e) => {
                   const items = [...block.items];
                   items[index] = { ...item, content: e.target.value };
+                  onChange({ ...block, items });
+                }}
+              />
+            </div>
+            <div className="mt-3">
+              <ImageField
+                label="Image"
+                prefix="grid-card"
+                value={item.imageUrl || ""}
+                onChange={(imageUrl) => {
+                  const items = [...block.items];
+                  items[index] = { ...item, imageUrl };
                   onChange({ ...block, items });
                 }}
               />
@@ -401,6 +414,14 @@ export function BlockFields({
         value={block.content}
         onChange={(e) => onChange({ ...block, content: e.target.value })}
       />
+      {block.type === "card" ? (
+        <ImageField
+          label="Image"
+          prefix="card"
+          value={block.imageUrl || ""}
+          onChange={(imageUrl) => onChange({ ...block, imageUrl })}
+        />
+      ) : null}
     </div>
   );
 }

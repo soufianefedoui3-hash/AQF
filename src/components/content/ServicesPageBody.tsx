@@ -16,6 +16,7 @@ export type ServiceCardItem = {
   href: string;
   title: string;
   description: string;
+  imageUrl?: string;
 };
 
 export function ServicesPageBody({
@@ -39,9 +40,20 @@ export function ServicesPageBody({
             >
               <div className="absolute inset-0 bg-gradient-to-br from-accent-400/5 to-secondary-400/5 opacity-0 transition group-hover:opacity-100" />
               <div className="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-5">
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-accent-50 text-primary-800 ring-1 ring-accent-200 transition group-hover:bg-accent-gradient group-hover:text-white group-hover:ring-0">
-                  <Icon className="h-7 w-7" />
-                </div>
+                {service.imageUrl?.trim() ? (
+                  <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl ring-1 ring-accent-200">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={service.imageUrl}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-accent-50 text-primary-800 ring-1 ring-accent-200 transition group-hover:bg-accent-gradient group-hover:text-white group-hover:ring-0">
+                    <Icon className="h-7 w-7" />
+                  </div>
+                )}
                 <div className="min-w-0 flex-1">
                   <h2 className="text-xl font-semibold text-primary-900 group-hover:text-accent-700">
                     {service.title}

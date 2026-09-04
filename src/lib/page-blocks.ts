@@ -29,6 +29,7 @@ export type DividerSpacing = (typeof DIVIDER_SPACINGS)[number];
 export type TitledItem = {
   title: string;
   content: string;
+  imageUrl?: string;
 };
 
 export type FaqItem = {
@@ -59,6 +60,7 @@ export type CardBlock = {
   type: "card";
   title: string;
   content: string;
+  imageUrl?: string;
 };
 
 export type ListBlock = {
@@ -197,7 +199,7 @@ export function createEmptyBlock(type: PageBlockType): PageBlock {
     case "paragraph":
       return { id, type, content: "" };
     case "card":
-      return { id, type, title: "Carte en vedette", content: "" };
+      return { id, type, title: "Carte en vedette", content: "", imageUrl: "" };
     case "list":
       return { id, type, title: "Points clés", items: [""] };
     case "cta":
@@ -274,7 +276,13 @@ function normalizeBlock(value: unknown): PageBlock | null {
     return { id, type, content: asText(rec.content) };
   }
   if (type === "card") {
-    return { id, type, title: asText(rec.title), content: asText(rec.content) };
+    return {
+      id,
+      type,
+      title: asText(rec.title),
+      content: asText(rec.content),
+      imageUrl: asText(rec.imageUrl),
+    };
   }
   if (type === "list") {
     const items = Array.isArray(rec.items)
@@ -331,7 +339,11 @@ function parseTitledItems(value: unknown): TitledItem[] {
       return { title: asText(item), content: "" };
     }
     const rec = item as Record<string, unknown>;
-    return { title: asText(rec.title), content: asText(rec.content) };
+    return {
+      title: asText(rec.title),
+      content: asText(rec.content),
+      imageUrl: asText(rec.imageUrl),
+    };
   });
 }
 

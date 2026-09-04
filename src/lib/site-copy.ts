@@ -70,6 +70,13 @@ export function serviceDescKey(href: string): string {
   return "service_desc_formation";
 }
 
+export function serviceImageKey(href: string): string {
+  if (href.includes("accompagnement")) return "service_image_accompagnement";
+  if (href.includes("audit")) return "service_image_audit";
+  if (href.includes("produits")) return "service_image_products";
+  return "service_image_formation";
+}
+
 export function exploreDescKey(href: string): string {
   if (href === "/services") return "explore_desc_services";
   if (href === "/secteurs") return "explore_desc_sectors";

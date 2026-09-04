@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { FaqAccordion } from "@/components/content/FaqAccordion";
 import { cn } from "@/lib/utils";
 import { mediaEmbedUrl, type AlertTone, type PageBlock } from "@/lib/page-blocks";
+import { toLocalImageUrl } from "@/lib/placeholder-images";
 
 export function isSafeHref(href: string): boolean {
   const value = href.trim();
@@ -48,6 +49,17 @@ export const DIVIDER_SPACE = {
 
 function Placeholder({ children }: { children: string }) {
   return <span className="italic text-primary-300">{children}</span>;
+}
+
+function CardPhoto({ src, alt }: { src?: string; alt: string }) {
+  const imageUrl = toLocalImageUrl(src) || src?.trim();
+  if (!imageUrl) return null;
+  return (
+    <div className="mb-4 overflow-hidden rounded-xl bg-primary-50">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={imageUrl} alt={alt} className="h-40 w-full object-cover" />
+    </div>
+  );
 }
 
 export function PageBlockView({
@@ -120,6 +132,7 @@ export function PageBlockView({
     return (
       <PageSection container="3xl" muted={muted} className={sectionClass}>
         <ContentCard>
+          <CardPhoto src={block.imageUrl} alt={title || "Carte"} />
           <h2 className="mb-3 text-xl font-semibold text-primary-900">
             {title || <Placeholder>Titre de la carte…</Placeholder>}
           </h2>
@@ -225,7 +238,9 @@ export function PageBlockView({
   }
 
   if (block.type === "grid") {
-    const items = block.items.filter((item) => item.title.trim() || item.content.trim());
+    const items = block.items.filter(
+      (item) => item.title.trim() || item.content.trim() || Boolean(item.imageUrl?.trim())
+    );
     const title = block.title.trim();
     if (!title && items.length === 0 && !showPlaceholders) return null;
     const display =
@@ -249,6 +264,7 @@ export function PageBlockView({
           {(showPlaceholders ? block.items : display).map((item, itemIndex) => {
             const card = (
               <ContentCard className="h-full">
+                <CardPhoto src={item.imageUrl} alt={item.title.trim() || "Carte"} />
                 <h3 className="mb-2 text-lg font-semibold text-primary-900">
                   {item.title.trim() || <Placeholder>Titre…</Placeholder>}
                 </h3>

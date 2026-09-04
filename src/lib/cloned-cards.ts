@@ -12,6 +12,7 @@ export type ClonedCard = {
   href?: string;
   value?: string;
   label?: string;
+  imageUrl?: string;
 };
 
 export function parseClonedCards(raw: unknown): ClonedCard[] {
@@ -41,6 +42,7 @@ export function parseClonedCards(raw: unknown): ClonedCard[] {
     if (typeof rec.href === "string") card.href = rec.href;
     if (typeof rec.value === "string") card.value = rec.value;
     if (typeof rec.label === "string") card.label = rec.label;
+    if (typeof rec.imageUrl === "string") card.imageUrl = rec.imageUrl;
     cards.push(card);
   }
   return cards;

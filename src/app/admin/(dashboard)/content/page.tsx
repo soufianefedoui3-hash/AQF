@@ -36,6 +36,7 @@ import {
   formationBenefitsFromLabels,
   resolveCopy,
   serviceDescKey,
+  serviceImageKey,
   SITE_COPY_DEFAULTS,
   STAT_INDEXES,
   subtitleKey,
@@ -569,6 +570,7 @@ export default function ContentPage() {
             ? tabLabel("products") || link.title
             : tabLabel("formation") || link.title,
     description: resolveCopy(labels, serviceDescKey(link.href), link.description),
+    imageUrl: labels[serviceImageKey(link.href)]?.trim() || "",
   }));
   const serviceClones = cardsFromPage(CLONE_PAGE_KEYS.services);
   const serviceCards = weaveClonedCards(
@@ -579,6 +581,7 @@ export default function ContentPage() {
       href: clone.href || "/",
       title: clone.title,
       description: clone.description,
+      imageUrl: clone.imageUrl || "",
     })
   );
   const exploreClones = cardsFromPage(CLONE_PAGE_KEYS.explore);
@@ -945,21 +948,29 @@ export default function ContentPage() {
                 { key: "name", label: "Nom" },
                 { key: "role", label: "Rôle" },
                 { key: "skills", label: "Compétences", type: "textarea", rows: 3 },
+                { key: "imageUrl", label: "Photo", type: "image", prefix: "team" },
               ]}
               values={{
                 name: member.name,
                 role: member.role,
                 skills: member.skills,
+                imageUrl: member.imageUrl || "",
               }}
               onChange={(next) => {
                 setTeam((prev) =>
                   prev.map((item) =>
-                    item.id === member.id ? { ...item, ...next } : item
+                    item.id === member.id
+                      ? { ...item, ...next, imageUrl: next.imageUrl || null }
+                      : item
                   )
                 );
               }}
               onSave={async (next) => {
-                const ok = await save("team", { ...member, ...next });
+                const ok = await save("team", {
+                  ...member,
+                  ...next,
+                  imageUrl: next.imageUrl || null,
+                });
                 if (ok) await loadContent({ silent: true });
               }}
               onDelete={async () => {
@@ -1566,33 +1577,32 @@ export default function ContentPage() {
                 { key: "title", label: "Titre" },
                 { key: "description", label: "Description", type: "textarea", rows: 6 },
                 { key: "fallback", label: "Texte de secours" },
+                { key: "imageUrl", label: "Image", type: "image", prefix: "ged" },
               ]}
               values={{
                 title: ged.title,
                 description: ged.description,
                 fallback: resolveCopy(labels, "products_ged_fallback"),
+                imageUrl: ged.imageUrl || "",
               }}
               onChange={(next) => {
                 setGed((prev) => ({
                   ...prev,
                   title: next.title,
                   description: next.description,
+                  imageUrl: next.imageUrl || null,
                 }));
                 applyLabels({ products_ged_fallback: next.fallback });
               }}
               onSave={async (next) => {
-                const ok = await save("ged", {
+                const payload = {
                   ...ged,
                   title: next.title,
                   description: next.description,
-                });
-                if (ok) {
-                  setGed((prev) => ({
-                    ...prev,
-                    title: next.title,
-                    description: next.description,
-                  }));
-                }
+                  imageUrl: next.imageUrl || null,
+                };
+                const ok = await save("ged", payload);
+                if (ok) setGed(payload);
                 await saveLabels({ products_ged_fallback: next.fallback });
               }}
               onDuplicate={async () => {
@@ -1686,17 +1696,20 @@ export default function ContentPage() {
                 { key: "title", label: "Titre" },
                 { key: "description", label: "Description", type: "textarea", rows: 4 },
                 { key: "cta", label: "Lien « Accéder »" },
+                { key: "imageUrl", label: "Image / icône", type: "image", prefix: "service" },
               ]}
               values={{
                 title: service.title,
                 description: service.description,
                 cta: resolveCopy(labels, "service_cta"),
+                imageUrl: service.imageUrl || "",
               }}
               onChange={(next) => {
                 if (isClone) {
                   applyCloneFields(CLONE_PAGE_KEYS.services, cardId, {
                     title: next.title,
                     description: next.description,
+                    imageUrl: next.imageUrl,
                   });
                   applyLabels({ service_cta: next.cta });
                   return;
@@ -1704,6 +1717,7 @@ export default function ContentPage() {
                 applyLabels({
                   [titleId]: next.title,
                   [serviceDescKey(service.href)]: next.description,
+                  [serviceImageKey(service.href)]: next.imageUrl,
                   service_cta: next.cta,
                 });
               }}
@@ -1713,7 +1727,12 @@ export default function ContentPage() {
                     CLONE_PAGE_KEYS.services,
                     serviceClones.map((item) =>
                       item.id === cardId
-                        ? { ...item, title: next.title, description: next.description }
+                        ? {
+                            ...item,
+                            title: next.title,
+                            description: next.description,
+                            imageUrl: next.imageUrl,
+                          }
                         : item
                     )
                   );
@@ -1723,6 +1742,7 @@ export default function ContentPage() {
                 await saveLabels({
                   [titleId]: next.title,
                   [serviceDescKey(service.href)]: next.description,
+                  [serviceImageKey(service.href)]: next.imageUrl,
                   service_cta: next.cta,
                 });
               }}
@@ -1735,6 +1755,7 @@ export default function ContentPage() {
                     title: service.title,
                     description: service.description,
                     href: service.href,
+                    imageUrl: service.imageUrl,
                   },
                   "Carte dupliquée"
                 );
@@ -1808,17 +1829,24 @@ export default function ContentPage() {
                   { key: "name", label: "Nom" },
                   { key: "description", label: "Description", type: "textarea", rows: 5 },
                   { key: "discover", label: "Lien « Découvrir »" },
+                  { key: "imageUrl", label: "Image", type: "image", prefix: "sector" },
                 ]}
                 values={{
                   name: sector.name,
                   description: sector.description,
                   discover: resolveCopy(labels, "sectors_discover"),
+                  imageUrl: sector.imageUrl || "",
                 }}
                 onChange={(next) => {
                   setSectors((prev) =>
                     prev.map((item) =>
                       item.slug === sector.slug
-                        ? { ...item, name: next.name, description: next.description }
+                        ? {
+                            ...item,
+                            name: next.name,
+                            description: next.description,
+                            imageUrl: next.imageUrl || null,
+                          }
                         : item
                     )
                   );
@@ -1831,6 +1859,7 @@ export default function ContentPage() {
                       ...match,
                       name: next.name,
                       description: next.description,
+                      imageUrl: next.imageUrl || null,
                     });
                     if (ok) await loadContent({ silent: true });
                   }
