@@ -10,7 +10,7 @@ export function InsertRail({
   disabled?: boolean;
 }) {
   return (
-    <div className="group/rail relative z-20 h-3">
+    <div className="group/rail relative z-20 h-0">
       <div className="absolute inset-x-0 top-1/2 flex -translate-y-1/2 items-center justify-center">
         <div className="h-px w-full bg-transparent transition group-hover/rail:bg-accent-300" />
         <button

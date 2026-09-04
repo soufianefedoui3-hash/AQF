@@ -13,7 +13,7 @@ export function NavCard({
   return (
     <Link
       href={href}
-      className="group flex flex-col rounded-2xl border border-primary-100 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-accent-300 hover:shadow-lg hover:shadow-accent-400/10"
+      className="group flex h-full flex-col rounded-2xl border border-primary-100 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-accent-300 hover:shadow-lg hover:shadow-accent-400/10"
     >
       <h3 className="text-lg font-semibold text-primary-900 group-hover:text-accent-600">{title}</h3>
       <p className="mt-2 flex-1 text-sm text-text-muted">{description}</p>

@@ -879,6 +879,23 @@ export default function ContentPage() {
                       [`stat_${n}_label`]: next.label,
                     })
                   }
+                  onDuplicate={async () => {
+                    const empty = STAT_INDEXES.find((index) => {
+                      if (index === n) return false;
+                      return !(
+                        labels[`stat_${index}_value`]?.trim() ||
+                        labels[`stat_${index}_label`]?.trim()
+                      );
+                    });
+                    if (!empty) {
+                      toast.error("Tous les compteurs sont déjà utilisés");
+                      return;
+                    }
+                    await saveLabels({
+                      [`stat_${empty}_value`]: stat.value,
+                      [`stat_${empty}_label`]: stat.label,
+                    });
+                  }}
                   onDelete={() =>
                     saveLabels({
                       [`stat_${n}_value`]: "",
@@ -921,6 +938,18 @@ export default function ContentPage() {
                 values={{ description: resolveCopy(labels, exploreDescKey(link.href)) }}
                 onChange={(next) => applyLabels({ [exploreDescKey(link.href)]: next.description })}
                 onSave={(next) => saveLabels({ [exploreDescKey(link.href)]: next.description })}
+                onDuplicate={async () => {
+                  const ok = await save(
+                    "page",
+                    {
+                      key: `homepage:${crypto.randomUUID()}`,
+                      title: link.label,
+                      content: resolveCopy(labels, exploreDescKey(link.href)),
+                    },
+                    { silent: true }
+                  );
+                  if (ok) await loadContent({ silent: true });
+                }}
                 onDelete={() => saveLabels({ [exploreDescKey(link.href)]: "" })}
               >
                 {node}
@@ -1408,6 +1437,19 @@ export default function ContentPage() {
                   service_cta: next.cta,
                 });
               }}
+              onDuplicate={async () => {
+                const ok = await save(
+                  "page",
+                  {
+                    key: `services:${crypto.randomUUID()}`,
+                    title: service.title,
+                    content: service.description,
+                  },
+                  { silent: true }
+                );
+                if (ok) await loadContent({ silent: true });
+              }}
+              onDelete={() => saveLabels({ [serviceDescKey(service.href)]: "" })}
             >
               {node}
             </EditableRegion>

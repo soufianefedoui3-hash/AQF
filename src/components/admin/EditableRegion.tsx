@@ -54,8 +54,17 @@ export function EditableRegion({
       },
       onPersist: (override) =>
         latest.current.onSave(override ?? builder.selected?.values ?? latest.current.values),
-      onDuplicate: latest.current.onDuplicate,
-      onDelete: latest.current.onDelete,
+      onDuplicate: () => {
+        if (latest.current.onDuplicate) return latest.current.onDuplicate();
+        return latest.current.onSave({ ...latest.current.values });
+      },
+      onDelete: () => {
+        if (latest.current.onDelete) return latest.current.onDelete();
+        const empty = Object.fromEntries(
+          latest.current.fields.map((field) => [field.key, ""])
+        );
+        return latest.current.onSave(empty);
+      },
     });
   }
 
@@ -75,17 +84,31 @@ export function EditableRegion({
           bindSelection();
           builder.openEditor();
         }}
-        onDone={() => builder.clear()}
-        onDuplicate={onDuplicate}
-        onDelete={
-          onDelete
-            ? () => {
-                if (!confirm(`Supprimer « ${label} » ?`)) return;
-                void onDelete();
-                if (selected) builder.clear();
+        onDuplicate={
+          onDuplicate
+            ? () => void onDuplicate()
+            : () => {
+                const copy = Object.fromEntries(
+                  Object.entries(latest.current.values).map(([key, value]) => [
+                    key,
+                    value,
+                  ])
+                );
+                void latest.current.onSave(copy);
               }
-            : undefined
         }
+        onDelete={() => {
+          if (!confirm(`Supprimer « ${label} » ?`)) return;
+          if (onDelete) {
+            void onDelete();
+          } else {
+            const empty = Object.fromEntries(
+              latest.current.fields.map((field) => [field.key, ""])
+            );
+            void latest.current.onSave(empty);
+          }
+          if (selected) builder.clear();
+        }}
       >
         {children}
       </VisualItemChrome>
@@ -139,16 +162,19 @@ function ModalFallback({
         editing={open}
         disabled={disabled}
         onEdit={() => setOpen(true)}
-        onDone={() => setOpen(false)}
-        onDuplicate={onDuplicate}
-        onDelete={
-          onDelete
-            ? () => {
-                if (!confirm(`Supprimer « ${label} » ?`)) return;
-                void onDelete();
-              }
-            : undefined
+        onDuplicate={
+          onDuplicate
+            ? () => void onDuplicate()
+            : () => void onSave({ ...values })
         }
+        onDelete={() => {
+          if (!confirm(`Supprimer « ${label} » ?`)) return;
+          if (onDelete) void onDelete();
+          else {
+            const empty = Object.fromEntries(fields.map((field) => [field.key, ""]));
+            void onSave(empty);
+          }
+        }}
       >
         {children}
       </VisualItemChrome>

@@ -71,11 +71,13 @@ export function ProductsPageBody({
             <p className="text-text-muted">{emptyLabel}</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-10">
+          <div className="grid grid-cols-1 items-stretch gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-10">
             {packs.map((pack) => {
               const card = <PackMockup name={pack.name} description={pack.description} />;
               return (
-                <div key={pack.id}>{wrapPack ? wrapPack(pack, card) : card}</div>
+                <div key={pack.id} className="h-full min-h-0">
+                  {wrapPack ? wrapPack(pack, card) : card}
+                </div>
               );
             })}
           </div>
@@ -131,10 +133,10 @@ export function ProductsPageBody({
           })()}
         </div>
         {extraSections.length > 0 ? (
-          <div className="mt-10 grid gap-6 md:grid-cols-2">
+          <div className="mt-10 grid items-stretch gap-6 md:grid-cols-2">
             {extraSections.map((section) => {
               const card = (
-                <div className="rounded-2xl border border-primary-100 bg-white p-6 shadow-sm">
+                <div className="h-full rounded-2xl border border-primary-100 bg-white p-6 shadow-sm">
                   <h3 className="mb-3 text-lg font-semibold text-primary-900">
                     {section.title?.trim() || "Section"}
                   </h3>
@@ -144,7 +146,9 @@ export function ProductsPageBody({
                 </div>
               );
               return (
-                <div key={section.key}>{wrapExtra ? wrapExtra(section, card) : card}</div>
+                <div key={section.key} className="h-full min-h-0">
+                  {wrapExtra ? wrapExtra(section, card) : card}
+                </div>
               );
             })}
           </div>

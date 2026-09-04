@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { AlertTriangle, CheckCircle2, Info, Quote } from "lucide-react";
 import { PageSection, ContentCard } from "@/components/ui/PageSection";
 import { Button } from "@/components/ui/Button";
@@ -54,11 +55,23 @@ export function PageBlockView({
   muted = false,
   showPlaceholders = false,
   compact = false,
+  wrapGridItem,
+  wrapStatItem,
 }: {
   block: PageBlock;
   muted?: boolean;
   showPlaceholders?: boolean;
   compact?: boolean;
+  wrapGridItem?: (
+    item: { title: string; content: string },
+    index: number,
+    node: ReactNode
+  ) => ReactNode;
+  wrapStatItem?: (
+    item: { value: string; label: string },
+    index: number,
+    node: ReactNode
+  ) => ReactNode;
 }) {
   const sectionClass = compact ? "py-8 md:py-10" : undefined;
 
@@ -212,17 +225,24 @@ export function PageBlockView({
             {title || <Placeholder>Titre de la grille…</Placeholder>}
           </h2>
         ) : null}
-        <div className={`grid gap-5 ${cols}`}>
-          {display.map((item, itemIndex) => (
-            <ContentCard key={`${block.id}-${itemIndex}`}>
-              <h3 className="mb-2 text-lg font-semibold text-primary-900">
-                {item.title.trim() || <Placeholder>Titre…</Placeholder>}
-              </h3>
-              <p className="whitespace-pre-line text-sm leading-relaxed text-text-muted">
-                {item.content.trim() || <Placeholder>Texte…</Placeholder>}
-              </p>
-            </ContentCard>
-          ))}
+        <div className={`grid items-stretch gap-6 ${cols}`}>
+          {display.map((item, itemIndex) => {
+            const card = (
+              <ContentCard className="h-full">
+                <h3 className="mb-2 text-lg font-semibold text-primary-900">
+                  {item.title.trim() || <Placeholder>Titre…</Placeholder>}
+                </h3>
+                <p className="whitespace-pre-line text-sm leading-relaxed text-text-muted">
+                  {item.content.trim() || <Placeholder>Texte…</Placeholder>}
+                </p>
+              </ContentCard>
+            );
+            return (
+              <div key={`${block.id}-${itemIndex}`} className="h-full min-h-0">
+                {wrapGridItem ? wrapGridItem(item, itemIndex, card) : card}
+              </div>
+            );
+          })}
         </div>
       </PageSection>
     );
@@ -324,20 +344,24 @@ export function PageBlockView({
             {title || <Placeholder>Chiffres clés</Placeholder>}
           </h2>
         ) : null}
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {display.map((item, itemIndex) => (
-            <div
-              key={`${block.id}-${itemIndex}`}
-              className="rounded-2xl border border-primary-100 bg-white px-6 py-8 text-center shadow-sm"
-            >
-              <p className="text-4xl font-bold tracking-tight text-accent-600">
-                {item.value.trim() || "0"}
-              </p>
-              <p className="mt-2 text-sm font-medium text-text-muted">
-                {item.label.trim() || <Placeholder>Libellé</Placeholder>}
-              </p>
-            </div>
-          ))}
+        <div className="grid items-stretch gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {display.map((item, itemIndex) => {
+            const card = (
+              <div className="h-full rounded-2xl border border-primary-100 bg-white px-6 py-8 text-center shadow-sm">
+                <p className="text-4xl font-bold tracking-tight text-accent-600">
+                  {item.value.trim() || "0"}
+                </p>
+                <p className="mt-2 text-sm font-medium text-text-muted">
+                  {item.label.trim() || <Placeholder>Libellé</Placeholder>}
+                </p>
+              </div>
+            );
+            return (
+              <div key={`${block.id}-${itemIndex}`} className="h-full min-h-0">
+                {wrapStatItem ? wrapStatItem(item, itemIndex, card) : card}
+              </div>
+            );
+          })}
         </div>
       </PageSection>
     );

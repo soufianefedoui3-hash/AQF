@@ -118,18 +118,6 @@ export function SectionBlocksEditor({
           wrapMember={wrapMember}
           wrapTeamTitle={wrapTeamTitle}
         />
-        <div className="pointer-events-none relative z-20 -mt-8 mb-8 flex justify-center">
-          <Button
-            type="button"
-            variant="outline"
-            loading={saving}
-            className="pointer-events-auto shadow-sm"
-            onClick={onAdd}
-          >
-            <Plus className="h-4 w-4" />
-            {addLabel}
-          </Button>
-        </div>
       </div>
     );
   }
@@ -146,18 +134,6 @@ export function SectionBlocksEditor({
           chrome={chrome}
           emptyLabel={emptyLabel}
         />
-        <div className="pointer-events-none relative z-20 -mt-4 mb-8 flex justify-center">
-          <Button
-            type="button"
-            variant="outline"
-            loading={saving}
-            className="pointer-events-auto shadow-sm"
-            onClick={onAdd}
-          >
-            <Plus className="h-4 w-4" />
-            {addLabel}
-          </Button>
-        </div>
       </div>
     );
   }
@@ -171,7 +147,7 @@ export function SectionBlocksEditor({
       ) : (
         <PageSection>
           <InsertRail disabled={saving} onAdd={() => void onAdd()} />
-          <div className="grid gap-6 md:grid-cols-2">
+          <div className="grid items-stretch gap-6 md:grid-cols-2">
             {shown.map((block) =>
               chrome(
                 block,
@@ -233,11 +209,11 @@ function HomepageEditable({
         )
       ) : null}
       {extraSections.length > 0 ? (
-        <div className="mx-auto mt-12 grid max-w-5xl gap-6 px-4 sm:px-6 md:grid-cols-2">
+        <div className="mx-auto mt-12 grid max-w-5xl items-stretch gap-6 px-4 sm:px-6 md:grid-cols-2">
           {extraSections.map((section) =>
             chrome(
               section,
-              <div className="rounded-2xl border border-primary-100 bg-white p-6 text-left shadow-sm">
+              <div className="h-full rounded-2xl border border-primary-100 bg-white p-6 text-left shadow-sm">
                 <h3 className="mb-3 text-lg font-semibold text-primary-900">
                   {section.title?.trim() || "Section"}
                 </h3>

@@ -21,7 +21,7 @@ export function FormationIntro({ content }: { content?: string }) {
 
 export function FormationExtraCard({ section }: { section: FormationSectionItem }) {
   return (
-    <div className="rounded-2xl border border-primary-100 bg-white p-6 text-left shadow-sm">
+    <div className="h-full rounded-2xl border border-primary-100 bg-white p-6 text-left shadow-sm">
       <h3 className="mb-3 text-lg font-semibold text-primary-900">
         {section.title?.trim() || "Section"}
       </h3>
@@ -133,11 +133,11 @@ export function FormationPageBody({
     <PageSection>
       {wrapIntro ? wrapIntro(introNode) : introNode}
       {extraSections.length > 0 ? (
-        <div className="mx-auto mt-10 grid max-w-5xl gap-6 md:grid-cols-2">
+        <div className="mx-auto mt-10 grid max-w-5xl items-stretch gap-6 md:grid-cols-2">
           {extraSections.map((section) => {
             const card = <FormationExtraCard section={section} />;
             return (
-              <div key={section.key}>
+              <div key={section.key} className="h-full min-h-0">
                 {wrapExtra ? wrapExtra(section, card) : card}
               </div>
             );

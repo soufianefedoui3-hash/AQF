@@ -72,10 +72,10 @@ export function CareersPageBody({
         <CareersApplicationForm />
       </div>
       {extraSections.length > 0 ? (
-        <div className="mt-8 grid gap-6 md:grid-cols-2">
+        <div className="mt-8 grid items-stretch gap-6 md:grid-cols-2">
           {extraSections.map((section) => {
             const card = (
-              <ContentCard>
+              <ContentCard className="h-full">
                 <h3 className="mb-3 text-lg font-semibold text-primary-900">
                   {section.title?.trim() || "Section"}
                 </h3>
@@ -85,7 +85,9 @@ export function CareersPageBody({
               </ContentCard>
             );
             return (
-              <div key={section.key}>{wrapExtra ? wrapExtra(section, card) : card}</div>
+              <div key={section.key} className="h-full min-h-0">
+                {wrapExtra ? wrapExtra(section, card) : card}
+              </div>
             );
           })}
         </div>

@@ -12,6 +12,7 @@ export function VisualItemChrome({
   onEdit,
   onDuplicate,
   onDelete,
+  fit = "card",
 }: {
   label: string;
   editing?: boolean;
@@ -22,27 +23,24 @@ export function VisualItemChrome({
   onDone?: () => void;
   onDuplicate?: () => void;
   onDelete?: () => void;
+  fit?: "card" | "section";
 }) {
   return (
     <div
-      className={cn("group/chrome relative", editing && "z-10")}
+      className={cn(
+        "group/chrome relative isolate",
+        fit === "card" && "flex h-full min-h-0 flex-col",
+        editing && "z-20"
+      )}
       onClick={(event) => {
         if ((event.target as HTMLElement).closest("[data-builder-chrome]")) return;
         onSelect?.();
       }}
     >
       <div
-        className={cn(
-          "pointer-events-none absolute inset-1 z-10 rounded-2xl ring-2 ring-inset transition",
-          editing
-            ? "ring-accent-400 shadow-[0_0_0_4px_rgba(45,212,191,0.18)]"
-            : "ring-transparent group-hover/chrome:ring-accent-300"
-        )}
-      />
-      <div
         data-builder-chrome
         className={cn(
-          "absolute right-3 top-3 z-20 flex flex-wrap justify-end gap-1 transition",
+          "absolute right-2 top-2 z-30 flex max-w-[calc(100%-1rem)] flex-wrap justify-end gap-1",
           editing
             ? "opacity-100"
             : "opacity-0 group-hover/chrome:opacity-100 group-focus-within/chrome:opacity-100"
@@ -70,7 +68,18 @@ export function VisualItemChrome({
           </ToolbarButton>
         ) : null}
       </div>
-      {children}
+      <div
+        className={cn(
+          "min-h-0",
+          fit === "card" && "h-full rounded-2xl [&>*]:h-full",
+          fit === "card" &&
+            (editing
+              ? "ring-2 ring-accent-400 ring-offset-2 ring-offset-white"
+              : "group-hover/chrome:ring-1 group-hover/chrome:ring-accent-300")
+        )}
+      >
+        {children}
+      </div>
     </div>
   );
 }
@@ -97,7 +106,7 @@ function ToolbarButton({
         onClick();
       }}
       className={cn(
-        "inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold shadow-sm backdrop-blur",
+        "inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-semibold shadow-sm backdrop-blur",
         "disabled:cursor-not-allowed disabled:opacity-50",
         danger
           ? "bg-red-600 text-white hover:bg-red-700"

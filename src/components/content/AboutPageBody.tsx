@@ -25,7 +25,7 @@ export function AboutSectionCard({
   index: number;
 }) {
   return (
-    <ContentCard>
+    <ContentCard className="h-full">
       <div className="mb-4 flex items-center gap-3">
         <div
           className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
@@ -50,7 +50,7 @@ export function AboutSectionCard({
 export function AboutTeamCard({ member }: { member: AboutTeamMember }) {
   const photo = normalizeImageUrl(member.imageUrl);
   return (
-    <ContentCard hover>
+    <ContentCard hover className="h-full">
       {photo ? (
         <div className="relative mb-4 h-16 w-16 overflow-hidden rounded-full bg-primary-100">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -85,11 +85,11 @@ export function AboutPageBody({
 }) {
   return (
     <PageSection>
-      <div className="mb-12 grid gap-6 lg:mb-16 lg:grid-cols-2 lg:gap-8">
+      <div className="mb-12 grid items-stretch gap-6 lg:mb-16 lg:grid-cols-2 lg:gap-8">
         {sections.map((section, index) => {
           const card = <AboutSectionCard section={section} index={index} />;
           return (
-            <div key={section.key}>
+            <div key={section.key} className="h-full min-h-0">
               {wrapSection ? wrapSection(section, index, card) : card}
             </div>
           );
@@ -109,11 +109,11 @@ export function AboutPageBody({
           return wrapTeamTitle ? wrapTeamTitle(heading) : heading;
         })()}
 
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid items-stretch gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {team.map((member) => {
             const card = <AboutTeamCard member={member} />;
             return (
-              <div key={member.id}>
+              <div key={member.id} className="h-full min-h-0">
                 {wrapMember ? wrapMember(member, card) : card}
               </div>
             );

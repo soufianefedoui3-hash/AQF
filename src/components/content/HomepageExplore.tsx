@@ -41,7 +41,7 @@ export function HomepageExplore({
     <section className="py-16 md:py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {wrapHeader && heading ? wrapHeader(heading) : heading}
-        <div className="grid gap-5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
+        <div className="grid items-stretch gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {navLinks
             .filter((link) => link.href !== "/")
             .map((link) => {
@@ -55,7 +55,7 @@ export function HomepageExplore({
                 />
               );
               return (
-                <div key={link.href}>
+                <div key={link.href} className="h-full min-h-0">
                   {wrapCard ? wrapCard(link, card) : card}
                 </div>
               );

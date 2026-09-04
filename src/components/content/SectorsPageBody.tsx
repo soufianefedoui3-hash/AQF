@@ -35,7 +35,7 @@ export function SectorsPageBody({
 }) {
   return (
     <PageSection>
-      <div className="grid gap-6 sm:grid-cols-2 sm:gap-8 lg:grid-cols-3">
+      <div className="grid items-stretch gap-6 sm:grid-cols-2 sm:gap-8 lg:grid-cols-3">
         {sectors.map((sector) => {
           const Icon = ICON_MAP[sector.slug] ?? Microscope;
           const name = sector.name?.trim() || "Secteur";
@@ -44,7 +44,7 @@ export function SectorsPageBody({
           const card = (
             <Link
               href={`/secteurs/${sector.slug}`}
-              className="group flex flex-col overflow-hidden rounded-2xl border border-primary-100 bg-white shadow-sm transition hover:-translate-y-1 hover:border-accent-200 hover:shadow-xl"
+              className="group flex h-full flex-col overflow-hidden rounded-2xl border border-primary-100 bg-white shadow-sm transition hover:-translate-y-1 hover:border-accent-200 hover:shadow-xl"
             >
               <div className="relative h-48 overflow-hidden bg-primary-100 sm:h-52">
                 <SectorImage src={sector.imageUrl} alt={name} />
@@ -68,7 +68,9 @@ export function SectorsPageBody({
             </Link>
           );
           return (
-            <div key={sector.slug}>{wrapSector ? wrapSector(sector, card) : card}</div>
+            <div key={sector.slug} className="h-full min-h-0">
+              {wrapSector ? wrapSector(sector, card) : card}
+            </div>
           );
         })}
       </div>

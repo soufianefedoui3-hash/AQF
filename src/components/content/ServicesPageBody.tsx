@@ -25,13 +25,13 @@ export function ServicesPageBody({
 }) {
   return (
     <PageSection>
-      <div className="grid gap-6 md:grid-cols-2 md:gap-8">
+      <div className="grid items-stretch gap-6 md:grid-cols-2 md:gap-8">
         {services.map((service) => {
           const Icon = ICONS[service.href] || Package;
           const card = (
             <Link
               href={service.href}
-              className="group relative overflow-hidden rounded-2xl border border-primary-100 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-accent-200 hover:shadow-xl hover:shadow-accent-400/10 sm:p-8"
+              className="group relative flex h-full overflow-hidden rounded-2xl border border-primary-100 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-accent-200 hover:shadow-xl hover:shadow-accent-400/10 sm:p-8"
             >
               <div className="absolute inset-0 bg-gradient-to-br from-accent-400/5 to-secondary-400/5 opacity-0 transition group-hover:opacity-100" />
               <div className="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-5">
@@ -56,7 +56,9 @@ export function ServicesPageBody({
             </Link>
           );
           return (
-            <div key={service.href}>{wrapService ? wrapService(service, card) : card}</div>
+            <div key={service.href} className="h-full min-h-0">
+              {wrapService ? wrapService(service, card) : card}
+            </div>
           );
         })}
       </div>
